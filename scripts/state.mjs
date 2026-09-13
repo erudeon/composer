@@ -150,12 +150,52 @@ function classify(files) {
   return hits;
 }
 
+/**
+ * WHO IS THIS WAITING ON. A course waiting on a person is the only kind of stuck that does not fix
+ * itself, so it is the one thing worth saying before anything else. Everything else is the operator's
+ * to move, and saying so is more useful than silence.
+ */
+function blockedOn(phase, gates, openFindings) {
+  if (phase === 3 && !gates.unitOneAccepted) return "the operator, to look at unit 1 and say whether the rest should be built";
+  if (phase === 5) return "the reviewer, to read the course as a student";
+  if (phase === 6 && openFindings > 0) return `a person, to accept or close ${openFindings} open finding(s)`;
+  if (phase === 6) return "the operator, to say the word publish";
+  return null;
+}
+
+/**
+ * WHAT TO DO NEXT, IN THE OPERATOR'S WORDS. The pipeline's vocabulary is for the session: "gate unmet,
+ * dispositions null" tells a person nothing they can act on. The first unmet thing, said plainly.
+ */
+function whatNext({ phase, missing, sourceOfRecord, undisposed, gates, structured }) {
+  if (!structured) return 'This folder is not set up yet. Run workspace.mjs init "<course name>" and move the materials into 01-inputs.';
+  if (phase > 0) return `Continue with ${PHASES[phase]}. Read that phase's skill before acting.`;
+
+  const todo = [];
+  if (sourceOfRecord.length === 0) todo.push("convert the summary so there is text to work from");
+  if (undisposed === null) todo.push("inventory the pictures");
+  else if (undisposed > 0) todo.push(`decide what happens to ${undisposed} picture(s)`);
+  if (!gates.structureAnswered) todo.push("settle what a unit is called, how many series, and how they are numbered");
+  if (missing.length > 0) todo.push(`find ${missing.length} missing material(s): ${missing.map((m) => m.label.toLowerCase()).join(", ")}`);
+
+  return todo.length ? `Next: ${todo[0]}.${todo.length > 1 ? ` Then ${todo.length - 1} more thing(s).` : ""}` : "Intake is done. Move to Compose.";
+}
+
 function listCourses() {
   try {
-    const names = readdirSync(WORKSPACE, { withFileTypes: true })
+    const rows = readdirSync(WORKSPACE, { withFileTypes: true })
       .filter((d) => d.isDirectory() && !d.name.startsWith("."))
-      .map((d) => `  ${d.name}`);
-    return names.length ? names.join("\n") : "  (none yet)";
+      .map((d) => {
+        const st = safeJson(join(WORKSPACE, d.name, STATE_FILE)) ?? {};
+        const f = safeJson(join(WORKSPACE, d.name, "findings.json"));
+        const open = Array.isArray(f?.lines) ? f.lines.filter((l) => l?.state === "open").length : 0;
+        const g = st.gates ?? {};
+        // The same ladder main() walks, read off the recorded gates alone.
+        const phase = g.published ? 7 : g.reviewDone ? 6 : g.auditDone ? 5 : g.verifyMatched ? 4 : g.composeDone || g.composeSkipped ? 3 : g.analyzeDone || g.analyzeSkipped ? 2 : g.structureAnswered ? 1 : 0;
+        const waiting = blockedOn(phase, g, open);
+        return `  ${d.name.padEnd(44)} ${PHASES[phase].padEnd(16)} ${waiting ? `waiting on ${waiting.split(",")[0]}` : "yours to move"}`;
+      });
+    return rows.length ? rows.join("\n") : "  (none yet)";
   } catch {
     return "  (no workspace yet)";
   }
@@ -269,6 +309,11 @@ function main() {
     `Mode:   ${mode ?? "undecided"}${modeWhy ? `  (${modeWhy})` : ""}`,
   );
   lines.push(`Phase:  ${PHASES[phase]}`);
+  const openFindings = Array.isArray(safeJson(join(target, "findings.json"))?.lines)
+    ? safeJson(join(target, "findings.json")).lines.filter((l) => l?.state === "open").length
+    : 0;
+  const waiting = blockedOn(phase, gates, openFindings);
+  lines.push(`Waiting on: ${waiting ?? "nobody, this is yours to move"}`);
   lines.push(
     `Files:  ${inputs.length} input(s)  ·  ${docx.length} .docx  ·  ${pdfs.length} .pdf`,
   );

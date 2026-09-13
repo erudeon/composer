@@ -113,14 +113,34 @@ const KNOWN_FUNCTIONS = new Set([
 ]);
 
 /** Word stores an accent as its COMBINING character. U+0305 is the one the summary uses, for an overbar. */
+/*
+ * BOTH SPELLINGS OF EVERY MARK, because Word uses the standalone characters as readily as the combining
+ * ones and they are different codepoints. U+203E OVERLINE was missing and U+0304 COMBINING MACRON was
+ * present, so a bar written the common way fell through to the fallback below and came out as a hat:
+ * x-bar, the sample mean, silently became x-hat, an estimator, on every page of a statistics summary,
+ * rendering perfectly the whole time.
+ */
 const ACCENTS = new Map([
   ["\u0302", "\\hat"],
+  ["\u005e", "\\hat"],
   ["\u0303", "\\tilde"],
+  ["\u007e", "\\tilde"],
   ["\u0304", "\\bar"],
+  ["\u00af", "\\bar"],
+  ["\u203e", "\\bar"],
   ["\u0305", "\\overline"],
   ["\u0307", "\\dot"],
+  ["\u0308", "\\ddot"],
+  ["\u030c", "\\check"],
+  ["\u0306", "\\breve"],
+  ["\u0300", "\\grave"],
+  ["\u0301", "\\acute"],
   ["\u20d7", "\\vec"],
+  ["\u2192", "\\vec"],
 ]);
+
+/** Every accent character this file met and could not name, so an unknown one is reported, not guessed. */
+const unknownAccents = new Set();
 
 /**
  * The mapped commands, with a trailing space.
@@ -283,7 +303,18 @@ function render(tag, inner) {
     /** An accent, by the combining character Word stores. Anything else is a hat. */
     case "m:acc": {
       const chr = propChar(inner, "m:chr");
-      const command = (chr !== null && ACCENTS.get(chr)) || "\\hat";
+      /*
+       * NEVER GUESS A MARK. The old fallback was "anything else is a hat", which turns an accent nobody
+       * mapped into a different piece of mathematics that renders cleanly. `\\overset` keeps the
+       * character the document actually carried, so the output stays true and KaTeX gets the chance to
+       * refuse it in front of somebody rather than after publication.
+       */
+      let command = chr !== null ? ACCENTS.get(chr) : "\\hat";
+      if (chr !== null && !command) {
+        unknownAccents.add(chr);
+        return `\\overset{${escapeLatex(chr)}}{${renderAll(child(inner, "m:e"))}}`;
+      }
+      command = command || "\\hat";
       return `${command}{${renderAll(child(inner, "m:e"))}}`;
     }
 
@@ -362,4 +393,10 @@ function ommlToLatex(innerXml) {
   return renderAll(innerXml).replace(/\s+/g, " ").trim();
 }
 
-module.exports = { ommlToLatex, escapeLatex };
+/** Accent characters met that this file could not name. Empty is the expected answer. */
+function unknownAccentsSeen() {
+  return [...unknownAccents].map((c) => `U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`);
+}
+
+module.exports = {
+  unknownAccentsSeen, ommlToLatex, escapeLatex };
