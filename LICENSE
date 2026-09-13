@@ -1,0 +1,16 @@
+Copyright (c) 2026 erudeon v.o.f. All rights reserved.
+
+This repository is public so that the people who write our courses can install the
+plugin without an account on anything, and so that the way we work is legible to
+anyone we work with. It is not an offer of a licence.
+
+No permission is granted to copy, modify, distribute, sublicense, or make derivative
+works of this repository or any part of it, in whole or in part, for any purpose.
+
+Reading it, and installing it as a Claude Code plugin, are both fine. The plugin does
+nothing on its own: every write it performs goes through an authenticated connection to
+a service you would need your own credentials for.
+
+Third-party dependencies carry their own licences, which are not affected by this file.
+
+To ask about any use not covered here: bence@erudeon.com
