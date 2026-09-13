@@ -133,9 +133,12 @@ const ACCENTS = new Map([
   ["\u005e", "\\hat"],
   ["\u0303", "\\tilde"],
   ["\u007e", "\\tilde"],
+  // FOUR SPELLINGS OF A BAR, all found in real summaries: combining macron, the standalone macron,
+  // the overline, and the modifier letter Word writes for x-bar and pi-bar in statistics and macro.
   ["\u0304", "\\bar"],
   ["\u00af", "\\bar"],
   ["\u203e", "\\bar"],
+  ["\u02c9", "\\bar"],
   ["\u0305", "\\overline"],
   ["\u0307", "\\dot"],
   ["\u0308", "\\ddot"],
@@ -236,6 +239,27 @@ const DELIMITERS = {
 };
 
 /**
+ * EVERY DELIMITER CHARACTER TO ITS LaTeX SPELLING, opening or closing alike.
+ *
+ * The pair table above is keyed on the OPENING character, so a CLOSING one looked up in it finds
+ * nothing and was emitted raw. `\right}` is not valid LaTeX and KaTeX refuses it, which is how
+ * `\left\{1,2,...,N\right}` came out of a real statistics summary: the opening brace escaped by the
+ * pair, the closing one not.
+ */
+const DELIM_LATEX = {
+  "{": "\\{",
+  "}": "\\}",
+  "": ".",
+  "⟨": "\\langle",
+  "⟩": "\\rangle",
+  "‖": "\\|",
+  "⌊": "\\lfloor",
+  "⌋": "\\rfloor",
+  "⌈": "\\lceil",
+  "⌉": "\\rceil",
+};
+
+/**
  * One OMML element to LaTeX. `inner` is the element's own inner XML.
  *
  * The default arm is the safety net described in the header: recurse, so text inside a construct this
@@ -289,11 +313,15 @@ function render(tag, inner) {
       if (lim) {
         const base = renderAll(child(lim[1], "m:e")).trim();
         const under = renderAll(child(lim[1], "m:lim")).trim();
-        const op = KNOWN_FUNCTIONS.has(base) ? `\\${base}` : `\\operatorname{${base}}`;
+        const op = KNOWN_FUNCTIONS.has(base)
+          ? `\\${base}`
+          : `\\operatorname{${base}}`;
         return `${op}_{${under}} ${body}`;
       }
       const name = renderAll(nameXml).trim();
-      const op = KNOWN_FUNCTIONS.has(name) ? `\\${name}` : `\\operatorname{${name}}`;
+      const op = KNOWN_FUNCTIONS.has(name)
+        ? `\\${name}`
+        : `\\operatorname{${name}}`;
       return `${op} ${body}`;
     }
 
@@ -340,7 +368,8 @@ function render(tag, inner) {
       const close = propChar(inner, "m:endChr");
       // Word omits both attributes for ordinary round brackets, which is the common case.
       const [l, r] = DELIMITERS[open ?? "("] ?? [open ?? "(", close ?? ")"];
-      const right = close === null ? r : (DELIMITERS[close]?.[1] ?? close);
+      // A CLOSING character is spelled by DELIM_LATEX, not by the opening-keyed pair table above.
+      const right = close === null ? r : (DELIM_LATEX[close] ?? close);
       const parts = children(inner)
         .filter(([name]) => name === "m:e")
         .map(([, body]) => renderAll(body));
@@ -403,8 +432,13 @@ function ommlToLatex(innerXml) {
 
 /** Accent characters met that this file could not name. Empty is the expected answer. */
 function unknownAccentsSeen() {
-  return [...unknownAccents].map((c) => `U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`);
+  return [...unknownAccents].map(
+    (c) => `U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}`,
+  );
 }
 
 module.exports = {
-  unknownAccentsSeen, ommlToLatex, escapeLatex };
+  unknownAccentsSeen,
+  ommlToLatex,
+  escapeLatex,
+};
