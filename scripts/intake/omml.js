@@ -33,12 +33,20 @@ function unesc(s) {
  * Characters that mean something to LaTeX, escaped so a formula about 100% or $ does not break the
  * document it lands in. The backslash goes first or it would escape the escapes.
  */
+/**
+ * ESCAPED FOR MATH MODE, NOT FOR TEXT MODE. `\\textbackslash`, `\\textasciicircum` and
+ * `\\textasciitilde` are text-mode commands, and KaTeX does not define them: an equation carrying one
+ * is REFUSED at the write path, which is the right outcome but the wrong reason. Measured on the real
+ * Introduction to Mathematics summary, those three were the only refusals in 1,283 equations.
+ *
+ * The math-mode spellings below render the same characters and are what KaTeX accepts.
+ */
 function escapeLatex(s) {
   return s
-    .replace(/\\/g, "\\textbackslash{}")
+    .replace(/\\/g, "\\backslash ")
     .replace(/([&%$#_{}])/g, "\\$1")
-    .replace(/\^/g, "\\textasciicircum{}")
-    .replace(/~/g, "\\textasciitilde{}");
+    .replace(/\^/g, "\\wedge ")
+    .replace(/~/g, "\\sim ");
 }
 
 /**

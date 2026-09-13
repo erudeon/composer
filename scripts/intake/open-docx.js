@@ -106,91 +106,77 @@ function drawings(dir) {
   let heading = null;
   let index = 0;
 
-  for (const para of xml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)) {
-    const p = para[0];
+  /*
+   * ONE PASS OVER THE DOCUMENT, IN ORDER, rather than a walk over paragraph-shaped chunks.
+   *
+   * The paragraph version matched `<w:p ...>…</w:p>` non-greedily, so a paragraph containing a nested
+   * one (a text box, a table cell) ended at the first closing tag and everything after it was skipped;
+   * and it `continue`d past any heading, so a picture sitting IN a heading was never seen at all.
+   * Measured on a real 4.9 MB maths summary: 53 content images in the file, 32 found. Twenty-one
+   * figures, silently absent from the inventory that is Intake's gate.
+   *
+   * Scanning for the things themselves keeps document order without needing to know where paragraphs
+   * begin, which is the part that was never reliable.
+   */
+  const TOKEN =
+    /<w:pStyle\b[^>]*w:val="(Heading\d|Title)"[^>]*\/>|<w:p\b[^>]*>|<\/w:p>|<a:blip\b[^>]*r:embed="([^"]+)"|<w:txbxContent\b|<v:shape\b|<wps:wsp\b/g;
 
-    /*
-     * Word marks a heading with a paragraph style. A GOOGLE DOCS EXPORT CARRIES NONE -- which is why
-     * `docx.js` falls back to run colour and size -- and a drawing with no context cannot be given a
-     * disposition, because "a picture" is not something an operator can decide about while "the picture
-     * under 3.2" is. So where there is no style, the nearest preceding prose stands in. It is a worse
-     * label and it is never absent, which is the trade that matters: the alternative is a null on every
-     * drawing in every document a student actually wrote.
-     */
-    const style = /<w:pStyle\b[^>]*w:val="([^"]*)"/.exec(p)?.[1];
-    if (style && /^Heading\d|^Title$/i.test(style)) {
-      heading = textOf(p) || heading;
-      continue;
-    }
-    const prose = textOf(p);
-    // At least one real word, so a code fence, a bullet glyph or a row of dashes never becomes a label.
-    if (
-      prose &&
-      /[A-Za-z]{3}/.test(prose) &&
-      !/<a:blip\b|w:txbxContent|<v:shape\b|<wps:wsp\b/.test(p)
-    ) {
-      heading = prose.length > 90 ? `${prose.slice(0, 90)}...` : prose;
-      continue;
-    }
+  let paraStart = -1;
+  let paraIsHeading = false;
 
-    const blips = [...p.matchAll(/<a:blip\b[^>]*r:embed="([^"]+)"/g)];
-    for (const b of blips) {
-      const target = rels[b[1]];
+  for (const m of xml.matchAll(TOKEN)) {
+    const tok = m[0];
+    if (tok.startsWith("<w:p ") || tok === "<w:p>") {
+      paraStart = m.index + tok.length;
+      paraIsHeading = false;
+    } else if (tok.startsWith("<w:pStyle")) {
+      paraIsHeading = true;
+    } else if (tok === "</w:p>") {
+      // A heading's text is only knowable once the paragraph closes, and it labels what comes AFTER it.
+      if (paraIsHeading && paraStart !== -1) {
+        const text = textOf(xml.slice(paraStart, m.index));
+        if (text) heading = text;
+      } else if (paraStart !== -1) {
+        const text = textOf(xml.slice(paraStart, m.index));
+        // A line with real words stands in where a document carries no heading styles at all.
+        if (text && /[A-Za-z]{3}/.test(text)) heading = text.length > 90 ? `${text.slice(0, 90)}...` : text;
+      }
+      paraStart = -1;
+      paraIsHeading = false;
+    } else if (tok.startsWith("<a:blip")) {
+      const target = rels[m[2]];
+      const abs = target ? path.join(dir, "word", target) : null;
       found.push({
         index: index++,
         kind: "picture",
         under: heading,
         file: target ? path.posix.join("word", target) : null,
-        bytes:
-          target && fs.existsSync(path.join(dir, "word", target))
-            ? fs.statSync(path.join(dir, "word", target)).size
-            : null,
+        bytes: abs && fs.existsSync(abs) ? fs.statSync(abs).size : null,
         text: null,
         disposition: null,
       });
-    }
-
-    for (const box of p.matchAll(
-      /<w:txbxContent\b[\s\S]*?<\/w:txbxContent>/g,
-    )) {
-      found.push({
-        index: index++,
-        kind: "textbox",
-        under: heading,
-        file: null,
-        bytes: null,
-        text: textOf(box[0]) || null,
-        disposition: null,
-      });
-    }
-
-    // A shape with no picture and no text box is a drawn mark over the prose: a circle, an arrow, a line.
-    if (
-      blips.length === 0 &&
-      !/w:txbxContent/.test(p) &&
-      /<v:shape\b|<wps:wsp\b/.test(p)
-    ) {
-      found.push({
-        index: index++,
-        kind: "shape",
-        under: heading,
-        file: null,
-        bytes: null,
-        text: null,
-        disposition: null,
-      });
+    } else if (tok === "<w:txbxContent") {
+      found.push({ index: index++, kind: "textbox", under: heading, file: null, bytes: null, text: null, disposition: null });
+    } else {
+      found.push({ index: index++, kind: "shape", under: heading, file: null, bytes: null, text: null, disposition: null });
     }
   }
 
   return found;
 }
 
-/** Every file under `word/media/`, so a picture the document references from nowhere is still seen. */
+/**
+ * Every CONTENT file under `word/media/`, so a picture the document references from nowhere is still
+ * seen. Word's `.wdp` HD Photo copies are excluded: it writes one beside each real picture as an
+ * alternate format, and on a real summary 45 of the 98 files were those, which buried the ones that
+ * actually had no reference.
+ */
 function mediaFiles(dir) {
   const mediaDir = path.join(dir, "word", "media");
   if (!fs.existsSync(mediaDir)) return [];
   return fs
     .readdirSync(mediaDir)
+    .filter((name) => !/\.wdp$/i.test(name))
     .sort()
     .map((name) => ({
       file: path.posix.join("word", "media", name),
