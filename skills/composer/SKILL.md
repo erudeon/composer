@@ -34,8 +34,8 @@ returning OK and a third of a lecture missing.
 | 7 Observe | watch it until the exam | sensors |
 
 Read the phase's own skill before acting in it: `intake`, `layout`, `audit`. Phases 1, 2, 5, 6 and 7 are
-carried here, in `reference/`, because each is short enough that a skill of its own would cost more to
-keep consistent than it saves.
+carried in `reference/short-phases.md`, because each is a page and five more skills would be five more
+documents to keep consistent for no gain.
 
 ## How you run
 

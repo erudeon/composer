@@ -78,8 +78,8 @@ encodings rather than cleaning around a replacement character.
 **4. Slice the source per teaching unit** and write one file per unit. A single 85,000-token document
 read by twenty workers is 1.7 million tokens of the same text.
 
-**5. Open the findings list.** `findings.json` in the course folder. The format is
-`reference/findings-format.md`; read it once and follow it exactly, because the Publish gate parses it.
+**5. Open the findings list.** `findings.json` in the course folder. The format is `composer/reference/findings-format.md` in this plugin; read it once and follow it exactly,
+because the Publish gate parses it.
 
 **6. Ask the four structure questions, in ONE message, with a recommendation each.**
 

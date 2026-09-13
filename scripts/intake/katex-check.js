@@ -18,7 +18,23 @@ const fs = require("node:fs");
  * monorepo's root `node_modules`, a path that does not exist for an operator whose only two possessions
  * are this plugin and an MCP connection. That reach is the whole reason the intake tools moved here.
  */
-const katex = require("katex");
+let katex;
+try {
+  katex = require("katex");
+} catch {
+  /*
+   * A plugin is installed by cloning, and whether its dependencies are installed with it is not something
+   * this script gets to assume. Crashing with a module-resolution stack trace in the middle of an intake
+   * tells the operator nothing they can act on, so say the one command that fixes it and stop cleanly.
+   */
+  console.error(
+    "katex is not installed, so the maths cannot be checked before the apply.\n" +
+      "Run `npm install` once inside the plugin directory, then run this again.\n" +
+      "Do NOT skip this step on a maths course: an equation the reader refuses is met here with the\n" +
+      "equation in front of you, or inside an apply of a 300 KB course, and those are not the same day.",
+  );
+  process.exit(2);
+}
 
 const OPTIONS = {
   trust: false,
