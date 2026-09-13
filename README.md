@@ -43,17 +43,19 @@ course can be published.
 
 | | | |
 | --- | --- | --- |
-| 0 | **Intake** | what we hold, and what is wrong with the file |
-| 1 | **Analyze** | what the exams ask, and where the material is silent |
+| 0 | **Intake** | what we hold, and whether it is what it claims |
+| | **Convert** | a document becomes text we can build from, with the maths intact |
+| 1 | *Analyze* | what the exams ask. Not built yet |
 | 2 | **Compose** | make the text right |
 | 3 | **Layout** | make it a course |
 | 4 | **Audit** | prove it, with nobody |
-| 5 | **Student View** | a second person reads it as a student |
+| 5 | *Student View* | a second person reads it as a student. Not built yet |
 | 6 | **Publish** | one press, and it says which environment |
-| 7 | **Observe** | watch it until the exam |
+| 7 | *Observe* | watch it until the exam. Not built yet |
 
-Six always run. Analyze and Compose run when there is something for them to do, and skipping one is
-written down with its reason.
+The bold ones have skills behind them today and take a written summary all the way to a published
+course. The italic ones are written down but not built: each needs something that does not exist yet,
+and the plugin says so rather than improvising.
 
 ## What it will not do
 

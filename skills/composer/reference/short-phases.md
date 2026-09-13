@@ -1,12 +1,16 @@
-# The five phases that are short
+# The three phases that are not built
 
-Intake, Layout and Audit have skills of their own because each carries enough material to be worth
-loading on demand. These five do not: each is a page, and five more skills would be five more documents
-to keep consistent for no gain.
+Intake, Convert, Compose, Layout, Audit and Publish each have a skill. These three do not, and the
+reason is the same in all three cases: **each needs something that does not exist yet.** They are
+written down so the shape is not lost and so nobody improvises them.
+
+**If a run reaches one of these, say it is not built and say what is missing.** Do not invent it.
 
 ---
 
 ## Phase 1 · Analyze · machine only · conditional
+
+**NOT BUILT.** It needs past exams with their answer keys in the folder. Where they exist this phase is worth building next, because the coverage map is what tells Layout where the worked examples and the exam-tip callouts belong. Without it, Layout places them by the file's own emphasis and Student View's gap line is empty by construction rather than by inspection.
 
 Reverse-engineer the exams against the material, to find where the exam's weight falls and where the
 material is silent.
@@ -38,55 +42,9 @@ than by inspection.
 
 ---
 
-## Phase 2 · Compose · the operator, on the record · conditional
-
-Make the finite list of changes the file needs, and none of the changes it does not. **The source of
-record is edited, not the course.**
-
-**Skipped when** the file arrived clean: no old branding, no equation as a picture, no shapes over the
-text, no duplicates, no empty headings, and nothing substantive on the list.
-
-### The mechanical edits, which are made without asking
-
-1. Strip the old branding: cover, note to the reader, links, marketing, footer. **The prose stays.**
-2. Remove em dashes, and strip a number from a heading. Keep en dashes and every other character.
-   **Do not do this by hand.** `scripts/intake/lib.js` exports `stripEmDashes` and
-   `stripHeadingNumber`, and it is marker-aware: three separate corruption bugs in one upload came from
-   a cleanup that matched across emphasis markers, and this is the version that survived them.
-3. Delete empty headings, and emoji in headings.
-4. Retype every equation that was pasted as a picture, as LaTeX.
-5. Fold every shape drawn over the text into the block it annotated, and delete the shape.
-6. Collapse a duplicated picture to one reference.
-
-**Split or merge nothing.** The unit boundaries are the file's own until the course manual says
-otherwise. If we introduce a structure the professor did not use, students will not know where to look,
-and that costs trust that is not cheap to rebuild.
-
-**Three of those six cannot be a script, and must never be reported as done by one.** Retyping an
-equation that was a picture needs somebody to read the picture. Folding a shape needs the shape, which
-the text extract never contained. Collapsing a duplicate needs the media inventory. All three depend on
-Intake's inventory, and a script that reported them clean would be hiding exactly the two defects no text
-diff can see.
-
-### What a substantive edit is, and is not
-
-**Is:** a wrong sign, a wrong answer, a definition the exams use differently. Certain, small, and made
-with the reason on the findings list. **Mark the edited passage**, so Audit and the reviewer can tell it
-from the original.
-
-**Is not:** a gap the coverage map found (that is published as a gap); a passage that reads badly (that
-is the author's); a topic the professor has since changed (that is Observe's, not this phase's).
-
-**When the operator is not certain, the line stays open and the passage stays as written.**
-
-### Gate
-
-Every mechanical line done. Every substantive line has its reason or is explicitly left open. The source
-of record contains no em dash, no numbered heading and no old branding.
-
----
-
 ## Phase 5 · Student View · a second person
+
+**NOT BUILT.** It needs two things neither of which exists: a reviewer, and a link. The platform can mint a preview only for a staff member's own preview student, bound to that person and short lived, so there is no link a current student of the course can be sent. Until that exists, the operator reads their own work, which the phase says explicitly not to rely on.
 
 The reviewer opens the course and reads it as a student. **The reviewer is not the person who laid it
 out**, and where we have one they are a current student of the course, because the summary was written by
@@ -120,27 +78,9 @@ merely claims it will retire.
 
 ---
 
-## Phase 6 · Publish · one press
-
-It was already on production. This makes it visible, and says so unambiguously.
-
-**Gate:** every unit through Audit with a clean source lint. The findings list closed, or every open line
-accepted in writing by the person pressing. And the publish door's own refusal on a lecture that would
-open blank, which is never bypassed.
-
-**Ask about the open lines once**, in one message, with a recommendation each: accept or hold. Then press
-only on the word `publish` from the operator, and report the status in the platform's words with the
-environment named.
-
-**Read what the cascade will touch before pressing.** A course-level publish carries every lecture, bank
-and paper with it and reverses a deliberate withdrawal.
-
-**A missing input is accepted, not forgotten.** A course can reach this phase without its manual. It does
-not reach the press without somebody writing on the findings list that the gap is known and accepted.
-
----
-
 ## Phase 7 · Observe · sensors
+
+**NOT BUILT.** Its one machine sensor, the student-facing content report, is built and running on the platform and has no MCP door, so this plugin cannot read it. The rest of the phase is people, not sessions. What a run CAN do is hand over: the findings list's accepted lines are the watch list, and the closing report says so.
 
 Not the session's phase. It is handed over.
 
