@@ -105,12 +105,17 @@ const token = process.env.PTY_MCP_TOKEN;
 if (!token) {
   fail(
     `PTY_MCP_TOKEN is not set, so there is no way to reach ${hub}.\n\n` +
-      `It lives in Doppler's prd config, which only an operator's own login can read.\n` +
-      `Run this from your home directory, not from inside the repo:\n` +
-      `  doppler run --project erudeon --config prd -- pnpm --filter web content:push <file> --apply\n` +
-      `\n` +
-      `DO NOT go looking for a token in stored connections: the last attempt at that posted another\n` +
-      `service's credential to this API and printed a third into a transcript.`,
+      `Mint one for yourself in the Hub, under your own account. It is scoped to what you can already\n` +
+      `reach, it expires, and it is yours: do not share it and do not paste it into a chat.\n\n` +
+      `Then, in the same terminal you run this from:\n` +
+      `  export PTY_MCP_TOKEN='<the token>'\n` +
+      `  node scripts/push.mjs <file>            # plans, writes nothing\n` +
+      `  node scripts/push.mjs <file> --apply    # writes\n\n` +
+      `If you cannot mint one, use content_import over the MCP instead. It needs no token and always\n` +
+      `works; it just costs the length of the course in tokens, which is a real cost and a better one\n` +
+      `than a stalled upload.\n\n` +
+      `DO NOT go hunting for a token in stored connections or another tool's config. An attempt at that\n` +
+      `once posted an unrelated service's credential to this API.`,
     2,
   );
 }
@@ -169,8 +174,8 @@ function printOperations(operations) {
  * THE THREE THINGS THAT MUST NOT BE SKIMMED PAST.
  *
  * Each is absent from the reply unless it has something to say, so printing them plainly here costs
- * nothing on a clean run and is the whole point on a dirty one. `blocksRemoved` is the report that
- * would have caught two units of a published course losing a third of their prose.
+ * nothing on a clean run and is the whole point on a dirty one. `blocksRemoved` is the one that catches a
+ * manifest quietly deleting content a published lecture already holds.
  */
 function printWarnings(payload) {
   for (const key of ["blocksRemoved", "blocksUnknown", "orderNotApplied"]) {
