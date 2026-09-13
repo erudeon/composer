@@ -62,8 +62,19 @@ and `docs/FIELD-GUIDE.md` is generated from it.
 node scripts/validate.mjs
 node scripts/security-check.mjs
 for t in scripts/intake/t_*.js; do node "$t" || echo "FAILED $t"; done
+node scripts/e2e-check.mjs <a-real-summary-with-no-drawings.docx>
 node scripts/corpus-check.mjs <folder-of-real-summaries>
 ```
+
+Each asks a different question, and none of the others asks `e2e-check`'s: **does a course move through
+the phases, and do the gates hold?** It drives a real document from an empty workspace to the edge of
+the platform under a throwaway `COMPOSER_HOME`, so it never touches an operator's own courses. Give it a
+summary with NO drawings: one full of pictures stops at the disposition gate, which is the gate working
+rather than the test failing.
+
+That question went unasked for the whole of this plugin's life, and something had already rotted where
+nothing else could see it: `composer.json` carried a `skips` array the Intake skill tells operators to
+write into, and `state.mjs` never read it, so an item settled on purpose read MISSING for ever.
 
 The second is the one that matters. Every bug worth finding in this pipeline was found by running real
 documents through it and none by reading the code, and a fix verified only on the document that showed

@@ -297,7 +297,26 @@ function main() {
   if (gates.reviewDone) phase = 6;
   if (gates.published) phase = 7;
 
-  const missing = CHECKLIST.filter((c) => hits[c.key].length === 0);
+  /*
+   * A SKIP IS AN ANSWER, AND THIS USED TO IGNORE IT.
+   *
+   * Intake tells an operator to record a skip with its reason, and `composer.json` has a `skips` array
+   * for exactly that. Nothing read it, so a checklist item settled deliberately went on reading MISSING
+   * for the rest of the course's life: the phase could not close, and the operator who had already made
+   * the call was told to make it again every time they ran this.
+   *
+   * Matched on the item's LABEL, which is what the skill shows a person and therefore what they write
+   * down. A skip naming nothing on the checklist is left alone rather than guessed at.
+   */
+  const skipped = new Set(
+    (Array.isArray(state.skips) ? state.skips : [])
+      .map((s) => String(s?.item ?? "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const isSkipped = (item) => skipped.has(item.label.toLowerCase());
+  const missing = CHECKLIST.filter(
+    (c) => hits[c.key].length === 0 && !isSkipped(c),
+  );
 
   const lines = [];
   lines.push(`COMPOSER STATE  ${target}`);
@@ -328,10 +347,13 @@ function main() {
   lines.push("Checklist");
   for (const item of CHECKLIST) {
     const found = hits[item.key];
-    const mark = found.length ? "present" : "MISSING";
-    lines.push(
-      `  ${mark.padEnd(8)} ${item.label}${found.length ? `  (${found.slice(0, 3).join(", ")}${found.length > 3 ? ", ..." : ""})` : ""}`,
-    );
+    const mark = found.length ? "present" : isSkipped(item) ? "skipped" : "MISSING";
+    const detail = found.length
+      ? `  (${found.slice(0, 3).join(", ")}${found.length > 3 ? ", ..." : ""})`
+      : isSkipped(item)
+        ? `  (${(state.skips.find((s) => String(s?.item ?? "").trim().toLowerCase() === item.label.toLowerCase())?.reason ?? "no reason recorded").slice(0, 72)})`
+        : "";
+    lines.push(`  ${mark.padEnd(8)} ${item.label}${detail}`);
   }
   lines.push("");
 
