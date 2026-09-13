@@ -56,6 +56,26 @@ function withoutCode(text) {
     .replace(/`[^`\n]*`/g, (span) => span.replace(/\$/g, " "));
 }
 
+/**
+ * IS THIS SPAN MATHS, OR IS IT TWO PRICES WITH A SENTENCE BETWEEN THEM?
+ *
+ * A summary about money writes `$100,000 forever. At a 5% discount rate, ... is $2m`, and the two
+ * amounts pair into one "equation" that then fails on the per-cent sign. Real inline maths carries a
+ * signal: a command, a script, a group, or symbol density. Running prose carries spaces and words.
+ *
+ * Deliberately conservative in the direction of silence. A span skipped here is still validated at the
+ * write path, where a genuine refusal names the block it is in; a span reported here wrongly is an
+ * operator reading a page of false alarms, which is how a check stops being read at all.
+ */
+function looksLikeMaths(span) {
+  // Maths says something. A span with no letter and no digit is punctuation between two currency
+  // signs: a lone backslash, a comma, a dash. Eleven of these came out of one summary about money.
+  if (!/[A-Za-z0-9]/.test(span)) return false;
+  if (/[\\^_{}]/.test(span)) return true;
+  const words = span.trim().split(/\s+/).length;
+  return words <= 3;
+}
+
 function equationsIn(raw) {
   const text = withoutCode(raw);
   const out = [];
@@ -69,8 +89,14 @@ function equationsIn(raw) {
    * half a chapter, which then failed on a euro sign inside it: a true refusal for an entirely false
    * reason, which is worse than no check at all because it teaches people to ignore the output.
    */
-  for (const m of inlineOnly.matchAll(/\$([^$\n]{1,400}?)\$/g))
-    out.push({ display: false, tex: m[1] });
+  // `\$` INSIDE the maths is a dollar sign the equation is about, not the end of it: an amount in a
+  // finance summary is written `= \$400`, and closing there truncates the equation to `... =\`.
+  for (const m of inlineOnly.matchAll(
+    /(^|[^\\])\$((?:\\\$|[^$\n]){1,400}?)\$/g,
+  )) {
+    // A dollar the source escaped is a literal one, so its opener is not a delimiter.
+    if (looksLikeMaths(m[2])) out.push({ display: false, tex: m[2] });
+  }
   return out;
 }
 
