@@ -22,7 +22,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/normalise.js"    <work-dir>/source.tx
 node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/katex-check.js"  <work-dir>/source-of-record.txt
 ```
 
-**Use the same `<work-dir>` in all four.** The second command reads what the first unzipped.
+**Use the same `<work-dir>` in all four.** The second reads what the first unzipped.
+
+In a workspace, `<file.docx>` is in `01-inputs` and `<work-dir>` is `02-source/work`. The sliced units
+go in `02-source` beside it. **Nothing is written back into `01-inputs`**: that folder is what every
+fidelity rule compares against, and a source that can be edited in place makes a clean diff meaningless.
 
 ### What each one is for
 

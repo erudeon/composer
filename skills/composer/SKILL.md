@@ -54,6 +54,10 @@ Compose, unit 1 at Layout, the open lines at Publish.
 **Record instead of stopping.** A finding goes on the list, a skip goes on the record, a doubt becomes an
 open line. None is a reason to pause. The pauses are the gates that name a person.
 
+**Everything lives in one place.** `~/Documents/Composer/<course>`, made by `workspace.mjs init`, with
+the materials in `01-inputs` and everything derived numbered beside them. A session that opens tomorrow
+reads that folder and knows what happened; `workspace.mjs list` shows every course and its phase.
+
 **Work in files.** The source of record, the media inventory, the findings list, the manifest and the
 figures are files in the folder. The chat is the log, not the store. Nothing passes through a tool call
 that can pass through a file: a manifest emitted into one costs its whole length in tokens twice, and

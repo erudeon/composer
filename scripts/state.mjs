@@ -28,7 +28,9 @@
  * is on disk, and what the run wrote down about what it did.
  */
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
-import { join, resolve, basename, extname } from "node:path";
+import { join, resolve, extname } from "node:path";
+
+import { WORKSPACE, coursePaths, courseSlug } from "./workspace.mjs";
 
 /** Recorded rather than derived: a run writes these down because no file implies them. */
 const STATE_FILE = "composer.json";
@@ -128,32 +130,61 @@ const CHECKLIST = [
   },
 ];
 
-/*
- * TOP-LEVEL ONLY. The checklist asks what the operator PUT THERE, and Intake unpacks a .docx into a
- * work directory inside the same folder. Every Word file contains word/footnotes.xml and
- * word/endnotes.xml, both of which match /notes/, so a recursive match reported a summary present in a
- * folder holding none, and inflated every count with parts nobody chose.
+/**
+ * WHAT THE OPERATOR PUT THERE, and nothing the pipeline generated from it.
+ *
+ * In a workspace that is `01-inputs`, which is the one folder nothing else writes to. In a loose folder
+ * it is the top level only, because Convert unpacks a `.docx` into a work directory beside the
+ * materials and every Word file contains `word/footnotes.xml` and `word/endnotes.xml`, both of which
+ * match /notes/. Counting those reported a summary present in a folder holding none.
  */
+function inputFiles(files, structured) {
+  return structured ? files.filter((f) => f.path.includes("01-inputs")) : files.filter((f) => f.depth === 0);
+}
+
 function classify(files) {
   const hits = {};
   for (const item of CHECKLIST) {
-    hits[item.key] = files
-      .filter((f) => f.depth === 0 && item.match.test(f.name))
-      .map((f) => f.name);
+    hits[item.key] = files.filter((f) => item.match.test(f.name)).map((f) => f.name);
   }
   return hits;
 }
 
+function listCourses() {
+  try {
+    const names = readdirSync(WORKSPACE, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+      .map((d) => `  ${d.name}`);
+    return names.length ? names.join("\n") : "  (none yet)";
+  } catch {
+    return "  (no workspace yet)";
+  }
+}
+
 function main() {
-  const target = process.argv[2] ? resolve(process.argv[2]) : null;
+  const given = (process.argv[2] ?? "").trim();
+
+  /*
+   * A NAME OR A PATH, because an operator has a course in mind and a tool has a directory. If what was
+   * given is not a directory, it is treated as a course name and looked up in the workspace, which is
+   * also what makes a resumed session able to find yesterday's work from the course's name alone.
+   */
+  let target = null;
+  if (given) {
+    const asPath = resolve(given);
+    target = existsSync(asPath) ? asPath : coursePaths(given).root;
+  }
 
   if (!target) {
     return [
       "COMPOSER: no course folder given.",
       "",
-      "Ask the operator which folder holds this course's materials, then run again with it.",
-      "The folder holds the inputs; nothing is read from the chat and nothing is assumed from the",
-      "working directory, because a person who has just installed a plugin is rarely standing in it.",
+      "Ask the operator which course this is, then run again with its NAME or its folder.",
+      "",
+      `Courses already in the workspace (${WORKSPACE}):`,
+      listCourses(),
+      "",
+      'A new one: node scripts/workspace.mjs init "<course name>"',
     ].join("\n");
   }
 
@@ -161,23 +192,28 @@ function main() {
     return [
       `COMPOSER: no folder at ${target}`,
       "",
-      "Ask the operator for the right path rather than guessing a neighbour of this one.",
-      "A wrong or missing source has twice cost hours that a single question would have saved.",
+      "Nothing there yet. If this is a new course, make its workspace:",
+      `  node scripts/workspace.mjs init "${given}"`,
+      "",
+      "Do not guess a neighbouring folder. A wrong source has cost hours that one question would save.",
     ].join("\n");
   }
 
   const files = walk(target);
   const state = safeJson(join(target, STATE_FILE));
-  const hits = classify(files);
-
-  const sourceOfRecord = files.filter((f) => /source-of-record/i.test(f.path));
+  const structured = existsSync(join(target, "01-inputs"));
+  const inputs = inputFiles(files, structured);
+  const hits = classify(inputs);
+  const sourceOfRecord = files.filter(
+    (f) => /source-of-record/i.test(f.path) || (structured && f.path.includes("02-source") && /\.(md|txt)$/.test(f.name)),
+  );
   const inventory = files.find((f) => f.name === "media-inventory.json");
   const findings = files.find(
     (f) => f.name === "findings.json" || f.name === "findings.md",
   );
   const manifest = files.find((f) => f.name.endsWith("manifest.json"));
-  const docx = files.filter((f) => f.depth === 0 && f.ext === ".docx");
-  const pdfs = files.filter((f) => f.depth === 0 && f.ext === ".pdf");
+  const docx = inputs.filter((f) => f.ext === ".docx");
+  const pdfs = inputs.filter((f) => f.ext === ".pdf");
 
   // ── mode ───────────────────────────────────────────────────────────────────────────────────────────
   let mode = state?.mode ?? null;
@@ -223,13 +259,18 @@ function main() {
 
   const lines = [];
   lines.push(`COMPOSER STATE  ${target}`);
+  if (!structured) {
+    lines.push("");
+    lines.push("This is a loose folder, not a Composer workspace. To give it the standard shape:");
+    lines.push(`  node scripts/workspace.mjs init "<course name>"   then move the materials into 01-inputs`);
+  }
   lines.push("");
   lines.push(
     `Mode:   ${mode ?? "undecided"}${modeWhy ? `  (${modeWhy})` : ""}`,
   );
   lines.push(`Phase:  ${PHASES[phase]}`);
   lines.push(
-    `Files:  ${files.filter((f) => f.depth === 0).length} in the folder  ·  ${docx.length} .docx  ·  ${pdfs.length} .pdf`,
+    `Files:  ${inputs.length} input(s)  ·  ${docx.length} .docx  ·  ${pdfs.length} .pdf`,
   );
   if (state?.__unreadable)
     lines.push(

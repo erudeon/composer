@@ -17,14 +17,33 @@ not, install it from nodejs.org and reopen your terminal.
 
 ## Use
 
-Put everything for one course in one folder. Then:
-
 ```
-/composer ~/path/to/that/folder
+/composer
 ```
 
-It reads the folder, tells you which of the eight phases you are in, and what to do next. It never
-guesses which folder you mean and it never reads files out of the chat.
+It asks which course, makes the folder for it, and tells you what to do next. Everything for that course
+then lives in one place and stays there between sessions.
+
+## Where your work lives
+
+`~/Documents/Composer/<course>/`, made for you, the same shape every time:
+
+```
+01-inputs/     what you put in. Nothing ever writes here but you.
+02-source/     the text pulled out of your documents, with the maths intact
+03-figures/    the pictures, and where each one ended up
+04-manifest/   the course as a file, and versions/ keeping every one ever sent
+05-reports/    what each step reported, so you can pick it up tomorrow
+```
+
+`01-inputs` is never modified, because every check compares what was built against what you gave it. If
+that could change underneath, a clean result would not mean anything.
+
+To see everything you have on the go:
+
+```
+node ~/.claude/plugins/cache/erudeon/composer/*/scripts/workspace.mjs list
+```
 
 ## What goes in the folder
 

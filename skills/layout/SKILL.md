@@ -67,6 +67,15 @@ If no token is available, `content_import` over the MCP does the same job and ne
 length of the course in tokens, which is a real cost and a better one than a stalled upload. Say which
 door you used.
 
+**Keep what you sent.** After each plan and each apply:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/workspace.mjs" snapshot "<course>" manifest.json reply.json plan
+```
+
+It files both under `04-manifest/versions` with one timestamp. The pair is the only durable evidence of
+what a course was at a moment, and it is what a session next week reads instead of guessing.
+
 **Read `blocksRemoved`, `blocksUnknown` and `orderNotApplied` on the plan before applying.** The reply
 explains each in its own words. Their absence is the good news; `blocksRemoved` appearing is a stop.
 

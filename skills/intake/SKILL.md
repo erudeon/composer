@@ -11,6 +11,20 @@ phase calls and then takes the result of.
 
 What is wrong with a file is knowable on the first day. It must not be discovered on the last.
 
+## 0. Make the workspace
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/workspace.mjs" init "<course name>"
+```
+
+Safe to re-run, and a resumed session starts here: it prints the paths and touches nothing that exists.
+It makes one folder per course under `~/Documents/Composer`, numbered in the pipeline's own order, and
+**`01-inputs` is the one folder nothing else ever writes to**, because every check downstream compares
+what was built against what is in there.
+
+The operator puts the materials in `01-inputs`. Everything after this is written beside them, never
+over them.
+
 ## 1. Check every file is what it claims to be
 
 ```
