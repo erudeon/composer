@@ -1,0 +1,153 @@
+# What in the source means "reach for this"
+
+`content_guide {"request":{"op":"blocks"}}` says what every element IS FOR, one line each, and with a
+`type` it gives the exact props. **Read it. None of that is repeated here.**
+
+What is here is the other direction: you are looking at a converted summary, and you have to decide what
+each passage becomes. These are the triggers, written from the source side.
+
+**The rule under all of them: reshape freely, invent nothing.** Every fact, number, study, year and
+definition comes from the source. The prose stays the author's, word for word. What you are choosing is
+the shape it arrives in.
+
+---
+
+## A picture of a graph
+
+**The text states a function of x.** A `chart` with `fn` and a `domain`. This is the whole point: a plot
+given as an expression costs no bytes, reflows, themes, is searchable by its title, and a student can
+read values off it. A picture of the same plot is none of those.
+
+**The text varies a constant** ("as m increases", "for different values of a"): add a `param`. The
+student drags it and the curve redraws. This is the single most under-used thing in the reader, and it
+turns a static illustration into the lesson.
+
+**The picture marks a point** (a maximum, an intersection, an equilibrium): a `marker` with `guideX` and
+`guideY`, which draws the dotted lines down to the axes and labels them. Where the source draws a
+tangent, `tangent: true` on the marker rather than a second hand-made curve.
+
+**The picture shades an area** (a surplus, an integral, a region between two curves): `regions`, naming
+the curves. The area is computed, not drawn.
+
+**The picture's whole lesson is a crossing that moves**: `whatIf` gives the student a line to drag with
+each curve's crossing read off it. Use it where the crossing IS the lesson, not as decoration.
+
+**The text gives no expression.** Do not invent one. A curve that looks right and is wrong is
+indistinguishable from a correct one on the page, no check downstream can see it, and it will be wrong
+in whichever direction seemed plausible. Two honest answers: a `figure` with alt text naming what it
+shows, or a schematic `chart` with `ticks: false` and a title that says it is schematic.
+
+**A surface in two variables.** A `figure`. The reader has no 3D chart.
+
+**A crop from a book, a slide, a homework site or the web.** Never uploaded. Redrawn from the function
+the text gives, or it is a finding.
+
+### Every chart built from a picture is checked against that picture
+
+Open the image. Compare it to the curve you wrote: the shape, where it crosses, where it turns, what is
+labelled. **They have to match.** This is the one check the pipeline has never had, and it is possible
+only because you can see. If they do not match, the expression is wrong or it was the wrong expression,
+and the honest outcome is a figure.
+
+---
+
+## A passage of prose
+
+**A run of parallel items, one line each.** Bullets, inside the prose block. Not a table: a table for
+three short parallel phrases is a heavier object than the thing it holds.
+
+**A sequence where the order is the meaning** (first, then, finally; a procedure; steps of a proof).
+An ordered list in the prose, or a `table` with `variant: "steps"` where each step has a rule beside it.
+Order matters means ordered, and a reader cannot tell a sequence from a set if both are bullets.
+
+**More than about seven parallel items**, or items with a second attribute each: a `table`. Pick the
+`variant` honestly, because it decides what a phone does with it: `comparison` for two or more things
+held against each other, `definitions` for term-and-meaning, `data` for numbers, `steps` for a procedure.
+
+**A comparison the author made in sentences** ("whereas X is bounded, Y is not"): a `table` with
+`variant: "comparison"`. This is the highest-value reshape in the whole pipeline, because prose hides a
+comparison and a table shows it, and the facts are unchanged.
+
+**A term and its meaning, inline in the prose.** A `:::definitions` fence in the prose block, one row per
+line. That files the glossary row AND prints the definition where the lecture teaches the word. Ask
+`content_guide` for the glossary contract before writing one.
+
+---
+
+## A callout, and which one
+
+A page of undifferentiated notes skims as nothing, so the kind carries meaning. `content_guide` names
+every variant; the triggers are:
+
+**The source works an instance through to show the rule.** `example`. Lift it out of the paragraph so it
+stops interrupting the argument, and leave the argument intact.
+
+**The source explains what the thing MEANS, informally**, usually right after a definition ("in other
+words", "intuitively", "you can think of this as"). `intuition`.
+
+**A definition or result the rest of the unit leans on.** `key-concept`. Sparingly: if three things on a
+page are key, none is.
+
+**The source says the exam asks this**, or the coverage map says the exam's weight falls here, or the
+original marked it (a target, a highlight, "note that this is examined"). `exam-tip`. **Never invent
+one**: an exam tip nobody has evidence for is a claim the author did not make, and students weight it
+heavily.
+
+**The unit's closer.** `in-short`, once, last. What the unit was about, in the author's terms.
+
+---
+
+## A worked computation
+
+**The source solves a problem in steps.** A `worked-example`, not prose, and not a table. Its steps carry
+`formula`, `substitution` and `result` as separate fields, and **the substitution line is the one a stuck
+student looks for** , the rule with this problem's actual numbers in it. Prose loses that distinction;
+the block keeps it.
+
+**Label each step by the move it makes**, never by its number. "Differentiate the numerator" tells a
+reader where they are. "Step 3" tells them nothing, and the reader numbers them anyway.
+
+**A `note` on a step** is for why the move is allowed, where that is not obvious. Plain words.
+
+**One computation, one block.** Two problems in one worked-example is two worked-examples.
+
+---
+
+## When the source does not decide it
+
+Ask. In one message, with a recommendation, at the start of the phase. Never quietly pick the shape that
+was easiest to build: every one of these choices is visible to a student and none of them is recoverable
+from the manifest afterwards.
+
+---
+
+## An accounting course has four elements nobody would guess
+
+The reader has `journal-entry`, `t-account`, `trial-balance` and `accounting-equation`. A composer that
+does not know they exist renders all four as tables, which loses the arithmetic the reader does for free
+and the structure a student is being taught to recognise. **Ask `content_guide` for their props before
+writing one.** These are the triggers, taken from a real accounting summary:
+
+**A table headed Account Name / Debit / Credit**, with amounts in one column or the other. That is a
+`journal-entry`, not a table. The real summary carries dozens, including correcting entries written as a
+reversal followed by the correct entry, which is **two** journal entries and not one.
+
+**An account drawn with debits on the left and credits on the right**, usually with a balance struck at
+the bottom. A `t-account`. In a converted document this arrives as a two-column table and looks like
+nothing in particular, so it is one of the easiest to miss.
+
+**A list of every account with its balance, where the point is that the two sides agree.** A
+`trial-balance`. The summary distinguishes unadjusted, adjusted and post-closing: they are the same
+element at three moments, and the title carries which.
+
+**Assets = Liabilities + Equity, or a transaction shown as keeping it level.** An `accounting-equation`.
+Where the source walks a transaction through and shows the equation still balancing, that is the
+element doing its job.
+
+**A financial statement's standard running order** (Revenue, less Cost of Goods Sold, Gross Profit, and
+so on down to Net Income): a `table` with `variant: "steps"` or `data`, using `roles` to mark which rows
+are subtotals and which is the total. The subtotals are the lesson, and an ordinary table hides them.
+
+**Never invent an amount, an account name or a side.** A debit posted as a credit is a wrong answer that
+renders perfectly, and it is the one error an accounting student will not forgive. If the source is
+ambiguous about which account takes which side, that is a finding, not a judgement call.

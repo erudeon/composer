@@ -59,7 +59,21 @@ Hand off to the `convert` skill. It returns the source of record and the media i
 
 ## 4. Give every drawing a disposition
 
-The inventory comes back with every entry `null`. Exactly one disposition each, and the class decides it.
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/propose-dispositions.mjs" <media-inventory.json> <source-of-record.txt>
+```
+
+It pairs each drawing with the text around it and PROPOSES, quoting the evidence: a chart where the
+prose states a function of x, a figure for a surface, a fold for a shape or a text box, and UNCERTAIN
+where it found nothing. **It exits non-zero while anything is uncertain**, because that is a thing a
+person must look at.
+
+**Look at those pictures.** You can see them: they are files under `02-source/work/word/media`. Open the
+uncertain ones, read the prose beside them, and decide. Then present the proposals to the operator as
+GROUPS, in one message, with a recommendation each. Seventy-nine drawings becomes about five decisions,
+and not one of them is a guess.
+
+Exactly one disposition each, and the class decides it.
 
 | The drawing is | Disposition |
 | --- | --- |

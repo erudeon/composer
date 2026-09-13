@@ -80,9 +80,17 @@ function relationships(dir) {
   return out;
 }
 
-/** The `<w:t>` runs of a fragment, joined. Used for a heading's text and a text box's contents. */
+/**
+ * The text of a fragment: BOTH `<w:t>` runs and `<m:t>` runs, in document order.
+ *
+ * An equation is not made of `<w:r>` runs, so reading only `<w:t>` drops every symbol INSIDE a heading
+ * or a text box. On a real maths summary that produced labels like "Find the values of  for which:"
+ * and "All power functions satisfy , since  for any value of ." -- gaps exactly where the mathematics
+ * was. Those labels are what a person reads to decide what a picture becomes, and what the proposal
+ * script matches against to find the function a chart would be drawn from, so the gaps cost twice.
+ */
 function textOf(fragment) {
-  return [...fragment.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)]
+  return [...fragment.matchAll(/<(?:w|m):t\b[^>]*>([\s\S]*?)<\/(?:w|m):t>/g)]
     .map((m) => m[1])
     .join("")
     .replace(/&amp;/g, "&")

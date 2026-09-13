@@ -62,7 +62,14 @@ function equationsIn(raw) {
   for (const m of text.matchAll(/\$\$([\s\S]+?)\$\$/g))
     out.push({ display: true, tex: m[1] });
   const inlineOnly = text.replace(/\$\$[\s\S]+?\$\$/g, " ");
-  for (const m of inlineOnly.matchAll(/\$(\S(?:[^$]*?\S)?)\$/g))
+  /*
+   * INLINE MATHS DOES NOT CROSS A LINE. One stray dollar sign in prose (a price, a currency in a
+   * table) pairs with the next one anywhere in the document, and everything between becomes one
+   * "equation". On a real accounting summary that made a single 5,000-character equation covering
+   * half a chapter, which then failed on a euro sign inside it: a true refusal for an entirely false
+   * reason, which is worse than no check at all because it teaches people to ignore the output.
+   */
+  for (const m of inlineOnly.matchAll(/\$([^$\n]{1,400}?)\$/g))
     out.push({ display: false, tex: m[1] });
   return out;
 }
