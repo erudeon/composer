@@ -34,8 +34,35 @@ on every shape, prop, label and cap. None of those is written down in this plugi
 **Confirm which hub answered**, once, before the first write: `get_my_context`, reading
 `server.deployment` AND `server.commit`, and say both in one line.
 
-**The course must exist.** `taxonomy` `tree` gives the programme CODE a manifest names;
-`content_catalog` `create_course` makes the row if there is none. Nothing later creates it for you.
+## Step 0. The course itself, and it is verified before a word of teaching goes up
+
+**Set the course up correctly before you upload any lecture or teaching material.** A course is a row
+before it is a syllabus, and every lecture hangs off that row. Getting it wrong is not a cosmetic
+problem you fix later: a rename re-derives the address and takes every link with it, and the container
+word is stored on the COURSE, so it is one word for the whole thing.
+
+`taxonomy` `tree` gives the programme CODE a manifest names. `content_catalog` `create_course` makes the
+row if there is none. **Nothing later creates it for you**, and nothing later checks it either.
+
+Five things have to be right, and they were all settled in Intake:
+
+| | Why it is not cosmetic |
+| --- | --- |
+| **Title** | What a student reads in the catalogue, and the source of the slug in every link |
+| **Programme** | A course belongs to exactly one, and moving it later is refused while it is placed |
+| **Period** | The block or term it is taught in. The database refuses a period from another programme, so a wrong one is a wrong course, not a wrong label |
+| **Container word** | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets" |
+| **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows |
+
+**Then READ THE ROW BACK and show the operator what it says**, in one line each: title, programme,
+period, container word, address. Not what you sent. What is stored.
+
+**Stop there and get a yes.** This is the last cheap moment. After the first lecture is written, every
+one of these five costs a migration of live rows instead of one call.
+
+A course whose shell is wrong looks completely fine on its own page, which is why nothing downstream
+ever catches it: every later check compares a lecture against its source, and the source says nothing
+about which programme the course belongs to.
 
 ## The order, and the two commands that make it cheap
 

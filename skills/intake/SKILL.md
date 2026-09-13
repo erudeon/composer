@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Phase 0 of the Composer. Prove a course's materials are present and are what they claim to be, give every drawing a disposition, settle the six structure questions, and open the findings list. Use when starting a course, when materials have just arrived, when checking whether files are complete or the right ones, or when the Composer's state says Phase 0 Intake.
+description: Phase 0 of the Composer. Prove a course's materials are present and are what they claim to be, give every drawing a disposition, settle the course's identity and the six structure questions, and open the findings list. Use when starting a course, when materials have just arrived, when checking whether files are complete or the right ones, or when the Composer's state says Phase 0 Intake.
 ---
 
 # Phase 0 · Intake
@@ -121,8 +121,10 @@ In ONE message, with a recommendation each. They are the operator's and nobody e
 later is expensive: renaming a unit re-derives its address, a title renders **as authored**, and
 changing the reading order later means renaming, renumbering and reordering live rows.
 
-1. **The container word.** What is a teaching unit called here: Lecture, Week, Chapter, Theme? **And
-   does each series have its own?** Crossing the two is what puts "Unit 1: Theme 1: ..." on a screen.
+1. **The container word.** What is a teaching unit called here: Lecture, Week, Chapter, Theme, Problem
+   Set, Seminar? **And does each series have its own?** Crossing the two is what puts
+   "Unit 1: Theme 1: ..." on a screen. It is stored on the COURSE, so it is one word for all of it, and
+   it appears in every count a student sees ("5 weeks", "5 problem sets").
 2. **Structure.** One series of units, or two? **And do the lectures follow the themes, or interleave
    with them?** The second half decides the reading order of the whole course.
 3. **Numbering.** One run, or a number per series? Two lectures may show the same number only across
@@ -140,6 +142,24 @@ changing the reading order later means renaming, renumbering and reordering live
 
 Record the answers in `composer.json` under `gates.structureAnswered`. **The phase does not close without
 them**, because the state script checks for them by name.
+
+## And before any of that: what IS this course
+
+A course is a row before it is a syllabus, and the row is wrong in ways that are expensive to correct
+once lectures hang off it. Settle these in the same message:
+
+- **The course's own title**, as a student reads it in the catalogue. Not the filename, not the
+  document's cover page. It is what the whole product calls this thing.
+- **Which programme**, as a taxonomy code. A course belongs to exactly one.
+- **Which period of that programme's year** it is taught in: the block or term. The database refuses a
+  period belonging to another programme, so this is not cosmetic, and a course in the wrong block sits
+  in the wrong place in the catalogue while looking perfectly fine on its own page.
+- **The order of the units, and their numbers**, as a list, before a single one is written. Reading
+  order is a statement about the whole course, and changing it later means renaming, renumbering and
+  reordering live rows.
+
+**A rename re-derives the address.** The course's slug is part of every link to it, so a title settled
+after publication takes every shared link with it. Settle it now, while nothing points at it.
 
 ## And one thing to REPORT rather than ask
 

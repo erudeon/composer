@@ -156,6 +156,8 @@ function classify(files) {
  * to move, and saying so is more useful than silence.
  */
 function blockedOn(phase, gates, openFindings) {
+  if (phase === 3 && !gates.courseShellVerified)
+    return "the operator, to confirm the course row itself: title, programme, period, container word, unit order";
   if (phase === 3 && !gates.unitOneAccepted) return "the operator, to look at unit 1 and say whether the rest should be built";
   if (phase === 5) return "the reviewer, to read the course as a student";
   if (phase === 6 && openFindings > 0) return `a person, to accept or close ${openFindings} open finding(s)`;
@@ -175,7 +177,7 @@ function whatNext({ phase, missing, sourceOfRecord, undisposed, gates, structure
   if (sourceOfRecord.length === 0) todo.push("convert the summary so there is text to work from");
   if (undisposed === null) todo.push("inventory the pictures");
   else if (undisposed > 0) todo.push(`decide what happens to ${undisposed} picture(s)`);
-  if (!gates.structureAnswered) todo.push("settle what a unit is called, how many series, and how they are numbered");
+  if (!gates.structureAnswered) todo.push("settle the course's own title, programme and period, and what a unit is called, how many series and how they are numbered");
   if (missing.length > 0) todo.push(`find ${missing.length} missing material(s): ${missing.map((m) => m.label.toLowerCase()).join(", ")}`);
 
   return todo.length ? `Next: ${todo[0]}.${todo.length > 1 ? ` Then ${todo.length - 1} more thing(s).` : ""}` : "Intake is done. Move to Compose.";

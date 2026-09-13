@@ -1,7 +1,7 @@
 {
   "name": "composer",
   "displayName": "Composer",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Eight phases from a course's materials to a published course on pass the year. Guides an author through intake, layout, audit and publish over MCP.",
   "author": {
     "name": "erudeon"
