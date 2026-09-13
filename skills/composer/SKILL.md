@@ -1,18 +1,25 @@
 ---
 name: composer
 description: Drive a course from raw materials to published on pass the year, through eight phases with gates. Use this whenever somebody wants to upload, ingest, build, fix, check or publish course content - a summary, a set of lectures, practice questions, a glossary or a mock exam - and whenever they mention the Composer, a course folder, a manifest, or "getting this course up". Use it even when they only name one step, because the step belongs to a phase and the phase decides what has to be true before and after it. Start here rather than reaching for the MCP tools directly.
-arguments: [folder]
 ---
 
 # Composer
 
-!`node "${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs" $folder`
+!`node "${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs" "$COMPOSER_FOLDER"`
 
 The block above was produced by reading the course folder BEFORE you read this skill. It is the state of
 this run. Trust it over any memory of an earlier session, and do not re-derive it by listing the folder.
 
-If it says no folder was given, ask which folder holds the course's materials. Do not guess one, and do
-not accept files pasted into the chat: **the session reads a folder**. A manifest emitted into a tool
+**If it says no folder was given, that is the normal first run.** Ask which folder holds this course's
+materials, then read the state yourself with one Bash call:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs" <the folder>
+```
+
+Run that ONCE per phase transition, not repeatedly: it reads the disk, so its answer only changes when
+a phase actually changes something. Do not guess a folder, and do not accept files pasted into the chat:
+**the session reads a folder**. A manifest emitted into a tool
 call costs its whole length in tokens twice and every re-emission can corrupt text the upload exists to
 reproduce exactly.
 

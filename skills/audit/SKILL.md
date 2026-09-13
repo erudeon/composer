@@ -18,28 +18,28 @@ Every unit as applied on production, with its `source` attached, and the finding
 
 ## The six families, in this order
 
-**1. Write path — `software`.** Every LaTeX string validated by KaTeX in strict mode at write and refused
+**1. Write path, `software`.** Every LaTeX string validated by KaTeX in strict mode at write and refused
 rather than rendered red. The plan's lint. `verify`, the diff of what is stored against what was sent.
 The question lint, for option letters in stems and missing explanations. Block ids stable.
 
-**2. Source lint — `software`.** Every heading, prose block and number in a chart or table must appear in
+**2. Source lint, `software`.** Every heading, prose block and number in a chart or table must appear in
 the unit's `source`. A unit without a source applies and is reported **unchecked**, which is worse than a
 refusal because it reads green.
 
-**3. Residue — `software`.** A grep of the course for the old brand's name and products, an em dash, an
+**3. Residue, `software`.** A grep of the course for the old brand's name and products, an em dash, an
 emoji, a heading with no text, an equation in a heading.
 
-**4. Transcription fidelity — `ai`.** The equations the converter flagged, read back against the original
+**4. Transcription fidelity, `ai`.** The equations the converter flagged, read back against the original
 rendering: fractions, limits under a sum, cases, absolute-value bars, and every one that was a picture.
 A formula that came out wrong looks exactly like one that came out right, which is why this family is not
 a diff.
 
-**5. The media inventory was worked off — `software`.** Every drawing has a disposition and every
+**5. The media inventory was worked off, `software`.** Every drawing has a disposition and every
 disposition was carried out. **This is the family that catches the two things no text diff can see**: a
 symbol that was a picture, and one that lived in a floating text box. The text matches either way, so
 checking the text proves nothing about them.
 
-**6. Glossary and practice — `software` and `ai`.** Terms correct, within range, every definition
+**6. Glossary and practice, `software` and `ai`.** Terms correct, within range, every definition
 standing alone. Questions technically clean, every one with an explanation, answerable from the unit,
 answers right and grammatical, safe under shuffling.
 

@@ -60,13 +60,13 @@ applies and is reported unchecked.
 
 **3. Plan.** `content_import` `plan` writes nothing. Read three keys before applying:
 
-- **`blocksRemoved`** — blocks the lectures hold now that this file does not carry, so applying deletes
+- **`blocksRemoved`**: blocks the lectures hold now that this file does not carry, so applying deletes
   them. **This is the one that catches a manifest which silently drops content a published lecture already
   holds.** It is absent when nothing is lost, so its absence is the good news and its presence is a
   stop.
-- **`blocksUnknown`** — a stored body that could not be parsed, so what the write destroys is unknown.
+- **`blocksUnknown`**: a stored body that could not be parsed, so what the write destroys is unknown.
   **Not a report of zero**, and the write is planned anyway.
-- **`orderNotApplied`** — the reading order was declined because the file does not name every lecture.
+- **`orderNotApplied`**: the reading order was declined because the file does not name every lecture.
 
 **4. Apply, then verify.** An apply answers per operation: that a lecture was written, never that the
 body stored is the body you sent. Those came apart once already. `verify` diffs the stored course against
