@@ -60,6 +60,8 @@ and `docs/FIELD-GUIDE.md` is generated from it.
 
 ```
 node scripts/validate.mjs
+node scripts/security-check.mjs
+for t in scripts/intake/t_*.js; do node "$t" || echo "FAILED $t"; done
 node scripts/corpus-check.mjs <folder-of-real-summaries>
 ```
 
@@ -67,3 +69,23 @@ The second is the one that matters. Every bug worth finding in this pipeline was
 documents through it and none by reading the code, and a fix verified only on the document that showed
 it is how three of them came back. It takes a folder and carries none: the documents are somebody's
 coursework and do not belong in a public repository.
+
+## Every input here is somebody else's file
+
+A `.docx` is a zip an author emailed. The chain unpacks it, reads its XML with regular expressions, and
+writes what it finds into a folder on the operator's own machine. `scripts/security-check.mjs` holds the
+probes for what that can go wrong as, and they run rather than being asserted:
+
+- **No script reaches a shell.** Every external call is `execFileSync` with an argument array, so a file
+  called `; rm -rf ~` is a bad name and nothing else. `exec`, a template-string command, or
+  `shell: true` anywhere undoes that for every path in the repo at once.
+- **An archive is judged before it is unpacked.** `unsafeToUnpack` reads the central directory, which
+  DECLARES the unpacked size and every entry name, so a decompression bomb and a path traversal are both
+  refused without writing a byte.
+- **A course name becomes a slug.** It arrives from an operator, a document title or a model, and it
+  becomes a folder; anything that is not `[a-z0-9-]` is not in it, and a name that reduces to nothing is
+  refused rather than resolving to the workspace root.
+- **A regex that runs on an untrusted document must not backtrack.** The maths scanner alternates over
+  overlapping patterns, which is the shape that goes exponential.
+- **Never print a credential, never go looking for one.** Two uploads were lost to an agent hunting for
+  a token: one posted an unrelated service's secret to this API, one printed a third into a transcript.

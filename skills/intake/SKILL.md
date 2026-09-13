@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Phase 0 of the Composer. Prove a course's materials are present and are what they claim to be, give every drawing a disposition, settle the four structure questions, and open the findings list. Use when starting a course, when materials have just arrived, when checking whether files are complete or the right ones, or when the Composer's state says Phase 0 Intake.
+description: Phase 0 of the Composer. Prove a course's materials are present and are what they claim to be, give every drawing a disposition, settle the six structure questions, and open the findings list. Use when starting a course, when materials have just arrived, when checking whether files are complete or the right ones, or when the Composer's state says Phase 0 Intake.
 ---
 
 # Phase 0 · Intake
@@ -115,18 +115,37 @@ knows. An alt text that still reads like a homework-help site is a screenshot, n
 `${CLAUDE_PLUGIN_ROOT}/skills/composer/reference/findings-format.md`. Read it once and follow it
 exactly, because the Publish gate parses this file.
 
-## 6. Ask the four structure questions
+## 6. Ask the six structure questions
 
 In ONE message, with a recommendation each. They are the operator's and nobody else's, and asking them
-later is expensive: renaming a unit re-derives its address, and a title renders **as authored**.
+later is expensive: renaming a unit re-derives its address, a title renders **as authored**, and
+changing the reading order later means renaming, renumbering and reordering live rows.
 
-1. What is a teaching unit called here: Lecture, Week, Chapter, Theme?
-2. One series of units, or two?
-3. How are they numbered: one run, or a number per series?
-4. Does the title repeat its number, or omit it?
+1. **The container word.** What is a teaching unit called here: Lecture, Week, Chapter, Theme? **And
+   does each series have its own?** Crossing the two is what puts "Unit 1: Theme 1: ..." on a screen.
+2. **Structure.** One series of units, or two? **And do the lectures follow the themes, or interleave
+   with them?** The second half decides the reading order of the whole course.
+3. **Numbering.** One run, or a number per series? Two lectures may show the same number only across
+   NAMED series, which is what a series is for. It is enforced, so an answer here is not cosmetic: two
+   courses went in front of students with colliding lecture numbers.
+4. **The title.** Does it repeat its number, or omit it?
+5. **House style beyond the mechanical edits.** Em dashes and heading numbers are removed without
+   asking. Subtitles, capitalisation and title format are not, and nobody else decides them. **This is
+   the most expensive question to ask late**: on one course it arrived after three banks were written
+   and cost 124 questions deleted one at a time, about 29 per cent of that upload's token budget.
+6. **Practice questions or mock exams?** They are different things and both get called "exam questions".
+   A mock exam is a standalone PAPER; the questions embedded in each unit are PRACTICE QUESTIONS and
+   always get built. "Upload everything except the mock exams" means the papers. Reading it the other
+   way skips every bank in the course.
 
 Record the answers in `composer.json` under `gates.structureAnswered`. **The phase does not close without
 them**, because the state script checks for them by name.
+
+## And one thing to REPORT rather than ask
+
+**Is there an EN and an NL pair?** Two languages of one course are two courses sharing a slug, which
+changes course creation, file naming and the whole plan. It is visible in the materials, so read it off
+them and say so. Discovering it at Layout is a rebuild.
 
 ## Gate
 

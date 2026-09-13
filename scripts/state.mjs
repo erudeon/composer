@@ -368,7 +368,7 @@ function main() {
       "  Phase 0, Intake. Convert the summary, inventory every drawing, open the findings list,",
     );
     lines.push(
-      "  and ask the four structure questions in ONE message with a recommendation each.",
+      "  and ask the six structure questions in ONE message with a recommendation each.",
     );
     /*
      * THE SUMMARY, not merely the first `.docx`. A course folder holds exams and teaching materials as

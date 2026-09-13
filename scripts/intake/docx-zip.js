@@ -73,6 +73,81 @@ function entry(buf, wanted) {
   return null;
 }
 
+/**
+ * Every entry in the central directory: its name, and the two sizes the archive DECLARES for it.
+ *
+ * Declared, which is the point. It is read before a byte is written anywhere, so a caller can decide
+ * whether to unpack at all.
+ */
+function entries(buf) {
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (eocd < 0) return [];
+  const out = [];
+  let count;
+  let at;
+  try {
+    count = buf.readUInt16LE(eocd + 10);
+    at = buf.readUInt32LE(eocd + 16);
+  } catch {
+    return [];
+  }
+  for (let i = 0; i < count; i += 1) {
+    if (at + 46 > buf.length || buf.readUInt32LE(at) !== 0x02014b50) break;
+    const compressed = buf.readUInt32LE(at + 20);
+    const uncompressed = buf.readUInt32LE(at + 24);
+    const nameLen = buf.readUInt16LE(at + 28);
+    const extraLen = buf.readUInt16LE(at + 30);
+    const commentLen = buf.readUInt16LE(at + 32);
+    out.push({
+      name: buf.toString("latin1", at + 46, at + 46 + nameLen),
+      compressed,
+      uncompressed,
+    });
+    at += 46 + nameLen + extraLen + commentLen;
+  }
+  return out;
+}
+
+/**
+ * IS THIS ARCHIVE SAFE TO UNPACK? Answered from the central directory, before anything is written.
+ *
+ * A `.docx` is a file somebody SENT us, and `unzip` will faithfully write whatever it is told to. Two
+ * shapes do damage and both are visible in the directory without decompressing a byte:
+ *
+ *   - A DECOMPRESSION BOMB. A megabyte of zeros compresses to nothing and expands to a gigabyte, and
+ *     the only symptom is a full disk on the operator's own laptop.
+ *   - AN ENTRY THAT WALKS OUT of the folder, or that is an absolute path. Info-ZIP refuses these, so
+ *     this is a second lock on a door that is already locked rather than the only one: worth having,
+ *     because "the tool we shell out to happens to refuse it" is not a property this repo controls.
+ *
+ * Returns null when it is fine, or a sentence saying what is wrong.
+ */
+const MAX_UNPACKED = 512 * 1024 * 1024;
+const MAX_RATIO = 200;
+
+function unsafeToUnpack(buf) {
+  const all = entries(buf);
+  const total = all.reduce((n, e) => n + e.uncompressed, 0);
+  if (total > MAX_UNPACKED) {
+    return (
+      `it declares ${(total / 1024 / 1024).toFixed(0)} MB unpacked, over the ${MAX_UNPACKED / 1024 / 1024} MB limit. ` +
+      `The largest real summary in the catalogue is 19 MB, so this is not one.`
+    );
+  }
+  if (buf.length > 0 && total / buf.length > MAX_RATIO && total > 64 * 1024 * 1024) {
+    return (
+      `it expands ${Math.round(total / buf.length)} times, from ${(buf.length / 1024).toFixed(0)} KB to ` +
+      `${(total / 1024 / 1024).toFixed(0)} MB. That is the shape of a decompression bomb, not a document.`
+    );
+  }
+  for (const e of all) {
+    if (e.name.startsWith("/") || /(^|[\\/])\.\.([\\/]|$)/.test(e.name)) {
+      return `it holds an entry named "${e.name}", which points outside the folder it would be unpacked into.`;
+    }
+  }
+  return null;
+}
+
 /** Every entry NAME in a zip. Cheap, and it is how the media beside a document is counted. */
 function names(buf) {
   const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
@@ -97,4 +172,4 @@ function names(buf) {
   return out;
 }
 
-module.exports = { sniff, entry, names };
+module.exports = { sniff, entry, names, entries, unsafeToUnpack };

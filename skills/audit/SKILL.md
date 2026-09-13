@@ -16,7 +16,7 @@ something no ad-hoc upload can: **lint the unit against its own source.**
 
 Every unit as applied on production, with its `source` attached, and the findings list.
 
-## The six families, in this order
+## The seven families, in this order
 
 **1. Write path, `software`.** Every LaTeX string validated by KaTeX in strict mode at write and refused
 rather than rendered red. The plan's lint. `verify`, the diff of what is stored against what was sent.
@@ -27,7 +27,9 @@ the unit's `source`. A unit without a source applies and is reported **unchecked
 refusal because it reads green.
 
 **3. Residue, `software`.** A grep of the course for the old brand's name and products, an em dash, an
-emoji, a heading with no text, an equation in a heading.
+emoji, a heading with no text, an equation in a heading, and **a literal asterisk in anything a student
+reads**. This dialect stores one mark per span, so a nested marker is not emphasis: it is punctuation
+the reader sees. Hundreds shipped before anybody looked.
 
 **4. Transcription fidelity, `ai`.** The equations the converter flagged, read back against the original
 rendering: fractions, limits under a sum, cases, absolute-value bars, and every one that was a picture.
@@ -42,6 +44,16 @@ checking the text proves nothing about them.
 **6. Glossary and practice, `software` and `ai`.** Terms correct, within range, every definition
 standing alone. Questions technically clean, every one with an explanation, answerable from the unit,
 answers right and grammatical, safe under shuffling.
+
+**7. Read it as a student, `ai`.** Open each unit and read it the way somebody revising would, then
+check it against the SOURCE. Take the unit's own summary box, which names the concepts that unit
+teaches, and confirm the body actually contains them.
+
+**This is the only family that can catch a unit whose manifest was short in the same way its body
+was.** Every other family here is a diff: against the source, against what was sent, against the
+inventory. A section that never made it into the manifest is absent from both sides of every one of
+those comparisons, so they all read clean. Two units of one course were missing sections their own
+summaries referenced and no block count could see it.
 
 ## Every substantive edit is audited against its reason
 
@@ -71,14 +83,14 @@ claim it in the report.
 
 ## Gate
 
-Every family ran, and what it caught is on the findings list. The phase does not close because the list
+All seven families ran, and what each caught is on the findings list. The phase does not close because the list
 is short; it closes because every family ran.
 
 ## Report
 
 ```
 Phase 4 · Audit · done
-Did: six families over <n> units; fixed <m> write-path refusals and re-applied
+Did: seven families over <n> units; fixed <m> write-path refusals and re-applied
 Gate: met, or not met because ...
 Findings: +n, by class
 Next: Phase 5 · Student View, waiting on: the reviewer

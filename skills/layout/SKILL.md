@@ -149,7 +149,57 @@ Everything else about questions and glossary terms comes from the server. These 
 
 - **Twenty practice questions a unit** in the bank, and **one inline question block at the end of each
   section**, drawing from it.
-- **Eight to fifteen glossary terms a unit.**
+- **Eight to fifteen glossary terms a unit.** Twenty is the ceiling and the lint warns above it.
+
+**A target is not a quota to fill by inventing.** Copy the source's questions; author new ones only
+where a unit has clearly too few, and SAY that you did. A source that prints no questions for its
+lectures is a content decision, not a gap to fill quietly. Nineteen invented questions to reach twenty
+is the failure this whole plugin exists to prevent, wearing the costume of thoroughness.
+
+## Give every question a key
+
+Without keys the bank is write-once: a second apply creates a duplicate of every question instead of
+updating it. The rule and the recovery for a bank that has none are in
+`${CLAUDE_PLUGIN_ROOT}/skills/composer/reference/behaviours.md`; read it before building a bank.
+
+## Block ids are the anchor, so they are derived and never positional
+
+**A block id is what reading progress and every deep link point at.** Derive it from the source, so it
+survives an insert: `t3-sec-003`, not `block-7`. A positional id moves the moment a block is added
+above it, and takes every student's place in the lecture and every shared link with it.
+
+## Practice questions and mock exams are different things
+
+A lecture's `questions` fill its practice bank. A mock exam PAPER lives in the manifest's `exams` and
+has a bank of its own. **A paper is always MCQ and carries no bytes**; a DOCUMENT paper's PDF is
+attached in the Hub.
+
+"Upload everything except the mock exams" means the standalone PAPERS. The questions embedded in each
+unit are PRACTICE QUESTIONS and always get built. Reading it the other way skips every bank in the
+course.
+
+## Dated sittings are not mock exams either
+
+The real exam dates are `course.assessments`, each with a kind and a `startsAt`. One is a date on a
+calendar, the other is practice. A course published without its sittings loses the countdown the
+product is organised around. Ask `content_guide` for the field names.
+
+## A course's files are the other half of the load
+
+Formula sheets, past papers and handouts reach a student as downloadable materials through
+`content_materials`, not as blocks. A manifest carries no bytes, so nothing about a clean apply tells
+you they are missing.
+
+## The credential is yours, and you never go looking for another
+
+`PTY_MCP_TOKEN` in the environment. Mint your own in the Hub: it is scoped to what you can already
+reach, and it expires.
+
+**If it is not there, stop and ask.** Do not search the machine, the repository, a password store or
+another service's configuration for something that might work. **Two uploads have been lost to an agent
+chasing this route: one posted an unrelated service's credential to this API, and one printed a third
+into a transcript**, where it stayed. Never echo a token, never paste one into a tool call, and never
+put one in a file this plugin writes.
 
 ## Never fan out
 

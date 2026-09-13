@@ -151,3 +151,64 @@ are subtotals and which is the total. The subtotals are the lesson, and an ordin
 **Never invent an amount, an account name or a side.** A debit posted as a credit is a wrong answer that
 renders perfectly, and it is the one error an accounting student will not forgive. If the source is
 ambiguous about which account takes which side, that is a finding, not a judgement call.
+
+## The glossary, which is the one that has gone wrong twice
+
+**A definition reaches a reader from the BODY.** The `:::definitions` fence inside a prose block files
+the row AND prints the word where the lecture teaches it, so it feeds the Glossary tab, the flashcard
+deck and the term count at once. Write a word once, in the lecture where it belongs.
+
+**`content_glossary` and the manifest's `glossary` array write the row and NOTHING ELSE.** A term
+written that way appears on the Glossary tab and in flashcards, and a student reading the lecture never
+meets it, because nothing in the body points at it. **Two courses wrote 482 terms that way and their
+readers show none of them.** Use that door for reference terms the prose does not define. Never as the
+main one.
+
+### What qualifies as a term
+
+The glossary is not a word list beside the course: it IS the flashcard deck, the reader's clickable
+definitions, and the only input to the recall dimension the engine measures. Every term is a card
+somebody has to work through and a word underlined in their reading, so a glossary that defines
+everything defines nothing. One course shipped 310 terms across eleven lectures, about 28 a unit, which
+is every bolded phrase in its source.
+
+**The test, and it is one question:** could a student be asked *what is X?* in an exam, and would the
+answer need more than the sentence X appeared in?
+
+**Include**
+
+- A named concept, effect, theory, model, bias or method.
+- A technical term whose meaning is not recoverable from the sentence around it.
+- A word the course uses in a sense narrower than its everyday one.
+
+**Leave in the prose**
+
+- A word the source merely **bolded for stress**. These documents bold for emphasis as much as for
+  vocabulary, and harvesting every bold run is how 310 happens.
+- A description rather than a name. "The process of adapting to what others do" is what conformity
+  MEANS, not a second term.
+- A study, an author or a year. A citation is not a term.
+- A phrase whose definition would only restate it. If the meaning is the words themselves, it teaches
+  nothing.
+- A second spelling or inflection of a term already there. Pick the form the course uses, keep one.
+
+**And the definition has to stand alone.** A sentence lifted out of running prose usually does not: it
+starts with "This", it ends mid-citation, or it only makes sense after the paragraph before it. If a
+harvested sentence cannot be read cold, rewrite it as a definition or leave the term out. One upload
+dropped eight terms for exactly this and was right to.
+
+**How many.** Eight to fifteen a unit. **Twenty is the ceiling and the lint warns above it, naming the
+count.** If a unit seems to need thirty, the harvest caught emphasis rather than vocabulary.
+
+## A question lives in a bank, not in a lesson
+
+A `question` block names ids and stores no content, so the question stays in the smart draw and in the
+calibration. Inlining the text into a lesson body takes it out of both, silently.
+
+**Set `labels`.** They say what thinking a question asks for and feed the adaptive draw. Nothing refuses
+a question without them, and the selection quietly gets worse.
+
+**A question block may pin BY KEY.** A key this file declares is resolved to the row at apply time,
+which is what makes a manifest carrying pins portable: a row id is correct only on the environment that
+minted it and paints nothing anywhere else.
+

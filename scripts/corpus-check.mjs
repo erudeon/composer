@@ -105,10 +105,18 @@ for (const file of files) {
 
   const opened = run("intake/open-docx.js", [file, work]);
   if (opened.code !== 0) {
-    // A file that is not really a .docx is a finding about the FOLDER, not a failure of the chain.
+    /*
+     * A file that is not really a .docx is a finding about the FOLDER, not a failure of the chain, and
+     * so is an archive refused for being a bomb. Both already say why in one sentence: print that
+     * rather than "open failed", which sends somebody to read the code to find out what happened.
+     */
     const why = /is a PDF|not an Office file/.test(opened.out)
       ? "NOT A .docx (wrong file)"
-      : "open failed";
+      : (opened.out
+          .split("\n")
+          .map((l) => l.trim())
+          .find(Boolean)
+          ?.slice(0, 60) ?? "open failed");
     console.log(`${name.padEnd(40)} ${why}`);
     problems.push([name, why]);
     continue;

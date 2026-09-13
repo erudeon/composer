@@ -15,6 +15,11 @@ need the platform's code, a package manager, or anything from a developer.
 You also need Node.js, which the scripts run on. `node --version` should print something. If it does
 not, install it from nodejs.org and reopen your terminal.
 
+**On Windows, write paths the way Node reads them.** Your shell may understand `/tmp` and `/c/Users`;
+Node does not. It resolves `/tmp` to `C:\tmp` and stops with a file-not-found error that names a path
+you never typed. Use `C:/Users/...`. Every phase here runs a Node script over a path you give it, so
+this bites on the first command and on no other.
+
 ## Use
 
 ```

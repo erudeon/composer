@@ -102,3 +102,62 @@ pipeline does quietly.
 - Never run a shell one-liner with a backslash in the payload: a double-quoted string eats one level, so
   the script runs against text that is not what you typed. Twice on one run a fix reported success and
   changed nothing. Write a file.
+
+## Nested emphasis becomes a literal asterisk
+
+**This dialect stores ONE mark per span.** A nested marker has no spelling, so `***both***`, or a bold
+inside an italic, is stored as text and the student reads the asterisks. Use `**bold**` or `*italic*`,
+never both. **Hundreds shipped before this rule existed.**
+
+The extractor can produce it on its own: Word marks a run bold AND italic and the naive spelling is
+`***word***`. Check the source of record for a triple marker before you build from it.
+
+## Every question carries a key, or the bank is write-once
+
+**Give every question a `key`, and the manifest becomes a repair path.** A key is the author's own
+handle, unique within the bank, and it is what an apply converges on: a declared key that already exists
+is UPDATED in place, one that does not is CREATED, and a stored question the file does not name is left
+alone and reported. Re-sending an unchanged file is a no-op, as it is everywhere else here.
+
+**ALL OR NONE, ON BOTH SIDES.** The apply converges only when every question in the FILE carries a key
+AND every question already in the BANK does. Either half unkeyed and it declines the whole bank and says
+so: an unkeyed row cannot be matched, so converging would create a second copy rather than update it.
+
+**A course loaded before keys existed therefore stays write-once until its bank is keyed.** Read it back
+with `content_read` `list_questions` `detail: "full"`, add keys, and send it through
+`exercises_questions` `bulk_update` once. Ask `content_guide` `questions` for the field's spelling.
+
+## Nothing is ever deleted by an import
+
+A question carries a student's attempt history and an item-total correlation, so an import never removes
+one: a bank you shortened keeps everything you dropped. Removing a question is a deliberate
+`exercises_questions` `bulk_delete`. **A save never deletes a term either**: a glossary row written the
+wrong way round is removed with `content_glossary` `delete`, on purpose, or not at all.
+
+An agent that assumes the manifest is the whole truth will re-send a shortened bank, expect the extras
+to go, and not understand why the course still shows them.
+
+## A shrink has a backstop, and it is not the plan
+
+A body write that shortens the block array is refused unless you send `confirmShrink: true`. **That is a
+seatbelt, not a route.** Meeting it means the array you built is shorter than the one stored, which is
+the deletion this file opens by warning about. Go and find out why before you reach for the flag.
+
+## Prices are safe and do not need escaping
+
+"the $1 group paid $20" survives the serializer. A dollar in prose is prose. Verify against the write
+path before working around a delimiter: defensive escaping across an economics or accounting summary
+rewrites text that was already correct, and prose is the one thing checked word for word.
+
+## A read-back is not a manifest
+
+`formula` blocks and worked-example answers carrying a caret do not round-trip canonically yet, so a
+plan built from a read-back may name a lecture as rewritten that you never touched. **Read the plan's
+"lectures rewritten" line before applying.** On a repair run this is the difference between real damage
+and an artefact of the comparison.
+
+## If you must run in parallel, run about five
+
+Fanning out is the wrong instinct here and the rate limit is keyed on the credential, so workers share
+one budget. Where somebody does it anyway: about five, and check the session budget first. Eight
+parallel upload agents were tried once and six died mid-write.

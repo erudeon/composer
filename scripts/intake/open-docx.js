@@ -41,6 +41,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
+const { headingLevels } = require("./docx-core.js");
+const { unsafeToUnpack } = require("./docx-zip.js");
 
 /** Unzip a `.docx` into `dir`, which is created if it is not there. Returns `dir`. */
 function unpack(docxPath, dir) {
@@ -51,7 +53,8 @@ function unpack(docxPath, dir) {
    * ever pointed at turned out to be one. Reading four bytes costs nothing; the alternative is a parse
    * that produces plausible garbage from a file nobody checked.
    */
-  const head = fs.readFileSync(docxPath).subarray(0, 4).toString("latin1");
+  const bytes = fs.readFileSync(docxPath);
+  const head = bytes.subarray(0, 4).toString("latin1");
   if (!head.startsWith("PK")) {
     const looksLike = head.startsWith("%PDF") ? "a PDF" : "not an Office file";
     throw new Error(
@@ -59,8 +62,29 @@ function unpack(docxPath, dir) {
         `real file: PDF is refused as a SOURCE, and a wrong file has cost hours before it was opened.`,
     );
   }
+  /*
+   * THE ARCHIVE IS SOMEBODY ELSE'S FILE, AND `unzip` DOES WHAT IT IS TOLD.
+   *
+   * The central directory declares what will be written before anything is, so a bomb and a traversal
+   * are both answerable without decompressing a byte. Refused here rather than relied on from unzip:
+   * Info-ZIP does refuse a traversal, and "the tool we happen to shell out to refuses it" is not a
+   * property this repo controls.
+   */
+  const unsafe = unsafeToUnpack(bytes);
+  if (unsafe) {
+    throw new Error(
+      `${path.basename(docxPath)} was not unpacked: ${unsafe}\n` +
+        `Nothing was written. If this really is a document somebody meant to send, open it in Word and ` +
+        `save a fresh copy, then try that.`,
+    );
+  }
+
   fs.mkdirSync(dir, { recursive: true });
-  execFileSync("unzip", ["-o", "-q", docxPath, "-d", dir], {
+  /*
+   * `--` ends the option list, so a file called `-d` or `-x` is read as a path and not as a flag.
+   * No shell is involved either way: execFileSync passes an argument array.
+   */
+  execFileSync("unzip", ["-o", "-q", "--", docxPath, "-d", dir], {
     stdio: ["ignore", "ignore", "pipe"],
   });
   return dir;
@@ -110,6 +134,31 @@ function textOf(fragment) {
 function drawings(dir) {
   const xml = fs.readFileSync(path.join(dir, "word", "document.xml"), "utf8");
   const rels = relationships(dir);
+  /*
+   * WHAT COUNTS AS A HEADING IS ASKED ONCE, AND `docx-core.js` OWNS THE ANSWER.
+   *
+   * This used to match `w:val="Heading\d|Title"` literally. A Hungarian Word calls its heading styles
+   * `Cmsor1`, so on that document nothing here was a heading and every drawing fell through to the
+   * guess below: each one labelled with whatever line of prose happened to precede it. Plausible,
+   * wrong, and silent, which is the worst of the three.
+   */
+  const stylesPath = path.join(dir, "word", "styles.xml");
+  const levels = headingLevels(
+    fs.existsSync(stylesPath) ? fs.readFileSync(stylesPath, "utf8") : null,
+  );
+  /*
+   * THE PROSE FALLBACK IS A FALLBACK, WHICH IT WAS NOT.
+   *
+   * Labelling a drawing with the last line of prose above it was meant for a document with no heading
+   * styles at all. It ran on EVERY paragraph, so on a document full of real headings the nearest
+   * sentence always overwrote the heading and no drawing was ever labelled with one. The inventory
+   * read "the picture under `Find the values of x for which:`" where it should have read "under
+   * `3.2 Monotonicity`", and a disposition is a judgement about a drawing IN ITS PLACE.
+   */
+  const usesHeadings = [...levels.keys()].some(
+    (id) => levels.get(id) != null && xml.includes(`w:pStyle w:val="${id}"`),
+  );
+
   const found = [];
   let heading = null;
   let index = 0;
@@ -127,7 +176,7 @@ function drawings(dir) {
    * begin, which is the part that was never reliable.
    */
   const TOKEN =
-    /<w:pStyle\b[^>]*w:val="(Heading\d|Title)"[^>]*\/>|<w:p\b[^>]*>|<\/w:p>|<a:blip\b[^>]*r:embed="([^"]+)"|<w:txbxContent\b|<v:shape\b|<wps:wsp\b/g;
+    /<w:pStyle\b[^>]*w:val="([^"]+)"[^>]*\/>|<w:p\b[^>]*>|<\/w:p>|<a:blip\b[^>]*r:embed="([^"]+)"|<w:txbxContent\b|<v:shape\b|<wps:wsp\b/g;
 
   let paraStart = -1;
   let paraIsHeading = false;
@@ -138,16 +187,18 @@ function drawings(dir) {
       paraStart = m.index + tok.length;
       paraIsHeading = false;
     } else if (tok.startsWith("<w:pStyle")) {
-      paraIsHeading = true;
+      // Every paragraph carries a style; only the ones resolving to a level are headings.
+      paraIsHeading = levels.get(m[1]) != null;
     } else if (tok === "</w:p>") {
       // A heading's text is only knowable once the paragraph closes, and it labels what comes AFTER it.
       if (paraIsHeading && paraStart !== -1) {
         const text = textOf(xml.slice(paraStart, m.index));
         if (text) heading = text;
-      } else if (paraStart !== -1) {
+      } else if (paraStart !== -1 && !usesHeadings) {
         const text = textOf(xml.slice(paraStart, m.index));
-        // A line with real words stands in where a document carries no heading styles at all.
-        if (text && /[A-Za-z]{3}/.test(text)) heading = text.length > 90 ? `${text.slice(0, 90)}...` : text;
+        // A line with real words stands in ONLY where a document carries no heading styles at all.
+        if (text && /[A-Za-z]{3}/.test(text))
+          heading = text.length > 90 ? `${text.slice(0, 90)}...` : text;
       }
       paraStart = -1;
       paraIsHeading = false;
@@ -200,7 +251,18 @@ if (require.main === module) {
     console.error("usage: node open-docx.js <file.docx> <out-dir>");
     process.exit(2);
   }
-  const dir = unpack(docx, outDir);
+  /*
+   * A REFUSAL IS AN ANSWER, NOT A CRASH. Every reason this stops is one an operator can act on: a PDF
+   * wearing a .docx name, an archive that would unpack to a gigabyte, an entry pointing out of its
+   * folder. A stack trace buries all three under a line number in somebody else's code.
+   */
+  let dir;
+  try {
+    dir = unpack(docx, outDir);
+  } catch (err) {
+    console.error(`\n${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(2);
+  }
   const list = drawings(dir);
   const media = mediaFiles(dir);
 

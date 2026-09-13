@@ -84,6 +84,17 @@ export function courseSlug(name) {
 
 export function coursePaths(name) {
   const slug = courseSlug(name);
+  /*
+   * A NAME THAT SLUGIFIES TO NOTHING IS NOT A COURSE NAME. `..`, `///` and `!!!` all reduce to an
+   * empty string, and an empty segment joins to the workspace ROOT: the course folders would be made
+   * directly in `~/Documents/Composer`, on top of everybody else's courses.
+   */
+  if (!slug) {
+    throw new Error(
+      `"${name}" is not a usable course name: it has no letters or digits in it. ` +
+        `Name the course the way a person would say it.`,
+    );
+  }
   const root = join(WORKSPACE, slug);
   return {
     slug,
