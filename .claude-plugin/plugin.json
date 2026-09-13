@@ -1,8 +1,10 @@
 {
   "name": "composer",
   "displayName": "Composer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Eight phases from a course's materials to a published course on pass the year. Guides an author through intake, layout, audit and publish over MCP.",
-  "author": { "name": "erudeon" },
+  "author": {
+    "name": "erudeon"
+  },
   "repository": "https://github.com/erudeon/composer"
 }
