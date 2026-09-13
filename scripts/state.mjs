@@ -88,6 +88,7 @@ function walk(dir, depth = 0) {
         name: e.name,
         ext: extname(e.name).toLowerCase(),
         size,
+        depth,
       });
     }
   }
@@ -127,11 +128,17 @@ const CHECKLIST = [
   },
 ];
 
+/*
+ * TOP-LEVEL ONLY. The checklist asks what the operator PUT THERE, and Intake unpacks a .docx into a
+ * work directory inside the same folder. Every Word file contains word/footnotes.xml and
+ * word/endnotes.xml, both of which match /notes/, so a recursive match reported a summary present in a
+ * folder holding none, and inflated every count with parts nobody chose.
+ */
 function classify(files) {
   const hits = {};
   for (const item of CHECKLIST) {
     hits[item.key] = files
-      .filter((f) => item.match.test(f.name))
+      .filter((f) => f.depth === 0 && item.match.test(f.name))
       .map((f) => f.name);
   }
   return hits;
@@ -163,16 +170,14 @@ function main() {
   const state = safeJson(join(target, STATE_FILE));
   const hits = classify(files);
 
-  const has = (n) =>
-    files.some((f) => f.name === n || f.name.endsWith(`/${n}`));
   const sourceOfRecord = files.filter((f) => /source-of-record/i.test(f.path));
   const inventory = files.find((f) => f.name === "media-inventory.json");
   const findings = files.find(
     (f) => f.name === "findings.json" || f.name === "findings.md",
   );
   const manifest = files.find((f) => f.name.endsWith("manifest.json"));
-  const docx = files.filter((f) => f.ext === ".docx");
-  const pdfs = files.filter((f) => f.ext === ".pdf");
+  const docx = files.filter((f) => f.depth === 0 && f.ext === ".docx");
+  const pdfs = files.filter((f) => f.depth === 0 && f.ext === ".pdf");
 
   // ── mode ───────────────────────────────────────────────────────────────────────────────────────────
   let mode = state?.mode ?? null;
@@ -192,8 +197,21 @@ function main() {
 
   // ── phase ──────────────────────────────────────────────────────────────────────────────────────────
   const gates = state?.gates ?? {};
+  /*
+   * INTAKE'S GATE IS THREE THINGS, not one. Reading only "a source of record exists" let a run resume
+   * the next morning believing Intake had closed, when no drawing had a disposition and the four
+   * structure questions had never been asked. Asking those after unit 1 is the expensive mistake the
+   * phase exists to prevent, so they are counted here rather than trusted.
+   */
+  const inventoryJson = inventory ? safeJson(inventory.path) : null;
+  const undisposed = Array.isArray(inventoryJson?.drawings)
+    ? inventoryJson.drawings.filter((d) => d?.disposition == null).length
+    : null;
+
   let phase = 0;
-  if (sourceOfRecord.length > 0 && inventory) phase = 1;
+  const intakeClosed =
+    sourceOfRecord.length > 0 && inventory && findings && undisposed === 0 && gates.structureAnswered === true;
+  if (intakeClosed) phase = 1;
   if (gates.analyzeDone || gates.analyzeSkipped) phase = 2;
   if (gates.composeDone || gates.composeSkipped) phase = 3;
   if (manifest && gates.verifyMatched) phase = 4;
@@ -211,7 +229,7 @@ function main() {
   );
   lines.push(`Phase:  ${PHASES[phase]}`);
   lines.push(
-    `Files:  ${files.length} in the folder  ·  ${docx.length} .docx  ·  ${pdfs.length} .pdf`,
+    `Files:  ${files.filter((f) => f.depth === 0).length} in the folder  ·  ${docx.length} .docx  ·  ${pdfs.length} .pdf`,
   );
   if (state?.__unreadable)
     lines.push(

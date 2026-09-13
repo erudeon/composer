@@ -53,9 +53,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/open-docx.js" <summary.docx> <work-di
 
 This unzips the document, refuses anything that is not really a zip, and writes `media-inventory.json`:
 every picture, floating text box and drawn shape, in document order, each with the heading it falls
-under. **Every entry comes out with `disposition: null`,** because choosing between the five is a
-judgement about a drawing in its place and a script that guessed would be making the one call this phase
-exists to keep honest.
+under. **Every entry comes out with `disposition: null`.** Choosing between the five is the operator's.
 
 **3. Convert the text.**
 
@@ -64,6 +62,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/docx.js" <work-dir>/word/document.xml
 node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/normalise.js" <work-dir>/source.txt <work-dir>/source-of-record.txt
 node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/katex-check.js" <work-dir>/source-of-record.txt
 ```
+
+**If preflight said NO heading styles, use `docx2.js` instead of `docx.js`.** A Google Docs export
+carries no paragraph styles and no outline levels, so the standard extractor has nothing to read a
+heading from and will flatten the whole document. `docx2.js` infers the levels from run colour and size
+instead. Check the result before going on: it is a guess about typography, not a reading of structure.
 
 **The converter is a program, not you.** A maths summary carries over a thousand equation objects;
 retyping them through a model is where errors and tokens both come from. `omml.js` turns Word's own
@@ -78,8 +81,8 @@ encodings rather than cleaning around a replacement character.
 **4. Slice the source per teaching unit** and write one file per unit. A single 85,000-token document
 read by twenty workers is 1.7 million tokens of the same text.
 
-**5. Open the findings list.** `findings.json` in the course folder. The format is `composer/reference/findings-format.md` in this plugin; read it once and follow it exactly,
-because the Publish gate parses it.
+**5. Open the findings list.** `findings.json` in the course folder. Its format is `${CLAUDE_PLUGIN_ROOT}/skills/composer/reference/findings-format.md`. Read it once and
+follow it exactly, because the Publish gate parses this file.
 
 **6. Ask the four structure questions, in ONE message, with a recommendation each.**
 
@@ -98,10 +101,10 @@ Five, and exactly one per drawing. The class decides the disposition.
 
 | The drawing is | Disposition | It becomes |
 | --- | --- | --- |
-| A clean graph of a function the text states | `chart` drawn from the expression, with a domain, and a slider where the text varies a constant | a chart |
-| A graph with pen annotation on it | `chart`: the pen becomes markers and labels, nothing is kept as pixels | a chart |
+| A clean graph of a function the text states | `chart`, drawn from the expression the text gives | a chart |
+| A graph with pen annotation on it | `chart`: what the pen pointed at becomes part of the chart; nothing is kept as pixels | a chart |
 | A 3D surface | `figure`, regenerated with alt text naming the function. There is no 3D chart in the reader | a figure |
-| An equation pasted as a picture | `retype` as LaTeX, validated on write | a formula |
+| An equation pasted as a picture | `retype` as LaTeX | a formula |
 | A shape drawn over the text: a circle, an arrow, a floating equation box | `fold`: dropped, and what it said goes into the block it annotated | prose or a formula |
 | A duplicate of an earlier picture | one chart, referenced twice | a chart |
 | Old branding: a cover, marketing | `drop` | nothing |
@@ -109,10 +112,6 @@ Five, and exactly one per drawing. The class decides the disposition.
 **A crop from a book, a slide, Chegg or the web is NEVER uploaded.** It is redrawn from the function the
 text gives. Reproducing images from books and lectures risks the institutional relationship, which is the
 one failure that costs more than a bad course. Transform rather than copy.
-
-**Prefer a chart outright wherever the values are recoverable.** A plot given as data or as a formula
-costs no bytes, reflows, themes, and is searchable by its title. A picture of the same plot is none of
-those.
 
 ## Provenance is a finding, not a footnote
 

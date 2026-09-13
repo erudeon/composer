@@ -37,8 +37,11 @@ zero, twice, on two courses, on one day.
 That a lecture was written is not that the body stored is the body you sent. Those came apart once. Only
 `verify` closes that gap: it diffs the stored course against the same file.
 
-An apply refuses **atomically**. One bad block in unit 7 refuses units 1 to 20 and answers "nothing was
-written". An earlier successful apply still stands.
+TWO DIFFERENT REFUSALS, and conflating them is how a course gets re-uploaded onto itself. A manifest
+carrying a lint ERROR is refused whole, before the first write. An apply that gets PAST the lint is
+**not atomic**: it answers per operation, so a lecture refused for a bad block names itself and the
+ones after it still land. An operator who reads "3 operations refused" as "nothing was written" and
+re-runs is re-running against a course that already changed.
 
 ## Which doors are safe to retry
 
@@ -67,18 +70,12 @@ lowercases, and unescapes a backslash before ASCII punctuation. **It does not st
 which is why the normaliser runs first, and why a footer spliced mid-sentence breaks a match that is
 otherwise a perfect copy. Very short units are skipped entirely.
 
-## Two doors disagree on one field name
+## The two glossary doors disagree
 
-The glossary tool's field is `description`. The manifest's is `definition`. Both schemas are strict, so
-the wrong one is refused either way, and fourteen terms were hand-built with the wrong key before a
-refusal named it.
+The two glossary doors name the definition field differently, and both schemas are strict, so carrying
+one door's spelling to the other is refused rather than silently wrong. Read the shape from
+`content_guide` for whichever door you are using.
 
-**`RECALL` is not a label.** The label for recalling a term or a fact is `DEFINITIONS`.
-
-## Every content tool nests its arguments
-
-They take one parameter, `request`, and the real arguments go inside it. Every tool in the group was
-tried flat on a real run and every one refused. The publish tool has no `op` at all.
 
 ## Publishing cascades
 
@@ -94,10 +91,9 @@ pipeline does quietly.
 
 - A rename moves the URL segment, so anything converging on the slug stops matching and creates a second
   lecture beside the first. Pin the slug when renaming.
-- Two identical blocks over 2,000 characters are refused; a shorter identical pair is allowed and
-  reported. A repeated summary in a source document hits this.
+- A summary block repeated across two lectures can be refused as a duplicate. The plan names the rule
+  and both block ids; do not guess the threshold.
 - Nested lists survive. Several paragraphs in one list item do not.
-- Prices are safe and need no escaping.
 - An unknown field now names the fields that object accepts. Read the error rather than guessing.
 - Never run a shell one-liner with a backslash in the payload: a double-quoted string eats one level, so
   the script runs against text that is not what you typed. Twice on one run a fix reported success and

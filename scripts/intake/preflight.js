@@ -2,7 +2,7 @@
  * STEP 1 OF EVERY INTAKE, as one command: is this file what its name claims, is it complete, and what
  * is going to bite when you parse it.
  *
- *   node tools/content-intake/preflight.js "<file>" ["<file>" ...]
+ *   node scripts/intake/preflight.js "<file>" ["<file>" ...]
  *
  * Every finding here has already shipped or nearly shipped a broken course:
  *
@@ -102,7 +102,7 @@ function report(file) {
   if (actual !== claimed) {
     lines.push(
       `  ! WRONG TYPE: named ${ext || "(no extension)"} but the bytes say ${actual.toUpperCase()}.` +
-        (actual === "pdf" ? " PDF is REFUSED as a source — get the real .docx, or extract with pdf2.js." : ""),
+        (actual === "pdf" ? " PDF is REFUSED as a source. Go and find the real .docx: a wrong file has cost hours before." : ""),
     );
   } else {
     lines.push(`  type: ${actual}, matching its extension`);
@@ -151,7 +151,7 @@ function report(file) {
     const paras = countOf(xml, /<w:p[\s>]/g);
     lines.push(
       styles === 0
-        ? `  ! NO heading styles across ${paras} paragraphs — every level must come from run colour and size (docx.js)`
+        ? `  ! NO heading styles across ${paras} paragraphs — every level must come from run colour and size (docx2.js, not docx.js)`
         : `  heading styles: ${styles} <w:pStyle> across ${paras} paragraphs`,
     );
     const tables = countOf(xml, /<w:tbl>/g);
@@ -173,7 +173,7 @@ function report(file) {
 
 const files = process.argv.slice(2);
 if (files.length === 0) {
-  console.error('usage: node tools/content-intake/preflight.js "<file>" ["<file>" ...]');
+  console.error('usage: node scripts/intake/preflight.js "<file>" ["<file>" ...]');
   process.exit(1);
 }
 for (const file of files) {

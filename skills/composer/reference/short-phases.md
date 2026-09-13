@@ -50,6 +50,9 @@ text, no duplicates, no empty headings, and nothing substantive on the list.
 
 1. Strip the old branding: cover, note to the reader, links, marketing, footer. **The prose stays.**
 2. Remove em dashes, and strip a number from a heading. Keep en dashes and every other character.
+   **Do not do this by hand.** `scripts/intake/lib.js` exports `stripEmDashes` and
+   `stripHeadingNumber`, and it is marker-aware: three separate corruption bugs in one upload came from
+   a cleanup that matched across emphasis markers, and this is the version that survived them.
 3. Delete empty headings, and emoji in headings.
 4. Retype every equation that was pasted as a picture, as LaTeX.
 5. Fold every shape drawn over the text into the block it annotated, and delete the shape.

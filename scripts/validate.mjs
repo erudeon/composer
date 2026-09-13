@@ -181,12 +181,27 @@ function scriptsUnder(dir, prefix = "") {
         : [],
   );
 }
+/*
+ * A LIBRARY IS USED BY BEING REQUIRED, not by being named in prose. `omml.js` is the reason a maths
+ * course converts at all and no operator will ever run it directly, so "no skill mentions it" is the
+ * wrong question to ask of it. The question worth asking is about a script an operator is meant to RUN
+ * that nothing tells them to run: this plugin shipped its two most important commands unnamed.
+ */
+const scriptSources = scriptsUnder("scripts")
+  .map((s) => readFileSync(join(ROOT, "scripts", s), "utf8"))
+  .join("\n");
+
 for (const s of scriptsUnder("scripts")) {
   if (s === "validate.mjs") continue;
-  if (!allProse.includes(s))
+  const base = s.split("/").pop();
+  const importedByAnother =
+    scriptSources.includes(`./${base}`) || scriptSources.includes(`/${base}"`);
+  if (importedByAnother) continue;
+  if (!allProse.includes(s) && !allProse.includes(base)) {
     warnings.push(
-      `scripts/${s}: no skill or reference mentions it. Dead, or undocumented.`,
+      `scripts/${s}: nothing tells an operator to run it, and no other script imports it.`,
     );
+  }
 }
 
 for (const w of warnings) console.log(`warn  ${w}`);

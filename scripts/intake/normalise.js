@@ -1,7 +1,7 @@
 /**
  * THE FOUR SOURCE ARTEFACTS, FIXED ONCE, IN THE ONE ORDER THAT WORKS.
  *
- *   node tools/content-intake/normalise.js <in.txt|in.md> [out.txt]
+ *   node scripts/intake/normalise.js <in.txt|in.md> [out.txt]
  *
  * Every course so far has rediscovered these four and written a throwaway script per unit for them —
  * `clean-problem5.cjs`, `strip-lecture-footers.cjs`, `fix-escapes.cjs` and so on, eleven units deep.
@@ -116,7 +116,7 @@ if (require.main !== module) {
 } else {
   const [input, output] = process.argv.slice(2);
   if (!input) {
-    console.error("usage: node tools/content-intake/normalise.js <in.txt> [out.txt]");
+    console.error("usage: node scripts/intake/normalise.js <in.txt> [out.txt]");
     process.exit(1);
   }
 

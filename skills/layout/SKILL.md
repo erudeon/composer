@@ -1,120 +1,118 @@
 ---
 name: layout
-description: Phase 3 of the Composer. Turn a source of record into a course manifest and apply it to a draft course on production - blocks, charts, worked examples, practice questions and a glossary - one unit first, then the rest. Use when the Composer's state says Phase 3 Layout, when building or pushing a manifest, when a unit needs laying out into blocks, or when figures need uploading before a course is written.
+description: Phase 3 of the Composer. Turn a source of record into a course manifest and apply it to a draft course on production, one unit first and then the rest. Use when the Composer's state says Phase 3 Layout, when building or pushing a manifest, when a unit needs laying out into blocks, or when figures need uploading before a course is written.
 ---
 
 # Phase 3 · Layout
 
-The edited source of record becomes blocks. **Nothing is written by you**: the prose is the author's,
-and what you are deciding is which block carries which piece of it.
+The edited source of record becomes blocks. **Nothing is written by you**: the prose is the author's, and
+what you are deciding is which block carries which piece of it.
 
-Layouting and auditing are different acts. Layouting chooses the right block for a piece of content;
-auditing checks whether something is right. A paragraph that renders as a full empty page is a
-composition failure, and it is fixed by choosing a different block here, not by nudging the reader
-afterwards.
+Layouting and auditing are different acts. Layouting chooses the right block; auditing checks whether
+something is right. A paragraph that renders as a full empty page is a composition failure, and it is
+fixed by choosing a different block here, not by nudging the reader afterwards.
 
-## Before the first byte
+## Ask the server what a block takes. Do not remember it.
 
-**Call `content_guide` now, in this session.** Not from memory of an earlier one.
+**Every content tool takes ONE parameter, `request`, with the real arguments nested inside it.** A flat
+call is refused. Ask only for what this course needs:
 
 ```
-content_guide {"op":"overview"}                                  the order of operations
-content_guide {"op":"manifest"}                                  the manifest's shape and its caps
-content_guide {"op":"blocks","type":["chart","formula","worked-example","table","callout"]}
-content_guide {"op":"questions"}                                 the question shape and its labels
-content_guide {"op":"glossary"}                                  the glossary contract
-content_guide {"op":"maths"}                                     the maths rules
+content_guide {"request":{"op":"manifest"}}
+content_guide {"request":{"op":"blocks","type":["chart","table","callout"]}}
+content_guide {"request":{"op":"questions"}}
+content_guide {"request":{"op":"glossary"}}
 ```
 
-It is generated from the schemas the write path validates against, so it cannot drift on shapes. **This
-skill deliberately contains no prop table, no lint rule name and no tool signature**: if you find one
-here, it is a bug, and the fix is to delete it and call the tool.
+Add `{"request":{"op":"maths"}}` **only for a course with equations in it**. The tool is split by op so
+a lecture on social psychology does not pay for the delimiter rule, and asking for all of them spends
+the saving the split exists to create.
 
-**Confirm which hub answered.** `get_my_context`, reading `server.deployment` AND `server.commit`, and
-say both in one line. A write sent to the wrong hub succeeds, reads back correct, and never appears on
-the site you meant.
+What comes back is generated from the schemas the write path validates against, so it is the authority
+on every shape, prop, label and cap. None of those is written down in this plugin.
 
-**The course must exist.** `taxonomy` `tree` lists every study and year with its programme CODE; a
-manifest names the code, so a load needs no resolve. If there is no course row yet, `content_catalog`
-creates one. Nothing later in this phase creates it for you.
+**Confirm which hub answered**, once, before the first write: `get_my_context`, reading
+`server.deployment` AND `server.commit`, and say both in one line.
 
-## The order, and why it is this order
+**The course must exist.** `taxonomy` `tree` gives the programme CODE a manifest names;
+`content_catalog` `create_course` makes the row if there is none. Nothing later creates it for you.
 
-**1. Figures first, before the manifest.** A manifest carries no bytes, and a storage key is minted per
-environment and per course and cannot be predicted. So the figures go up, the markdown that comes back is
-substituted into the manifest, and only then is the manifest pushed. **Never rebuild that markdown from
-the key.**
+## The order, and the two commands that make it cheap
 
-Write `figures.json` beside the images and hand the operator the upload. Fifty files and 20 MB a request.
-base64 through the one-picture tool is model output: a real course of figures runs to millions of tokens,
-so that door is for a repair.
+**1. Figures first.** A manifest carries no bytes and a storage key cannot be predicted, so the pictures
+go up before the file that references them. Write `figures.json` beside the images, then:
 
-**2. Build the manifest as a FILE, with a script.** A manifest emitted into a tool call costs its whole
-length in tokens twice, and every re-emission is a chance to corrupt text the upload exists to reproduce
-exactly. **The model writes the parser; the parser writes the course.** For a maths course this is the
-difference between a run that finishes and one that stalls.
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/images.mjs" figures.json --course <courseId>
+```
 
-**Put each unit's slice back on the lecture as `source`.** It is the author's own extracted text and it
-is what every fidelity rule diffs each heading, prose block and number against. A lecture without one
-applies and is reported unchecked.
+It answers a file-name-to-markdown map. Substitute that into the manifest verbatim.
 
-**3. Plan.** `content_import` `plan` writes nothing. Read three keys before applying:
+**2. Build the manifest as a FILE, with a script you write.** Not by emitting it into a tool call: that
+costs its whole length in tokens twice, and every re-emission can corrupt text this upload exists to
+reproduce exactly. **The model writes the parser; the parser writes the course.**
 
-- **`blocksRemoved`**: blocks the lectures hold now that this file does not carry, so applying deletes
-  them. **This is the one that catches a manifest which silently drops content a published lecture already
-  holds.** It is absent when nothing is lost, so its absence is the good news and its presence is a
-  stop.
-- **`blocksUnknown`**: a stored body that could not be parsed, so what the write destroys is unknown.
-  **Not a report of zero**, and the write is planned anyway.
-- **`orderNotApplied`**: the reading order was declined because the file does not name every lecture.
+**Put each unit's slice on the lecture as `source`.** It is the text Intake extracted, and it is what
+every fidelity rule diffs the headings, prose and numbers against.
 
-**4. Apply, then verify.** An apply answers per operation: that a lecture was written, never that the
-body stored is the body you sent. Those came apart once already. `verify` diffs the stored course against
-the same file and is the only thing that closes the gate.
+**3. Plan, then apply, then verify.**
 
-An apply refuses **atomically**: one bad block in unit 7 refuses units 1 to 20 and answers "nothing was
-written". An earlier successful apply still stands. Say so in the report, because an operator reading
-"nothing was written" after a good unit-1 run will reasonably believe they lost it.
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json            # plans, writes nothing
+node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json --apply
+node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json --verify
+```
+
+If no token is available, `content_import` over the MCP does the same job and needs none. It costs the
+length of the course in tokens, which is a real cost and a better one than a stalled upload. Say which
+door you used.
+
+**Read `blocksRemoved`, `blocksUnknown` and `orderNotApplied` on the plan before applying.** The reply
+explains each in its own words. Their absence is the good news; `blocksRemoved` appearing is a stop.
+
+**A refused apply is not an untouched course.** A manifest carrying a lint error is refused whole before
+anything is written. An apply that gets past the lint is **not** atomic: it answers per operation, so a
+lecture refused for a bad block names itself and the ones after it still land. Re-send the whole
+corrected file; everything that already landed is a no-op the second time.
 
 ## One unit, then stop
 
-Build unit 1. Apply it. Verify it. Show the operator, report, and **wait**. On their word, build the rest
-without further questions and report once.
-
-The first unit is the pattern, not a sample. Every platform surprise was first visible in the first unit
-of a course that then had ten more built against a wrong assumption.
+Build unit 1. Apply it. Verify it. Show the operator, report, and **wait**. On their word, build the
+rest without further questions and report once.
 
 ## The shape of a unit
 
-The prose is verbatim and everything else is yours to place. **Only prose is checked word for word**,
-which is the point: you copy the author's sentences exactly where it matters, and you are free to
-restructure the same facts into a table, a callout or a checkpoint, which is where the value is added.
+Prose is verbatim; everything else is yours to place. Only prose is checked word for word, which is the
+point: copy the author's sentences exactly where it matters, and restructure the same facts into a table
+or a callout where that teaches better.
 
 ```
-prose            ## Section 1, with its introduction        verbatim
-prose            ### 1.1                                     verbatim, one block per ###
-callout example  the source's short example, lifted out
-chart            the one-curve figure this section draws
+prose            the section heading and its paragraphs, one block per subsection
+callout          the source's own short example, lifted out of the paragraph
+chart            the figure this section draws, from the expression the text gives
 table            the section's rule set
 question         2 to 5 pinned, at the end of the section they test
 worked-example   the computation the source works through
-callout in-short Smartly summarised                          always last
+callout          the closer, last
 ```
 
-A graph is a chart drawn **from the source's expression, never from points read off a picture**. Where
-the text gives no expression, the chart says so in its title and is schematic. Where a picture carried
-pen, the pen becomes a marker or a label.
+Which callout kind, what a chart takes, and what the closer is called all come from `content_guide`.
 
-## The numbers
+**A graph is drawn from the source's expression, never from points read off a picture.** Where the text
+gives no expression, say so in the chart's title and make it schematic.
 
-Twenty practice questions a unit in the bank, every one keyed, labelled by the thinking it asks for, with
-a rationale on each wrong option and no "option A" in any stem, because the reader shuffles. One inline
-question block at the end of each section, drawing from the bank. Eight to fifteen glossary terms a unit,
-twenty the ceiling.
+## The two numbers this plugin sets
 
-**Key every question or none.** A bank converges on the key: a declared key that exists is updated in
-place, one that does not is created. That needs every question keyed on both sides, in the file and
-already in the bank, or the whole bank is declined.
+Everything else about questions and glossary terms comes from the server. These two are ours:
+
+- **Twenty practice questions a unit** in the bank, and **one inline question block at the end of each
+  section**, drawing from it.
+- **Eight to fifteen glossary terms a unit.**
+
+## Never fan out
+
+The rate limit is keyed on the credential, not the worker, so four workers share one budget and
+parallelism divides throughput. For an MCP-bound job the fix is always fewer calls, never more workers.
 
 ## Gate
 
