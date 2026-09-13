@@ -16,7 +16,7 @@ be an import rather than a rewrite.
     {
       "id": "f-001",
       "class": "file",
-      "what": "Full-page GradeGuru cover before the first heading",
+      "what": "Full-page cover from the summary's previous brand, before the first heading",
       "where": "summary.docx, page 1",
       "foundBy": "intake",
       "foundAt": "2026-09-13T20:01:00.000Z",

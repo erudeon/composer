@@ -61,8 +61,8 @@ applies and is reported unchecked.
 **3. Plan.** `content_import` `plan` writes nothing. Read three keys before applying:
 
 - **`blocksRemoved`** — blocks the lectures hold now that this file does not carry, so applying deletes
-  them. **This is the one that would have caught the day two units of a published course lost a third of
-  their prose.** It is absent when nothing is lost, so its absence is the good news and its presence is a
+  them. **This is the one that catches a manifest which silently drops content a published lecture already
+  holds.** It is absent when nothing is lost, so its absence is the good news and its presence is a
   stop.
 - **`blocksUnknown`** — a stored body that could not be parsed, so what the write destroys is unknown.
   **Not a report of zero**, and the write is planned anyway.

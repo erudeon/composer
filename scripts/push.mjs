@@ -24,23 +24,24 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const HUBS = {
-  production: "https://hub.passtheyear.com",
-  staging: "https://hub.erudeon.com",
-};
+/*
+ * ONE HUB. Staging is not in the Composer's pipeline, in any mode, with no exception, so this script
+ * cannot reach it: a door that exists is a door somebody uses at 2am. The rehearsal is `plan`, which
+ * pre-flights every block and question against production and writes nothing.
+ */
+const PRODUCTION_HUB = "https://hub.passtheyear.com";
 
 const USAGE = `
-Usage: pnpm --filter web content:push <manifest.json> [--apply | --verify] [--staging | --hub <url>] [--show-request]
+Usage: node scripts/push.mjs <manifest.json> [--apply | --verify] [--hub <url>] [--show-request]
 
   (default)        plan: decide and report, write nothing
   --apply          run the operations
   --verify         read back what landed and compare it to this file; writes nothing
-  --staging        send to the staging hub instead of production
   --hub <url>      send somewhere else entirely
   --show-request   print the equivalent curl and exit, sending nothing
 
-Credential: PTY_MCP_TOKEN in the environment. Staging also needs CF_ACCESS_CLIENT_ID and
-CF_ACCESS_CLIENT_SECRET, because Cloudflare Access sits in front of it.
+Credential: PTY_MCP_TOKEN in the environment. Mint your own in the Hub; it is yours, it is scoped to
+what you can already reach, and it expires.
 `.trim();
 
 function fail(message, code = 1) {
@@ -49,7 +50,8 @@ function fail(message, code = 1) {
 }
 
 const args = process.argv.slice(2);
-if (args.length === 0 || args.includes("--help") || args.includes("-h")) fail(USAGE, args.length === 0 ? 1 : 0);
+if (args.length === 0 || args.includes("--help") || args.includes("-h"))
+  fail(USAGE, args.length === 0 ? 1 : 0);
 
 const file = args.find((a) => !a.startsWith("--"));
 if (!file) fail(`No manifest file given.\n\n${USAGE}`);
@@ -62,9 +64,10 @@ const apply = args.includes("--apply");
  * every operation green. Writes nothing, so it is safe to run at any time.
  */
 const verify = args.includes("--verify");
-if (apply && verify) fail("--apply and --verify are different requests. Apply, then verify.");
+if (apply && verify)
+  fail("--apply and --verify are different requests. Apply, then verify.");
 const hubFlag = args.indexOf("--hub");
-const hub = hubFlag !== -1 ? args[hubFlag + 1] : args.includes("--staging") ? HUBS.staging : HUBS.production;
+const hub = hubFlag !== -1 ? args[hubFlag + 1] : PRODUCTION_HUB;
 if (!hub) fail(`--hub needs a URL.\n\n${USAGE}`);
 
 const body = fs.readFileSync(file, "utf8");
@@ -76,7 +79,9 @@ const body = fs.readFileSync(file, "utf8");
 try {
   JSON.parse(body);
 } catch (cause) {
-  fail(`${file} is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}`);
+  fail(
+    `${file} is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}`,
+  );
 }
 
 const op = apply ? "apply" : verify ? "verify" : "plan";
@@ -86,14 +91,13 @@ const bytes = Buffer.byteLength(body);
 const MAX_BYTES = 4 * 1024 * 1024;
 
 if (args.includes("--show-request")) {
-  const headers = [`-H "Authorization: Bearer $PTY_MCP_TOKEN"`, `-H "content-type: application/json"`];
-  if (hub === HUBS.staging) {
-    headers.push(
-      `-H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID"`,
-      `-H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET"`,
-    );
-  }
-  console.log(`curl -sS -X POST "${url}" \\\n  ${headers.join(" \\\n  ")} \\\n  --data-binary @${path.basename(file)}`);
+  const headers = [
+    `-H "Authorization: Bearer $PTY_MCP_TOKEN"`,
+    `-H "content-type: application/json"`,
+  ];
+  console.log(
+    `curl -sS -X POST "${url}" \\\n  ${headers.join(" \\\n  ")} \\\n  --data-binary @${path.basename(file)}`,
+  );
   process.exit(0);
 }
 
@@ -119,30 +123,23 @@ if (bytes > MAX_BYTES) {
   );
 }
 
-const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
-if (hub === HUBS.staging) {
-  const id = process.env.CF_ACCESS_CLIENT_ID;
-  const secret = process.env.CF_ACCESS_CLIENT_SECRET;
-  if (!id || !secret) {
-    fail(
-      `Staging sits behind Cloudflare Access, which needs CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET.\n` +
-        `Without them the request is answered with a 302 to gradeguru.cloudflareaccess.com, which is not\n` +
-        `the door being shut — it is the headers being absent.`,
-      2,
-    );
-  }
-  headers["CF-Access-Client-Id"] = id;
-  headers["CF-Access-Client-Secret"] = secret;
-}
+const headers = {
+  authorization: `Bearer ${token}`,
+  "content-type": "application/json",
+};
 
 /** A short line per finding, errors first, because those are what refuse the write. */
 function printFindings(findings) {
   if (!Array.isArray(findings) || findings.length === 0) return;
   const order = { error: 0, warning: 1 };
-  const sorted = [...findings].sort((a, b) => (order[a?.severity] ?? 2) - (order[b?.severity] ?? 2));
+  const sorted = [...findings].sort(
+    (a, b) => (order[a?.severity] ?? 2) - (order[b?.severity] ?? 2),
+  );
   console.log(`\nFindings (${findings.length}):`);
   for (const f of sorted)
-    console.log(`  ${String(f?.severity ?? "?").toUpperCase()} ${f?.rule}  ${f?.where}\n    ${f?.message}`);
+    console.log(
+      `  ${String(f?.severity ?? "?").toUpperCase()} ${f?.rule}  ${f?.where}\n    ${f?.message}`,
+    );
 }
 
 /** The operations, rolled up by kind: the full list is long and says the same thing many times. */
@@ -155,13 +152,17 @@ function printOperations(operations) {
   const byOp = new Map();
   for (const op of operations) byOp.set(op?.op, (byOp.get(op?.op) ?? 0) + 1);
   console.log(`\nOperations (${operations.length}):`);
-  for (const [op, count] of byOp) console.log(`  ${String(count).padStart(4)} × ${op}`);
+  for (const [op, count] of byOp)
+    console.log(`  ${String(count).padStart(4)} × ${op}`);
   /*
    * A body write is a whole-array REPLACE, so WHICH lecture is rewritten is the one fact a plan exists to
    * show. The rolled-up count above cannot say it.
    */
-  const rewrites = operations.filter((o) => o?.op === "write-lesson").map((o) => o.slug ?? "?");
-  if (rewrites.length > 0) console.log(`  lectures rewritten: ${rewrites.join(", ")}`);
+  const rewrites = operations
+    .filter((o) => o?.op === "write-lesson")
+    .map((o) => o.slug ?? "?");
+  if (rewrites.length > 0)
+    console.log(`  lectures rewritten: ${rewrites.join(", ")}`);
 }
 
 /**
@@ -178,21 +179,27 @@ function printWarnings(payload) {
     console.log(`\n!! ${key}`);
     console.log(`   ${value.note ?? ""}`);
     if (Array.isArray(value.byTopic)) {
-      for (const topic of value.byTopic) console.log(`   ${topic.slug}: ${topic.blockIds?.join(", ")}`);
+      for (const topic of value.byTopic)
+        console.log(`   ${topic.slug}: ${topic.blockIds?.join(", ")}`);
     }
     if (Array.isArray(value.slugs)) console.log(`   ${value.slugs.join(", ")}`);
-    if (Array.isArray(value.blockedBy)) console.log(`   blocked by: ${value.blockedBy.join(", ")}`);
+    if (Array.isArray(value.blockedBy))
+      console.log(`   blocked by: ${value.blockedBy.join(", ")}`);
   }
 }
 
-const deployment = hub === HUBS.production ? "PRODUCTION" : hub === HUBS.staging ? "staging" : hub;
-console.log(`${op === "apply" ? "APPLY" : op} → ${deployment}  (${(bytes / 1024).toFixed(0)} KB)`);
+const deployment = hub === PRODUCTION_HUB ? "PRODUCTION" : hub;
+console.log(
+  `${op === "apply" ? "APPLY" : op} → ${deployment}  (${(bytes / 1024).toFixed(0)} KB)`,
+);
 
 let response;
 try {
   response = await fetch(url, { method: "POST", headers, body });
 } catch (cause) {
-  fail(`Could not reach ${hub}: ${cause instanceof Error ? cause.message : String(cause)}`);
+  fail(
+    `Could not reach ${hub}: ${cause instanceof Error ? cause.message : String(cause)}`,
+  );
 }
 
 const text = await response.text();
@@ -204,7 +211,9 @@ try {
    * A 302 to Cloudflare Access and a 401 both arrive as HTML or as a short string, and reading either as
    * "the plan is clean" is a mistake that has been made here before. The status is checked, not the shape.
    */
-  fail(`HTTP ${response.status} from ${hub}, and the reply was not JSON:\n${text.slice(0, 500)}`);
+  fail(
+    `HTTP ${response.status} from ${hub}, and the reply was not JSON:\n${text.slice(0, 500)}`,
+  );
 }
 
 /* The MCP tools wrap their answer; the route may or may not. Read whichever shape came back. */
@@ -214,8 +223,11 @@ printOperations(result?.operations);
 printWarnings(result);
 
 if (Array.isArray(result?.unmanaged) && result.unmanaged.length > 0) {
-  console.log(`\nUnmanaged (${result.unmanaged.length}) — on the course, not named by this file. Never deleted:`);
-  for (const row of result.unmanaged.slice(0, 20)) console.log(`  ${row.kind} ${row.title ?? row.id}`);
+  console.log(
+    `\nUnmanaged (${result.unmanaged.length}) — on the course, not named by this file. Never deleted:`,
+  );
+  for (const row of result.unmanaged.slice(0, 20))
+    console.log(`  ${row.kind} ${row.title ?? row.id}`);
 }
 
 /*
@@ -225,14 +237,19 @@ if (Array.isArray(result?.unmanaged) && result.unmanaged.length > 0) {
  */
 if (op === "verify") {
   const topics = Array.isArray(result?.topics) ? result.topics : [];
-  const damaged = topics.filter((t) => t?.missing?.length > 0 || t?.stored === null || t?.exists === false);
+  const damaged = topics.filter(
+    (t) => t?.missing?.length > 0 || t?.stored === null || t?.exists === false,
+  );
   console.log(
     `\nVerified ${topics.length} lecture(s): ${result?.matches ? "every one matches" : `${damaged.length} do not`}`,
   );
   for (const t of damaged) {
     if (t.exists === false) console.log(`  MISSING LECTURE ${t.slug}`);
     else if (t.stored === null) console.log(`  UNREADABLE      ${t.slug}`);
-    else console.log(`  ${t.slug}: declared ${t.declared}, stored ${t.stored}, missing ${t.missing.join(", ")}`);
+    else
+      console.log(
+        `  ${t.slug}: declared ${t.declared}, stored ${t.stored}, missing ${t.missing.join(", ")}`,
+      );
   }
   if (!result?.matches) {
     fail(
@@ -240,16 +257,22 @@ if (op === "verify") {
         "a replace, so the lectures already right are a no-op and the ones that are not are rewritten whole.",
     );
   }
-  console.log("\nEvery lecture this file declares a body for holds exactly those blocks.");
+  console.log(
+    "\nEvery lecture this file declares a body for holds exactly those blocks.",
+  );
   process.exit(0);
 }
 
 if (apply && Array.isArray(result?.results)) {
   const failed = result.results.filter((r) => r?.ok === false);
   const skipped = result.results.filter((r) => r?.skipped);
-  console.log(`\nApplied ${result.applied ?? 0}, failed ${result.failed ?? 0}, skipped ${skipped.length}`);
+  console.log(
+    `\nApplied ${result.applied ?? 0}, failed ${result.failed ?? 0}, skipped ${skipped.length}`,
+  );
   for (const row of [...failed, ...skipped])
-    console.log(`  ${row.ok ? "SKIP" : "FAIL"} ${row.op} ${row.where}\n    ${row.error ?? ""}`);
+    console.log(
+      `  ${row.ok ? "SKIP" : "FAIL"} ${row.op} ${row.where}\n    ${row.error ?? ""}`,
+    );
 }
 
 if (!response.ok) {
@@ -257,7 +280,9 @@ if (!response.ok) {
 }
 
 if (result?.refused) {
-  fail(`\nRefused: fix every finding with severity 'error' and send the file again. Nothing was written.`);
+  fail(
+    `\nRefused: fix every finding with severity 'error' and send the file again. Nothing was written.`,
+  );
 }
 
 if (apply && (result?.failed ?? 0) > 0) {

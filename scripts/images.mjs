@@ -24,25 +24,23 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const HUBS = {
-  production: "https://hub.passtheyear.com",
-  staging: "https://hub.erudeon.com",
-};
+/*
+ * ONE HUB. Staging is not in the Composer's pipeline, in any mode, so this script cannot reach it.
+ */
+const PRODUCTION_HUB = "https://hub.passtheyear.com";
 
 const USAGE = `
-Usage: pnpm --filter web content:images <figures.json> --course <courseId> [--staging | --hub <url>] [--show-request]
+Usage: node scripts/images.mjs <figures.json> --course <courseId> [--hub <url>] [--show-request]
 
   <figures.json>   [{ "file": "image1.png", "alt": "What it shows", "topicId": "optional" }, ...]
                    File paths are relative to that file's own directory.
   --course <id>    The course every figure belongs to. Required.
-  --staging        Send to the staging hub instead of production.
   --hub <url>      Send somewhere else entirely.
   --show-request   Print the equivalent curl and exit, sending nothing.
 
 Writes <figures.json>.uploaded.json: file name -> the markdown to paste into a lesson body.
 
-Credential: PTY_MCP_TOKEN in the environment. Staging also needs CF_ACCESS_CLIENT_ID and
-CF_ACCESS_CLIENT_SECRET, because Cloudflare Access sits in front of it.
+Credential: PTY_MCP_TOKEN in the environment. Mint your own in the Hub.
 `.trim();
 
 function fail(message, code = 1) {
@@ -66,7 +64,7 @@ const courseId = courseFlag !== -1 ? args[courseFlag + 1] : undefined;
 if (!courseId) fail(`--course <courseId> is required.\n\n${USAGE}`);
 
 const hubFlag = args.indexOf("--hub");
-const hub = hubFlag !== -1 ? args[hubFlag + 1] : args.includes("--staging") ? HUBS.staging : HUBS.production;
+const hub = hubFlag !== -1 ? args[hubFlag + 1] : PRODUCTION_HUB;
 if (!hub) fail(`--hub needs a URL.\n\n${USAGE}`);
 
 /*
@@ -140,12 +138,6 @@ const totalBytes = entries.reduce((sum, e) => sum + e.bytes, 0);
 
 if (args.includes("--show-request")) {
   const headers = [`-H "Authorization: Bearer $PTY_MCP_TOKEN"`];
-  if (hub === HUBS.staging) {
-    headers.push(
-      `-H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID"`,
-      `-H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET"`,
-    );
-  }
   const parts = batches[0].map((e) => `-F "files=@${e.full}"`).join(" \\\n    ");
   console.log(
     `curl -X POST "${url}" \\\n    ${headers.join(" \\\n    ")} \\\n` +
@@ -159,10 +151,6 @@ const token = process.env.PTY_MCP_TOKEN;
 if (!token) fail("PTY_MCP_TOKEN is not set. It is in Doppler; this push is the operator's to run.");
 
 const accessHeaders = {};
-if (process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET) {
-  accessHeaders["CF-Access-Client-Id"] = process.env.CF_ACCESS_CLIENT_ID;
-  accessHeaders["CF-Access-Client-Secret"] = process.env.CF_ACCESS_CLIENT_SECRET;
-}
 
 console.log(
   `Uploading ${entries.length} figure${entries.length === 1 ? "" : "s"} ` +
@@ -199,13 +187,13 @@ for (const [index, batch] of batches.entries()) {
     body = JSON.parse(text);
   } catch {
     /*
-     * An HTML body here is Cloudflare Access, not the app: staging sits behind it and a browser login is
+ * An HTML body here means something other than the API answered: a login page, a proxy, or a gateway.
      * not something a script can complete.
      */
     fail(
       `Request ${index + 1}: ${response.status} did not return JSON.\n` +
         (text.trimStart().startsWith("<")
-          ? "That looks like a Cloudflare Access page. Set CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET."
+          ? "That is an HTML page, not the API. Check the hub URL and that your token is set."
           : text.slice(0, 400)),
     );
   }

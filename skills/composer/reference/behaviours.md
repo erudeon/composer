@@ -3,27 +3,27 @@
 `content_guide` is generated from the schemas the write path validates against, so it is the authority on
 every SHAPE: a block's props, a question's fields, the manifest, the caps. **Ask it, never remember it.**
 
-This file carries the other kind of knowledge: what the platform DOES. None of it is in a schema, every
-item below has already cost somebody a real upload, and a few of them destroyed live content while every
-signal read green.
+This file carries the other kind of knowledge: what the platform DOES. None of it is in a schema, and
+several of these behaviours are destructive in a way that reports success: the write returns OK, the read
+back agrees with what you sent, and content is gone anyway. Those are the ones to read twice.
 
 ## A body write is a whole-array replace
 
 The manifest describes the whole body, so **anything it leaves out is deleted**. Omitting `blocks`
 entirely is safe and touches nothing. A PARTIAL `blocks` array is destructive. **The two differ by one
-optional key.** Twice, a write carrying a partial array silently dropped a third of a published lecture,
-once including the exam summary.
+optional key**, which is the whole danger: a partial array looks like a smaller edit and is a deletion.
 
 To repair one lecture, send the COMPLETE intended array with the version you read back. That is a
 compare-and-swap on a whole known-good body, and it is the safe way to use replace semantics. To place a
 single block, use the edit door, which names the blocks it touches.
 
-Never split one lecture across several imports. That is what destroyed a theme.
+Never split one lecture across several imports. Each apply replaces the whole body, so the second one
+removes what the first wrote.
 
 ## The three keys on a plan
 
 - **`blocksRemoved`** — what applying will delete. **Absent when nothing is lost**, so its absence is the
-  good news. This is the one that would have caught the day two units lost a third of their prose.
+  good news, and its presence is a stop.
 - **`blocksUnknown`** — a stored body that could not be parsed, so what the write destroys is unknown.
   **It is not a report of zero**, and the write is planned anyway.
 - **`orderNotApplied`** — the reading order was declined because the file does not name every lecture.
