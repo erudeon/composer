@@ -1,0 +1,9 @@
+{
+  "name": "@erudeon/composer",
+  "private": true,
+  "type": "commonjs",
+  "description": "Scripts the Composer plugin's skills run. CommonJS deliberately: every intake script uses require().",
+  "dependencies": {
+    "katex": "^0.16.22"
+  }
+}

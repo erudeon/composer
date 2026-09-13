@@ -1,0 +1,273 @@
+#!/usr/bin/env node
+/**
+ * SEND A COURSE MANIFEST AS A FILE, so its bytes never enter a model's context.
+ *
+ * `content_import` takes a whole course in one MCP call, which fixed the round trips and not the cost:
+ * the caller still has to EMIT every byte of the course into that call. Measured on a real upload, a
+ * 341KB course is roughly 90,000 tokens in and 90,000 out before a single retry, and every re-emission
+ * is a chance to corrupt text the upload exists to reproduce verbatim.
+ *
+ * `POST /api/mcp/content/import` takes the same manifest as a request body, with the same credential,
+ * the same limits and the same gates. Bytes written to a file by a script never reach the model at all,
+ * so the cost is the length of this command line.
+ *
+ * That route already existed and was already documented, and two uploads used the expensive door
+ * anyway — one of them went hunting through stored credentials looking for a token and posted another
+ * service's to this API. So this exists to make the cheap path the OBVIOUS one: no curl to remember, no
+ * credential to go looking for, and a reply printed rather than dumped.
+ *
+ * PLAN IS THE DEFAULT. Writing takes `--apply`, spelled out, every time.
+ *
+ * Plain Node with no dependencies and no app runtime, so it runs in a fresh worktree before anything is
+ * installed — which is exactly where a manifest gets built.
+ */
+import fs from "node:fs";
+import path from "node:path";
+
+const HUBS = {
+  production: "https://hub.passtheyear.com",
+  staging: "https://hub.erudeon.com",
+};
+
+const USAGE = `
+Usage: pnpm --filter web content:push <manifest.json> [--apply | --verify] [--staging | --hub <url>] [--show-request]
+
+  (default)        plan: decide and report, write nothing
+  --apply          run the operations
+  --verify         read back what landed and compare it to this file; writes nothing
+  --staging        send to the staging hub instead of production
+  --hub <url>      send somewhere else entirely
+  --show-request   print the equivalent curl and exit, sending nothing
+
+Credential: PTY_MCP_TOKEN in the environment. Staging also needs CF_ACCESS_CLIENT_ID and
+CF_ACCESS_CLIENT_SECRET, because Cloudflare Access sits in front of it.
+`.trim();
+
+function fail(message, code = 1) {
+  console.error(message);
+  process.exit(code);
+}
+
+const args = process.argv.slice(2);
+if (args.length === 0 || args.includes("--help") || args.includes("-h")) fail(USAGE, args.length === 0 ? 1 : 0);
+
+const file = args.find((a) => !a.startsWith("--"));
+if (!file) fail(`No manifest file given.\n\n${USAGE}`);
+if (!fs.existsSync(file)) fail(`No such file: ${file}`);
+
+const apply = args.includes("--apply");
+/*
+ * READ BACK WHAT LANDED. An apply reports per OPERATION — that a lecture was written, not that the body
+ * now stored is the body the file declared — and the two came apart once on a published course with
+ * every operation green. Writes nothing, so it is safe to run at any time.
+ */
+const verify = args.includes("--verify");
+if (apply && verify) fail("--apply and --verify are different requests. Apply, then verify.");
+const hubFlag = args.indexOf("--hub");
+const hub = hubFlag !== -1 ? args[hubFlag + 1] : args.includes("--staging") ? HUBS.staging : HUBS.production;
+if (!hub) fail(`--hub needs a URL.\n\n${USAGE}`);
+
+const body = fs.readFileSync(file, "utf8");
+/*
+ * PARSED HERE, so a JSON error is reported against the file rather than as a 400 from the far end. A
+ * manifest is usually machine-written, and a builder that emitted something unparseable should be told
+ * so before a request is made.
+ */
+try {
+  JSON.parse(body);
+} catch (cause) {
+  fail(`${file} is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}`);
+}
+
+const op = apply ? "apply" : verify ? "verify" : "plan";
+const url = `${hub}/api/mcp/content/import${op === "plan" ? "" : `?op=${op}`}`;
+const bytes = Buffer.byteLength(body);
+/* The route's own ceiling. Past it a lecture is written with `content_lesson` 'append', which has none. */
+const MAX_BYTES = 4 * 1024 * 1024;
+
+if (args.includes("--show-request")) {
+  const headers = [`-H "Authorization: Bearer $PTY_MCP_TOKEN"`, `-H "content-type: application/json"`];
+  if (hub === HUBS.staging) {
+    headers.push(
+      `-H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID"`,
+      `-H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET"`,
+    );
+  }
+  console.log(`curl -sS -X POST "${url}" \\\n  ${headers.join(" \\\n  ")} \\\n  --data-binary @${path.basename(file)}`);
+  process.exit(0);
+}
+
+const token = process.env.PTY_MCP_TOKEN;
+if (!token) {
+  fail(
+    `PTY_MCP_TOKEN is not set, so there is no way to reach ${hub}.\n\n` +
+      `It lives in Doppler's prd config, which only an operator's own login can read.\n` +
+      `Run this from your home directory, not from inside the repo:\n` +
+      `  doppler run --project erudeon --config prd -- pnpm --filter web content:push <file> --apply\n` +
+      `\n` +
+      `DO NOT go looking for a token in stored connections: the last attempt at that posted another\n` +
+      `service's credential to this API and printed a third into a transcript.`,
+    2,
+  );
+}
+
+if (bytes > MAX_BYTES) {
+  fail(
+    `${file} is ${(bytes / 1024 / 1024).toFixed(2)} MB and this route takes 4 MB.\n` +
+      `Split it by lecture — the import converges on slugs, so several files are one course — or write\n` +
+      `the long bodies with content_lesson 'append', which has no ceiling.`,
+  );
+}
+
+const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+if (hub === HUBS.staging) {
+  const id = process.env.CF_ACCESS_CLIENT_ID;
+  const secret = process.env.CF_ACCESS_CLIENT_SECRET;
+  if (!id || !secret) {
+    fail(
+      `Staging sits behind Cloudflare Access, which needs CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET.\n` +
+        `Without them the request is answered with a 302 to gradeguru.cloudflareaccess.com, which is not\n` +
+        `the door being shut — it is the headers being absent.`,
+      2,
+    );
+  }
+  headers["CF-Access-Client-Id"] = id;
+  headers["CF-Access-Client-Secret"] = secret;
+}
+
+/** A short line per finding, errors first, because those are what refuse the write. */
+function printFindings(findings) {
+  if (!Array.isArray(findings) || findings.length === 0) return;
+  const order = { error: 0, warning: 1 };
+  const sorted = [...findings].sort((a, b) => (order[a?.severity] ?? 2) - (order[b?.severity] ?? 2));
+  console.log(`\nFindings (${findings.length}):`);
+  for (const f of sorted)
+    console.log(`  ${String(f?.severity ?? "?").toUpperCase()} ${f?.rule}  ${f?.where}\n    ${f?.message}`);
+}
+
+/** The operations, rolled up by kind: the full list is long and says the same thing many times. */
+function printOperations(operations) {
+  if (!Array.isArray(operations)) return;
+  if (operations.length === 0) {
+    console.log("\nOperations: none — applying this would change nothing.");
+    return;
+  }
+  const byOp = new Map();
+  for (const op of operations) byOp.set(op?.op, (byOp.get(op?.op) ?? 0) + 1);
+  console.log(`\nOperations (${operations.length}):`);
+  for (const [op, count] of byOp) console.log(`  ${String(count).padStart(4)} × ${op}`);
+  /*
+   * A body write is a whole-array REPLACE, so WHICH lecture is rewritten is the one fact a plan exists to
+   * show. The rolled-up count above cannot say it.
+   */
+  const rewrites = operations.filter((o) => o?.op === "write-lesson").map((o) => o.slug ?? "?");
+  if (rewrites.length > 0) console.log(`  lectures rewritten: ${rewrites.join(", ")}`);
+}
+
+/**
+ * THE THREE THINGS THAT MUST NOT BE SKIMMED PAST.
+ *
+ * Each is absent from the reply unless it has something to say, so printing them plainly here costs
+ * nothing on a clean run and is the whole point on a dirty one. `blocksRemoved` is the report that
+ * would have caught two units of a published course losing a third of their prose.
+ */
+function printWarnings(payload) {
+  for (const key of ["blocksRemoved", "blocksUnknown", "orderNotApplied"]) {
+    const value = payload?.[key];
+    if (!value) continue;
+    console.log(`\n!! ${key}`);
+    console.log(`   ${value.note ?? ""}`);
+    if (Array.isArray(value.byTopic)) {
+      for (const topic of value.byTopic) console.log(`   ${topic.slug}: ${topic.blockIds?.join(", ")}`);
+    }
+    if (Array.isArray(value.slugs)) console.log(`   ${value.slugs.join(", ")}`);
+    if (Array.isArray(value.blockedBy)) console.log(`   blocked by: ${value.blockedBy.join(", ")}`);
+  }
+}
+
+const deployment = hub === HUBS.production ? "PRODUCTION" : hub === HUBS.staging ? "staging" : hub;
+console.log(`${op === "apply" ? "APPLY" : op} → ${deployment}  (${(bytes / 1024).toFixed(0)} KB)`);
+
+let response;
+try {
+  response = await fetch(url, { method: "POST", headers, body });
+} catch (cause) {
+  fail(`Could not reach ${hub}: ${cause instanceof Error ? cause.message : String(cause)}`);
+}
+
+const text = await response.text();
+let payload;
+try {
+  payload = JSON.parse(text);
+} catch {
+  /*
+   * A 302 to Cloudflare Access and a 401 both arrive as HTML or as a short string, and reading either as
+   * "the plan is clean" is a mistake that has been made here before. The status is checked, not the shape.
+   */
+  fail(`HTTP ${response.status} from ${hub}, and the reply was not JSON:\n${text.slice(0, 500)}`);
+}
+
+/* The MCP tools wrap their answer; the route may or may not. Read whichever shape came back. */
+const result = payload?.result ?? payload;
+printFindings(result?.findings);
+printOperations(result?.operations);
+printWarnings(result);
+
+if (Array.isArray(result?.unmanaged) && result.unmanaged.length > 0) {
+  console.log(`\nUnmanaged (${result.unmanaged.length}) — on the course, not named by this file. Never deleted:`);
+  for (const row of result.unmanaged.slice(0, 20)) console.log(`  ${row.kind} ${row.title ?? row.id}`);
+}
+
+/*
+ * THE READ-BACK'S VERDICT, PER LECTURE. `missing` is the shape a silent deletion takes: blocks the file
+ * declares and the database does not hold. `unexpected` is ordinary after a person edited in the Hub and
+ * suspicious straight after a full apply.
+ */
+if (op === "verify") {
+  const topics = Array.isArray(result?.topics) ? result.topics : [];
+  const damaged = topics.filter((t) => t?.missing?.length > 0 || t?.stored === null || t?.exists === false);
+  console.log(
+    `\nVerified ${topics.length} lecture(s): ${result?.matches ? "every one matches" : `${damaged.length} do not`}`,
+  );
+  for (const t of damaged) {
+    if (t.exists === false) console.log(`  MISSING LECTURE ${t.slug}`);
+    else if (t.stored === null) console.log(`  UNREADABLE      ${t.slug}`);
+    else console.log(`  ${t.slug}: declared ${t.declared}, stored ${t.stored}, missing ${t.missing.join(", ")}`);
+  }
+  if (!result?.matches) {
+    fail(
+      "\nBlocks this file declares are NOT stored. Re-send the whole file with --apply: a lesson body is " +
+        "a replace, so the lectures already right are a no-op and the ones that are not are rewritten whole.",
+    );
+  }
+  console.log("\nEvery lecture this file declares a body for holds exactly those blocks.");
+  process.exit(0);
+}
+
+if (apply && Array.isArray(result?.results)) {
+  const failed = result.results.filter((r) => r?.ok === false);
+  const skipped = result.results.filter((r) => r?.skipped);
+  console.log(`\nApplied ${result.applied ?? 0}, failed ${result.failed ?? 0}, skipped ${skipped.length}`);
+  for (const row of [...failed, ...skipped])
+    console.log(`  ${row.ok ? "SKIP" : "FAIL"} ${row.op} ${row.where}\n    ${row.error ?? ""}`);
+}
+
+if (!response.ok) {
+  fail(`\nHTTP ${response.status}. Nothing was written.`);
+}
+
+if (result?.refused) {
+  fail(`\nRefused: fix every finding with severity 'error' and send the file again. Nothing was written.`);
+}
+
+if (apply && (result?.failed ?? 0) > 0) {
+  fail(
+    `\n${result.failed} operation(s) were refused. Correct the manifest and re-send the whole file: everything that landed is a no-op the second time.`,
+  );
+}
+
+console.log(
+  apply
+    ? `\nDone. Verify with content_import 'verify' — an apply says a lecture was written, not that the stored body is the body you sent.`
+    : `\nPlan only, nothing written. Re-run with --apply when it reads right.`,
+);

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "erudeon",
+  "description": "erudeon's internal tooling for Claude",
+  "owner": { "name": "erudeon", "email": "bence@erudeon.com" },
+  "plugins": [
+    {
+      "name": "composer",
+      "description": "Eight phases from a course's materials to a published course on pass the year.",
+      "author": { "name": "erudeon" },
+      "category": "productivity",
+      "source": "./"
+    }
+  ]
+}
