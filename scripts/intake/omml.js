@@ -80,6 +80,19 @@ const SYMBOLS = new Map([
   ["\u201c", '"'],
   ["\u201d", '"'],
   ["\u2026", "\\ldots"],
+  /*
+   * PRIMES. `f\u2032`, `A\u2033`, `y\u2034` are how a calculus or an operations summary writes a derivative, and Word
+   * inserts the typographic character rather than an apostrophe. Strict KaTeX has no glyph for any of
+   * them and refuses the whole equation for it.
+   *
+   * Spelt `{}^{\prime}` and not `'`, because a bare apostrophe needs an atom in front of it: an
+   * equation that IS a prime, which happens in a table of notation, would be a parse error on its own.
+   */
+  ["\u2032", "{}^{\\prime}"],
+  ["\u2033", "{}^{\\prime\\prime}"],
+  ["\u2034", "{}^{\\prime\\prime\\prime}"],
+  ["\u2057", "{}^{\\prime\\prime\\prime\\prime}"],
+  ["\u2035", "{}^{\\backprime}"],
   ["\u209c", "{}_t"],
   ["\u1d05", "D"],
   ["\u00a0", " "],
@@ -178,8 +191,40 @@ const unknownAccents = new Set();
  * Applied AFTER `escapeLatex`, deliberately: the commands it inserts contain backslashes, and escaping
  * them would turn every one into the literal text `\textbackslash{}Delta`.
  */
+/**
+ * A COMBINING MARK TYPED STRAIGHT INTO A MATHS RUN.
+ *
+ * `x̄` is the sample mean and it reaches Word two ways: as an `<m:acc>` element, which this file already
+ * reads, or as the letter followed by U+0304 when somebody typed or pasted the character. The second
+ * spelling is invisible to the accent handling and is the only character, of the 69 distinct non-ASCII
+ * characters found inside maths across 134 real summaries, that strict KaTeX still refuses.
+ *
+ * A combining mark modifies the character BEFORE it, so this cannot be a table entry like every other
+ * symbol: the letter has to move inside the command's braces.
+ */
+const COMBINING = new Map([
+  ["̀", "grave"],
+  ["́", "acute"],
+  ["̂", "hat"],
+  ["̃", "tilde"],
+  ["̄", "bar"],
+  ["̅", "overline"],
+  ["̆", "breve"],
+  ["̇", "dot"],
+  ["̈", "ddot"],
+  ["̌", "check"],
+  ["⃗", "vec"],
+]);
+const COMBINING_RE = new RegExp(
+  `([^\\s\\\\{}])[${[...COMBINING.keys()].join("")}]`,
+  "gu",
+);
+
 function mapSymbols(s) {
-  let out = s;
+  let out = s.replace(COMBINING_RE, (whole, base) => {
+    const command = COMBINING.get(whole.slice(base.length));
+    return command ? `\\${command}{${base}}` : base;
+  });
   for (const [ch, command] of SYMBOLS) out = out.split(ch).join(command + " ");
   return out;
 }
@@ -204,6 +249,9 @@ const TEXT_SAFE = new Map([
   ["“", '"'],
   ["”", '"'],
   ["…", "..."],
+  ["′", "'"],
+  ["″", "''"],
+  ["‴", "'''"],
   ["×", "x"],
   [" ", " "],
   ["ₜ", "t"],

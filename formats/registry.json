@@ -1,0 +1,433 @@
+{
+  "$comment": "THE FIELD GUIDE. One entry per kind of file met in the wild: the signals that identify it, what it is FOR in a university, how it is handled, and what has already gone wrong with it. `scripts/identify.mjs` evaluates `when` against the facts it measures, so this file is data and not prose; `docs/FIELD-GUIDE.md` is generated from it and must never be edited by hand. Every `seen` field names a real file. Add an entry the day a new shape turns up, with the document that showed it.",
+  "version": 2,
+  "census": {
+    "when": "2026-09-14",
+    "files": 2325,
+    "wordDocuments": 248,
+    "summaries": 134,
+    "equations": 15546,
+    "note": "2,325 files under the course back catalogue and one operator's downloads. Every count in an entry comes from that census or from running the intake chain over it."
+  },
+  "facts": {
+    "$comment": "What identify.mjs measures on each file. An entry's `when` keys one of these; a value is either a literal to equal or a comparison string (\">0\", \"0\", \">=40\", \"<10\").",
+    "ext": "the extension, lowercased, with the dot",
+    "kind": "what the FIRST BYTES say it is: zip, pdf, ole, jpeg, png, gif, rtf, ps, text, unknown",
+    "extMatchesBytes": "true when the extension agrees with the bytes",
+    "kb": "size in kilobytes",
+    "ooxml": "for a zip: word, excel, powerpoint, or other-zip",
+    "generator": "docProps/app.xml <Application>, empty when the writer did not set one",
+    "paragraphs": "count of <w:p>",
+    "pStyle": "count of <w:pStyle>",
+    "headingStyles": "paragraph styles resolving to a heading level, through outlineLvl and basedOn",
+    "oMath": "count of <m:oMath>, which is the only place Word keeps an equation",
+    "tables": "count of <w:tbl>",
+    "numbering": "count of <w:numPr>",
+    "literalBullets": "bullet characters typed into the text rather than applied as numbering",
+    "pictures": "count of <a:blip>",
+    "textboxes": "count of <w:txbxContent>",
+    "shapes": "count of <v:shape>",
+    "wdp": "HD Photo sidecar files inside the archive",
+    "comments": "1 when word/comments.xml is present",
+    "tracked": "count of <w:ins> and <w:del>",
+    "words": "words of body text",
+    "currency": "currency signs in the body text",
+    "excelFormulas": "spreadsheet function calls written into the text",
+    "htmlPasteStyles": "style ids that only exist because HTML was pasted in (MsoNormal, KaTeX class names)",
+    "semanticStyles": "paragraph styles the AUTHOR created, by Word's own w:customStyle flag, that are not headings; their names are what the author said each paragraph is for",
+    "accentStrippedStyles": "style ids that are a non-English word with its accents removed, which is what Word does to a localised style name",
+    "textLayer": "for a pdf: true when it carries extractable text",
+    "pdfProducer": "the /Producer string, which says what made the PDF",
+    "wordsPerEquation": "words divided by equations, which is how dense a document's maths is; null when it has none",
+    "pdfPages": "for a pdf: how many pages it draws"
+  },
+  "entries": [
+    {
+      "id": "word-native",
+      "name": "Word, written in Word",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "headingStyles": ">0",
+        "generator": "~Word"
+      },
+      "purpose": "The ordinary summary. Somebody wrote it in Word and used the heading styles, so the document carries its own structure.",
+      "handling": "open-docx.js, then docx.js. The heading level is read from the style's outlineLvl, which is Word's own answer and does not depend on what the style is called.",
+      "seen": "215 of 248 Word documents name Microsoft Office Word as their generator. SUMMARY_Introduction_to_Math: 1,615 paragraphs, 146 headings, 1,249 equations.",
+      "gotcha": "The generator is what makes this claim honest. Word ALWAYS writes <Application> into docProps/app.xml, so a document with headings and no generator was written somewhere else and belongs to google-docs-export instead."
+    },
+    {
+      "id": "word-localised-styles",
+      "name": "Word whose styles are named in another language",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "accentStrippedStyles": ">0"
+      },
+      "purpose": "The author's Word is not in English, so its built-in styles are not either. Nothing about the content is unusual, and the author has no idea anything is different.",
+      "handling": "Nothing special, because the level never comes from the name. A style carries outlineLvl in its own definition or inherits it through basedOn, and that is what makes it a heading.",
+      "seen": "Draft Summary.docx: heading styles Cmsor1 to Cmsor7, which is Word writing the Hungarian Cimsor with the accents stripped out of the id. Accounting_Formula_Sheet: Egyenlet (equation) and Stlus3, Stlus4 (style).",
+      "gotcha": "A rule that looks for a style called Heading finds nothing here and concludes the document is unstructured. The old extractor found 0 headings in Draft Summary; reading outlineLvl finds 18."
+    },
+    {
+      "id": "word-with-omml",
+      "name": "Word carrying real equations",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "oMath": ">0"
+      },
+      "purpose": "Any quantitative course. The equations are OOXML maths objects, not text, so they are invisible to anything that reads runs.",
+      "handling": "omml.js, reached through docx.js, then katex-check.js before a manifest exists.",
+      "seen": "87 of 248 Word documents. 15,546 equations across the 134 summaries; one document holds 1,249.",
+      "gotcha": "mammoth and python-docx drop <m:oMath> in SILENCE. The document comes out looking clean and missing every formula. This is the most expensive failure in the whole intake, because nothing about the result looks wrong."
+    },
+    {
+      "id": "word-html-paste",
+      "name": "Word with a web page pasted into it",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "htmlPasteStyles": ">0"
+      },
+      "purpose": "An author copied from a rendered page (a wiki, a lecture site, a maths page) straight into Word. The paste brings the page's CSS classes with it as Word styles.",
+      "handling": "Converts normally. The tell is a styles.xml full of names no author chose.",
+      "seen": "Four accounting summaries carry KaTeX's own class names as Word styles: katex, base, strut, mord, msupsub, vlist, alongside msonormal0 from an HTML paste.",
+      "gotcha": "Maths that was pasted as RENDERED HTML is not an equation any more; it is styled text that looks right and carries no <m:oMath>. Check the equation count against what the document appears to contain: these four had OMML as well, so the paste was not the whole document, but a document where oMath is 0 and the pages are full of formulas has lost every one of them."
+    },
+    {
+      "id": "word-semantic-template",
+      "name": "Word written on the house template",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "semanticStyles": ">0"
+      },
+      "purpose": "The summary template gives the author named styles for the things a summary is made of, so the author has already said which paragraph is an example, which is a recap, and which is not their prose at all.",
+      "handling": "Convert normally. `docx.js` writes each one into the Markdown as `<!-- style: In Short -->` above its paragraph, and the layout phase reads those instead of guessing. What a name may BECOME on the page is the platform's vocabulary: ask content_guide, never a list kept here.",
+      "seen": "SUMMARY_Micro carries 37 marked paragraphs: Example (18), In Short (18) and not-prose (1). CHEAT_SHEET_Applied_Statistics adds Summary. GG_SummaryTemplate2026.dotx is the template itself.",
+      "gotcha": "This is the one piece of authorial intent in the whole file and every extractor that asked only whether a style is a heading threw it away. Word marks these itself with w:customStyle=\"1\", so finding them needs no list of names to keep up to date."
+    },
+    {
+      "id": "word-template",
+      "name": "A Word template, not a document",
+      "status": "caught",
+      "when": {
+        "ext": ".dotx"
+      },
+      "purpose": "The house format itself: the styles every summary is written on. It is what a new summary starts from, and it is not course content.",
+      "handling": "Never a source. Read it to learn what the house styles MEAN, which is what makes word-semantic-template readable.",
+      "seen": "GG_SummaryTemplate2026.dotx, GG_Template2025.docx",
+      "gotcha": "It parses perfectly and produces a document of placeholder text. Nothing about the output says it was a template."
+    },
+    {
+      "id": "word-no-styles",
+      "name": "Word with no styles at all",
+      "status": "partial",
+      "when": {
+        "ooxml": "word",
+        "headingStyles": "0",
+        "paragraphs": ">=40"
+      },
+      "purpose": "Usually a Google Docs export, sometimes a document somebody typed without ever touching the style menu. Either way the heading level exists only as a font size.",
+      "handling": "docx2.js, NOT docx.js, and then LOOK at the result. It ranks the distinct font sizes above the body size into levels, which is typography and not structure.",
+      "seen": "35 of 248 Word documents carry no pStyle. Most are short notes; the substantial ones are Questions tutorial C (178 paragraphs), RoughTimeLine (165) and Assg1 draft (104).",
+      "gotcha": "docx.js does not fail on these; it used to flatten the document to one level in silence, and nothing downstream could tell that from a document that genuinely has no headings. It now exits non-zero and says so."
+    },
+    {
+      "id": "google-docs-export",
+      "name": "Word, exported from Google Docs",
+      "status": "partial",
+      "when": {
+        "ooxml": "word",
+        "generator": ""
+      },
+      "purpose": "The author wrote it in Google Docs and downloaded it as Word. Common, because Docs is what a laptop already has.",
+      "handling": "Whether docx.js works depends on the document: Docs writes real heading styles when the author used its own heading menu, and nothing when they only made the text bigger. Run docx.js and believe what it reports.",
+      "seen": "33 of 248 Word documents set no <Application> in docProps/app.xml, which Word always sets. Nevtelen dokumentum.docx is a Docs document that was never even named.",
+      "gotcha": "An absent generator is a better signal than a missing style: Word ALWAYS writes one, so its absence means the file came from somewhere else, whatever the rest of it looks like."
+    },
+    {
+      "id": "word-under-review",
+      "name": "Word that is still being reviewed",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "comments": ">0"
+      },
+      "purpose": "A draft somebody has commented on. The comments are a conversation about the text, not part of it.",
+      "handling": "Converts normally and the comments do not come with it, because they live in a separate part. Treat the document as a DRAFT: somebody is still arguing with it.",
+      "seen": "24 of 248 Word documents carry word/comments.xml, including all seven Week N.docx files of one course.",
+      "gotcha": "Nothing in the extracted text says the document was still being argued over, so a course can be built from a draft nobody signed off."
+    },
+    {
+      "id": "word-tracked-changes",
+      "name": "Word with tracked changes still in it",
+      "status": "not caught",
+      "when": {
+        "ooxml": "word",
+        "tracked": ">0"
+      },
+      "purpose": "A document mid-edit, where the file holds both what it said and what it will say.",
+      "handling": "NOT HANDLED. The extractor reads every run, so deleted text comes through as if it were still there and the result is a mix of two drafts. Accept the changes in Word first.",
+      "seen": "None yet, in 248 Word documents. Listed because the failure is silent and the fix is somebody else's ten seconds.",
+      "gotcha": "Text inside <w:del> reads exactly like text that was never deleted."
+    },
+    {
+      "id": "word-pictures-in-headings",
+      "name": "Word with pictures, text boxes and drawn shapes",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "textboxes": ">0"
+      },
+      "purpose": "An author pasted a graph into a heading, or floated a label over the text. Ordinary authoring, and invisible in the text stream.",
+      "handling": "One ordered pass over the document, never a walk over paragraph-shaped chunks.",
+      "seen": "30 of 248 documents carry text boxes and 40 carry VML shapes. SUMMARY_Introduction_to_Math: 53 pictures, 10 text boxes, 16 shapes.",
+      "gotcha": "A paragraph-based scan found 32 of those 53 pictures, 0 of the 10 text boxes and 3 of the 16 shapes. A text box and a drawn shape are the two defects no text diff can see."
+    },
+    {
+      "id": "wdp-sidecar",
+      "name": "Word's HD Photo sidecars",
+      "status": "caught",
+      "when": {
+        "wdp": ">0"
+      },
+      "purpose": "None for us. Word writes an alternate-format copy beside each real picture.",
+      "handling": "Excluded from the media inventory. They are never content.",
+      "seen": "35 of 248 documents. 45 of the 98 media files in SUMMARY_Introduction_to_Math.",
+      "gotcha": "Counting them reported 66 unreferenced images and buried the 2 that were genuinely orphaned."
+    },
+    {
+      "id": "cheat-sheet",
+      "name": "A cheat sheet",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "oMath": ">20",
+        "wordsPerEquation": "<10",
+        "words": "<1500"
+      },
+      "purpose": "A one-page formula reference a student revises from. Almost all symbols, almost no prose, and one of the most useful things a course holds.",
+      "handling": "Converts normally. Its shape means the usual assumptions do not hold: it is not a lecture, it has no sections worth the name, and its density is the point.",
+      "seen": "10 of 248 documents. CHEAT_SHEET Applied Statistics: 530 words carrying 89 equations.",
+      "gotcha": "A word-count rule that decides a document is too thin rejects exactly these, and a no-headings rule flags them as broken when they are simply a list. The length is part of the identity: a 12,000-word summary with dense maths is a maths course, not a cheat sheet, and only the word count separates the two."
+    },
+    {
+      "id": "spreadsheet-formulas-as-equations",
+      "name": "Word where the equations are spreadsheet formulas",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "excelFormulas": ">0"
+      },
+      "purpose": "A data or analytics course teaching Excel. The author typed the formulas into Word's equation editor because that is where formulas go.",
+      "handling": "Converts, but these are not mathematics and should not become formula blocks. They are code, and a code span reads better than a refused equation.",
+      "seen": "4 of 248 documents. Introduction to Data Analytics: SUMIF, SUMIFS, ROUND, IF among 100 equations.",
+      "gotcha": "An underscore inside a function name is a LaTeX escape problem and a dollar in a cell reference is a delimiter problem. Both refused equations before they were fixed."
+    },
+    {
+      "id": "money-summary",
+      "name": "A summary about money",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "currency": ">0"
+      },
+      "purpose": "Accounting, finance, operations. Prose full of amounts, and amounts inside the equations too.",
+      "handling": "Converts normally. The currency in prose is prose; the currency inside an equation is written as an escaped dollar.",
+      "seen": "99 of 248 documents. Operations and Supply Chain, Accounting, Intermediate Accounting.",
+      "gotcha": "This one shape caused five separate bugs. A dollar in prose pairs with the next one and everything between becomes an equation: on one summary that made a single 5,000-character span covering half a chapter. Pandoc's delimiter rule settles it, but only if an ESCAPED dollar is not allowed to close a span, which is the mistake that turned 5 refusals across the corpus into 24 in one run."
+    },
+    {
+      "id": "accounting-tables",
+      "name": "An accounting summary, which is mostly tables",
+      "status": "caught",
+      "when": {
+        "ooxml": "word",
+        "tables": ">50"
+      },
+      "purpose": "Journal entries, ledgers and trial balances are tables, and a summary of them is a document made of tables with prose between.",
+      "handling": "Converts to GitHub-flavoured Markdown tables. A journal entry is Account / Debit / Credit and stays that way; the layout phase has element types for these and must not invent its own.",
+      "seen": "147 of 248 documents carry tables at all. Summary_Intermediate_Accounting: 154 tables. SUMMARY_Accounting: 91.",
+      "gotcha": "A cell holds ONE line: a newline in it ends the table, and an unescaped pipe opens a column that is not there. Merged cells make rows of different widths, and a separator row narrower than the header silently drops every column past it."
+    },
+    {
+      "id": "pdf-text",
+      "name": "PDF with a real text layer",
+      "status": "partial",
+      "when": {
+        "kind": "pdf",
+        "textLayer": true
+      },
+      "purpose": "Course manuals, past exams, answer keys, grading schemes, tutorial sheets. Almost everything a university publishes that is not the summary itself.",
+      "handling": "Readable, and refused as a SOURCE for a summary. It is an input to Analyze and a checklist item, not something to convert into a lesson.",
+      "seen": "1,131 PDFs in the census. 24 past exams and answer keys, two course manuals, eight tutorial sheets, four grading schemes.",
+      "gotcha": "The PDF extractor needs four hand-tuned parameters per document (font map, page list, size map, footer pattern) and none can be guessed. It is not a general reader and must never be offered as one."
+    },
+    {
+      "id": "pdf-latex",
+      "name": "A PDF a lecturer made in LaTeX",
+      "status": "partial",
+      "when": {
+        "kind": "pdf",
+        "pdfProducer": "~pdfTeX"
+      },
+      "purpose": "Problem sets, lecture notes and exams from a mathematics or economics department. The most carefully typeset thing in the course and the hardest to read back.",
+      "handling": "Text extraction works, and the maths does not: LaTeX-made PDFs draw formulas as positioned glyphs, so an integral comes out as scattered letters. Retype the formulas from the rendered page; never trust the extracted text for them.",
+      "seen": "36 PDFs from pdfTeX, plus 7 from dvips and Ghostscript together.",
+      "gotcha": "The prose extracts beautifully, which makes it look as though the whole document did."
+    },
+    {
+      "id": "pdf-from-word",
+      "name": "A PDF somebody printed from Word",
+      "status": "partial",
+      "when": {
+        "kind": "pdf",
+        "pdfProducer": "~Microsoft"
+      },
+      "purpose": "The summary, exported. It is the same document as the .docx, one generation later and with everything structural removed.",
+      "handling": "Refused as a source. GO AND FIND THE .docx: it exists, somebody made this from it, and it carries the headings, the numbering and the equations that this does not.",
+      "seen": "125 PDFs name a Microsoft product as their producer, and 7 more say Microsoft: Print To PDF. Almost every summary in the catalogue sits beside its own PDF twin.",
+      "gotcha": "It is the most tempting wrong answer in the whole intake, because it looks complete and it opens."
+    },
+    {
+      "id": "pdf-scan-no-text",
+      "name": "A scan with no text layer",
+      "status": "not caught",
+      "when": {
+        "kind": "pdf",
+        "textLayer": false
+      },
+      "purpose": "A photographed or scanned handout, an old exam paper, a whiteboard. Common for anything predating the course's own digital records.",
+      "handling": "NOT HANDLED. There is no OCR in this pipeline. Say so plainly, record it as a missing input, and ask for a digital original.",
+      "seen": "455 PDFs carry no /Producer at all, which is where these live. None has yet been needed as a source.",
+      "gotcha": "An empty extract from a scan looks exactly like an empty extract from a broken parse. Detect the absent text layer and say which it is."
+    },
+    {
+      "id": "docx-that-is-a-pdf",
+      "name": "A PDF wearing a .docx extension",
+      "status": "caught",
+      "when": {
+        "ext": ".docx",
+        "kind": "pdf"
+      },
+      "purpose": "Usually a summary somebody exported to PDF and renamed, hoping it would be accepted.",
+      "handling": "Refused at preflight on the magic bytes. Go and find the Word file it came from.",
+      "seen": "SUMMARY_IHC_(GradeGuru).docx, in four places in the catalogue. Social_Psychology_Lectures_EN.docx.",
+      "gotcha": "Two of four files on one real upload were this. It is common enough to check every time."
+    },
+    {
+      "id": "pdf-that-is-a-docx",
+      "name": "A Word file wearing a .pdf extension",
+      "status": "caught",
+      "when": {
+        "ext": ".pdf",
+        "kind": "zip"
+      },
+      "purpose": "Somebody renamed it, or a download went wrong. This one is GOOD NEWS: the file is better than its name.",
+      "handling": "Rename it and convert it normally. Do not discard it as a PDF, which is what a rule keyed on the extension does.",
+      "seen": "10 files. Among them 2019-20 Exam.pdf and 2023-24 Exam.pdf, sitting in a live course workspace as past exams, and SUMMARY(Preview)_IHC_(GradeGuru).pdf.",
+      "gotcha": "The pipeline refuses PDF as a source, so the extension alone decided these were unusable. They are Word documents."
+    },
+    {
+      "id": "docx-that-is-a-photograph",
+      "name": "A photograph wearing a .docx extension",
+      "status": "caught",
+      "when": {
+        "ext": ".docx",
+        "kind": "jpeg"
+      },
+      "purpose": "None. A file was renamed, or a download went wrong. It is not the document anybody meant to send.",
+      "handling": "Refused at preflight on the magic bytes. Go and find the real file; there is nothing to salvage.",
+      "seen": "IBA1_IB_Literature_Summary.docx, 32 KB, JPEG magic.",
+      "gotcha": "The extension is not evidence, and neither is the size: 32 KB is a plausible size for a short document."
+    },
+    {
+      "id": "placeholder-note",
+      "name": "A note somebody left instead of the file",
+      "status": "caught",
+      "when": {
+        "kind": "text",
+        "kb": "<2"
+      },
+      "purpose": "A person told you something and the filesystem swallowed it. The file is a sentence.",
+      "handling": "Read it. It is an answer to a question about the course, not an input.",
+      "seen": "2020-21 Exam.pdf, in a live course workspace, whose entire contents are: Not gonna do a summary for this.",
+      "gotcha": "It is named like a past exam and sits in a folder of past exams. Nothing but opening it says otherwise."
+    },
+    {
+      "id": "powerpoint",
+      "name": "Lecture slides",
+      "status": "not caught",
+      "when": {
+        "ooxml": "powerpoint"
+      },
+      "purpose": "What the lecturer actually showed. Often the only statement of what is examinable, and the thing students ask about most.",
+      "handling": "NOT HANDLED. There is no PowerPoint reader here. Slides are an input to Analyze, read by a person, and never a source of record.",
+      "seen": "68 .pptx files in the census.",
+      "gotcha": "A deck is not prose and would not become one: its structure is one idea per slide with the argument in the speaker's mouth. Converting it would produce something that reads like a summary and is not one."
+    },
+    {
+      "id": "spreadsheet",
+      "name": "A spreadsheet",
+      "status": "not caught",
+      "when": {
+        "ooxml": "excel"
+      },
+      "purpose": "Grade books, datasets a statistics course works on, financial models an accounting course builds.",
+      "handling": "NOT HANDLED as a source. A dataset a course teaches ON belongs in materials, not in a lesson.",
+      "seen": "104 .xlsx files in the census.",
+      "gotcha": "A summary that teaches a spreadsheet writes its formulas as text; see spreadsheet-formulas-as-equations. The spreadsheet itself is a different thing."
+    },
+    {
+      "id": "legacy-doc",
+      "name": "The old binary Word format",
+      "status": "not caught",
+      "when": {
+        "kind": "ole"
+      },
+      "purpose": "Anything written before 2007, or by somebody who never changed the default. Still turns up from university archives.",
+      "handling": "NOT HANDLED. It is a compound OLE file and shares nothing with a .docx. Open it in Word and save as .docx; that conversion is lossless and takes a moment.",
+      "seen": "None in this census, which is itself worth knowing: .doc has finally gone.",
+      "gotcha": "It is not a zip, so every tool here fails on it at the first byte, which is at least honest."
+    },
+    {
+      "id": "image-mislabelled",
+      "name": "An image that is not the format it claims",
+      "status": "caught",
+      "when": {
+        "ext": ".jpg",
+        "kind": "png"
+      },
+      "purpose": "A screenshot. A phone or an operating system saved PNG bytes under a .jpg name, or something re-encoded it on the way.",
+      "handling": "Harmless for a figure, because the bytes are read and not the name. It matters when a tool picks an encoder by extension.",
+      "seen": "17 files, all named IMG_NNNN.jpg and all PNG.",
+      "gotcha": "Listed because the same mistake at document scale is the expensive one, and because it proves the rename happens by accident and not by intent."
+    },
+    {
+      "id": "heic-photo",
+      "name": "An iPhone photograph",
+      "status": "not caught",
+      "when": {
+        "ext": ".heic"
+      },
+      "purpose": "A student photographed a whiteboard, a worked solution, or a page of a book.",
+      "handling": "NOT HANDLED. Nothing in this pipeline reads HEIC, and the reader will not serve it. Convert to PNG or JPEG first; macOS Preview does it.",
+      "seen": "7 files.",
+      "gotcha": "It previews fine on a Mac, so it looks like a working image right up to the upload."
+    },
+    {
+      "id": "saved-web-page",
+      "name": "A saved web page",
+      "status": "not caught",
+      "when": {
+        "ext": ".mhtml"
+      },
+      "purpose": "Somebody archived a page from the university's learning environment, usually because it was about to disappear.",
+      "handling": "NOT HANDLED. Read it in a browser and decide what it is; there is nothing here that parses one.",
+      "seen": "15 files, alongside 34 plain .html.",
+      "gotcha": "It is one file containing an entire page and its assets, so its size says nothing about how much content it holds."
+    }
+  ]
+}

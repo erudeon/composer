@@ -67,8 +67,12 @@ prose or rewrites prose and gets refused. Both happened on one run.
 comma, colon or semicolon is a safe substitute for an em dash. It folds ellipses and curly quotes, drops
 trailing punctuation, strips emphasis marks, rejoins a hyphen broken across a line, collapses whitespace,
 lowercases, and unescapes a backslash before ASCII punctuation. **It does not strip a literal bullet**,
-which is why the normaliser runs first, and why a footer spliced mid-sentence breaks a match that is
-otherwise a perfect copy. Very short units are skipped entirely.
+and a footer spliced mid-sentence breaks a match that is otherwise a perfect copy, which is why the
+normaliser runs first. Very short units are skipped entirely.
+
+A bullet that reaches the source of record now is one the AUTHOR typed, not scaffolding: the extractor
+writes Word's own numbering as `-` and `1.`. It used to write a literal `•`, which made this warning fire
+on 111 of 134 real documents and mean nothing.
 
 ## The two glossary doors disagree
 

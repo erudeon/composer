@@ -35,3 +35,35 @@ findings list, and the platform behaviours no schema describes.
   three separate corruption bugs in one upload and was its largest single time sink. `lib.js` is the
   version that survived them, and `t_dash.js`, `t_emph.js` and `t_pair.js` are why. Run them after
   touching it.
+- The `t_*.js` files are the unit checks, one per thing that has broken. Run all of them:
+  `for t in scripts/intake/t_*.js; do node "$t" >/dev/null || echo "FAILED $t"; done`.
+  `t_omml.js` covers the equation reader, `t_spans.js` where the maths is in a piece of text, and
+  `t_docx.js` heading resolution and Markdown tables.
+
+## Rules for the field guide
+
+`formats/registry.json` is the catalogue of every kind of file this pipeline has met. It is DATA, not
+prose: `scripts/identify.mjs` evaluates each entry's `when` against facts it measures from the bytes,
+and `docs/FIELD-GUIDE.md` is generated from it.
+
+- **Every `seen` field names a real file.** An entry nobody has met is a guess, and a guess in the
+  catalogue is worse than a gap, because the next person believes it.
+- **Never edit `docs/FIELD-GUIDE.md`.** Edit the registry and run
+  `node scripts/identify.mjs --write-guide`. The validator fails when the two disagree.
+- An entry may only key on a fact declared in the registry's own `facts` block. `validate.mjs` refuses
+  one that does not, because a `when` clause naming a fact nothing measures matches nothing and tells
+  nobody.
+- `status` is honest: `caught`, `partial`, or `not caught`. A format we cannot read is worth an entry
+  saying so; the alternative is somebody rediscovering it at midnight.
+
+## Before changing anything in the intake chain
+
+```
+node scripts/validate.mjs
+node scripts/corpus-check.mjs <folder-of-real-summaries>
+```
+
+The second is the one that matters. Every bug worth finding in this pipeline was found by running real
+documents through it and none by reading the code, and a fix verified only on the document that showed
+it is how three of them came back. It takes a folder and carries none: the documents are somebody's
+coursework and do not belong in a public repository.

@@ -26,52 +26,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const zlib = require("node:zlib");
-
-/** What the first bytes actually say the file is, whatever it is called. */
-function sniff(buf) {
-  if (buf.length >= 4 && buf.toString("latin1", 0, 4) === "%PDF") return "pdf";
-  if (buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04) return "zip";
-  if (buf.length >= 8 && buf.toString("hex", 0, 8) === "d0cf11e0a1b11ae1") return "doc";
-  return "unknown";
-}
-
-/**
- * `word/document.xml` out of a .docx, without a zip library.
- *
- * Reads the end-of-central-directory record backwards, which is the only reliable way in: a local file
- * header may carry zeroed sizes when the writer streamed the entry, and Word does exactly that.
- */
-function documentXml(buf) {
-  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-  if (eocd < 0) return null;
-  const count = buf.readUInt16LE(eocd + 10);
-  let at = buf.readUInt32LE(eocd + 16);
-  for (let i = 0; i < count; i += 1) {
-    if (buf.readUInt32LE(at) !== 0x02014b50) return null;
-    const method = buf.readUInt16LE(at + 10);
-    const compressed = buf.readUInt32LE(at + 20);
-    const nameLen = buf.readUInt16LE(at + 28);
-    const extraLen = buf.readUInt16LE(at + 30);
-    const commentLen = buf.readUInt16LE(at + 32);
-    const localAt = buf.readUInt32LE(at + 42);
-    const name = buf.toString("latin1", at + 46, at + 46 + nameLen);
-    if (name === "word/document.xml") {
-      // The LOCAL header's own name and extra lengths, which differ from the central directory's.
-      const localNameLen = buf.readUInt16LE(localAt + 26);
-      const localExtraLen = buf.readUInt16LE(localAt + 28);
-      const from = localAt + 30 + localNameLen + localExtraLen;
-      const bytes = buf.subarray(from, from + compressed);
-      try {
-        return method === 0 ? bytes.toString("utf8") : zlib.inflateRawSync(bytes).toString("utf8");
-      } catch {
-        return null;
-      }
-    }
-    at += 46 + nameLen + extraLen + commentLen;
-  }
-  return null;
-}
+const { sniff, entry } = require("./docx-zip.js");
 
 /** Every "Page 7 of 81" / "Pagina 7 van 81" in the text, in both languages and either order. */
 function footerPages(text) {
@@ -94,7 +49,7 @@ function report(file) {
   const buf = fs.readFileSync(file);
   const ext = path.extname(file).toLowerCase();
   const actual = sniff(buf);
-  const claimed = ext === ".docx" ? "zip" : ext === ".pdf" ? "pdf" : ext === ".doc" ? "doc" : "text";
+  const claimed = ext === ".docx" ? "zip" : ext === ".pdf" ? "pdf" : ext === ".doc" ? "ole" : "text";
 
   const lines = [];
   lines.push(`\n${path.basename(file)}  (${(buf.length / 1024).toFixed(0)} KB)`);
@@ -112,7 +67,7 @@ function report(file) {
   let text = null;
   let xml = null;
   if (actual === "zip") {
-    xml = documentXml(buf);
+    xml = entry(buf, "word/document.xml");
     if (xml === null) lines.push("  ! could not read word/document.xml — unzip it by hand and census that");
     else text = xml.replace(/<[^>]+>/g, "");
   } else if (actual === "unknown") {

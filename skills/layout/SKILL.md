@@ -95,6 +95,39 @@ Prose is verbatim; everything else is yours to place. Only prose is checked word
 point: copy the author's sentences exactly where it matters, and restructure the same facts into a table
 or a callout where that teaches better.
 
+### The author may have already told you
+
+Look for `<!-- style: ... -->` in the slice. Those are the styles the AUTHOR created in Word, written
+out by `docx.js`, and each one marks the paragraph under it:
+
+```
+<!-- style: In Short -->
+
+The recap paragraph.
+```
+
+**Believe them over your own reading.** `Example`, `In Short`, `not-prose` and whatever else a template
+carries are the author saying what a paragraph is for, and that is better evidence than anything you can
+infer from the sentences. Ask `content_guide` what each one may become on the page; the marker gives you
+the intent, not the element name.
+
+A paragraph marked `not-prose` is not the author's prose and must not go into a prose block.
+
+### A lesson starts at heading 2
+
+**Inside a lesson the headings are `##` and `###`. Never `#`.**
+
+The unit's own top-level heading IS the lesson: it becomes the topic's title and never appears again as
+a block. A `#` inside the body puts a second document title halfway down the page, competing with the
+one the reader already draws from the topic.
+
+So the document's own levels shift down by one on the way in: the source's `#` is the lesson title, its
+`##` are the sections, its `###` the subsections. Anything deeper than `###` is a paragraph with a bold
+lead, not a heading: the reader's outline stops at three and a `####` is invisible in it.
+
+The extractor does NOT do this shift. `docx.js` reports the document's real levels, because that is how
+you find where one unit stops and the next starts. The shift is yours, here, when a unit becomes blocks.
+
 ```
 prose            the section heading and its paragraphs, one block per subsection
 callout          the source's own short example, lifted out of the paragraph

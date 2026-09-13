@@ -168,7 +168,18 @@ const referenceText = skillNames
       : [];
   })
   .join("\n");
-const allProse = `${skillText}\n${referenceText}\n${existsSync(join(ROOT, "README.md")) ? readFileSync(join(ROOT, "README.md"), "utf8") : ""}`;
+/*
+ * Every page that can tell somebody to run something. CLAUDE.md belongs here: a maintainer's tool is
+ * documented for a maintainer, and leaving it out reported the corpus harness as unreachable while its
+ * instructions sat one file away.
+ */
+const allProse = [skillText, referenceText, "README.md", "CLAUDE.md"]
+  .map((p) =>
+    p.endsWith(".md") && existsSync(join(ROOT, p))
+      ? readFileSync(join(ROOT, p), "utf8")
+      : p,
+  )
+  .join("\n");
 
 function scriptsUnder(dir, prefix = "") {
   const full = join(ROOT, dir);
@@ -200,6 +211,76 @@ for (const s of scriptsUnder("scripts")) {
   if (!allProse.includes(s) && !allProse.includes(base)) {
     warnings.push(
       `scripts/${s}: nothing tells an operator to run it, and no other script imports it.`,
+    );
+  }
+}
+
+/*
+ * ── THE FIELD GUIDE ──────────────────────────────────────────────────────────────────────────────────
+ *
+ * `formats/registry.json` is knowledge as DATA, which only works while it stays machine-readable: an
+ * entry keyed on a fact nothing measures matches nothing and says so to nobody, and a `when` clause
+ * with a typo in its comparison silently never fires. Both are invisible at a glance.
+ *
+ * `docs/FIELD-GUIDE.md` is generated from it. Checked here rather than trusted, because a generated
+ * file somebody edited by hand is a second source of truth wearing the face of the first.
+ */
+const registryPath = join(ROOT, "formats", "registry.json");
+if (!existsSync(registryPath)) {
+  errors.push("formats/registry.json is missing: the field guide has no data.");
+} else {
+  const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+  const knownFacts = new Set(
+    Object.keys(registry.facts ?? {}).filter((k) => !k.startsWith("$")),
+  );
+  const STATUSES = new Set(["caught", "partial", "not caught"]);
+  const ids = new Set();
+  for (const e of registry.entries ?? []) {
+    const where = `formats/registry.json (${e.id ?? "an entry with no id"})`;
+    if (!e.id || ids.has(e.id))
+      errors.push(`${where}: missing or duplicate id.`);
+    ids.add(e.id);
+    for (const field of [
+      "name",
+      "status",
+      "when",
+      "purpose",
+      "handling",
+      "seen",
+    ])
+      if (!e[field]) errors.push(`${where}: no ${field}.`);
+    if (e.status && !STATUSES.has(e.status))
+      errors.push(
+        `${where}: status "${e.status}" is not one of ${[...STATUSES].join(", ")}.`,
+      );
+    for (const [key, cond] of Object.entries(e.when ?? {})) {
+      if (!knownFacts.has(key))
+        errors.push(
+          `${where}: keyed on "${key}", which identify.mjs does not measure.`,
+        );
+      if (
+        typeof cond === "string" &&
+        /^[<>~=]/.test(cond) &&
+        !/^(>=|<=|>|<)\s*-?\d+(\.\d+)?$|^~./.test(cond)
+      )
+        errors.push(
+          `${where}: "${key}: ${cond}" is not a comparison identify.mjs can evaluate.`,
+        );
+    }
+  }
+
+  const guidePath = join(ROOT, "docs", "FIELD-GUIDE.md");
+  const { guide } = await import(
+    `file://${join(ROOT, "scripts", "identify.mjs")}`
+  );
+  if (!existsSync(guidePath)) {
+    errors.push(
+      "docs/FIELD-GUIDE.md is missing. Run: node scripts/identify.mjs --write-guide",
+    );
+  } else if (readFileSync(guidePath, "utf8") !== guide()) {
+    errors.push(
+      "docs/FIELD-GUIDE.md does not match formats/registry.json. It is GENERATED: edit the registry, " +
+        "then run `node scripts/identify.mjs --write-guide`.",
     );
   }
 }

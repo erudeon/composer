@@ -34,6 +34,22 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/preflight.js" <file> ...
 **Read every `!` before parsing a word.** Each check is a defect that has shipped or nearly shipped a
 course. **Markdown and `.docx` are accepted. PDF is refused as a source.**
 
+Then ask what the files actually are:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/identify.mjs" <folder> --all
+```
+
+This reads the bytes against `formats/registry.json`, the catalogue of every kind of file this pipeline
+has met: what it is for in a university, how to handle it, and what has already gone wrong with it. It
+matches more than one kind per file on purpose, because a document is a Word file AND a document with
+equations AND a document about money, and each of those carries its own warning. **A file it does not
+recognise is reported by name and is a request to add an entry, never a reason to guess.**
+
+Two findings from it change what you do, and both look ordinary: a `.pdf` whose bytes are a Word file is
+usable and its name is a lie in the useful direction, and a `.docx` whose bytes are a PDF or a
+photograph is not a document at all. Both have sat in live course folders.
+
 Run it on every NEW file, not just the first. One engagement lost hours to a lecture source that held a
 different course's content entirely, found only when somebody extracted the text. **Grep the extract for
 a word the course must contain and a word it must not.** And if a source is missing or wrong twice, go
