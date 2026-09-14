@@ -69,6 +69,21 @@ const RULES = [
     },
   },
   {
+    /*
+     * A STEPS TABLE TAKES NEITHER `head` NOR `roles`. It draws each row's cells stacked, one under the
+     * next, which is right for a procedure and wrong for anything with a column of figures. Giving it
+     * either prop is not refused: the props are simply dropped, so a financial statement's subtotals
+     * stop being subtotals and nothing says so.
+     */
+    name: "a steps table given props it cannot draw",
+    becomes: "table with variant data",
+    test: (b) => {
+      if (b.type !== "table" || b.variant !== "steps") return null;
+      const dropped = [b.head?.length ? "head" : null, b.roles?.length ? "roles" : null].filter(Boolean);
+      return dropped.length > 0 && `${dropped.join(" and ")} will be dropped, not drawn`;
+    },
+  },
+  {
     name: "markdown table in prose",
     becomes: "table",
     test: (b) => b.type === "prose" && /^\s*\|.*\|/m.test(b.body ?? "") && "a pipe table left in the text",

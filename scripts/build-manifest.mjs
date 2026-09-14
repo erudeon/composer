@@ -104,6 +104,28 @@ const FLAG_KIND = /(🎯|💡|📌|⚠️)/u;
  *
  * Told apart by where the emphasis closes: at the very end and nowhere else, it wrapped the line.
  */
+/** The list item shapes `docx.js` writes: `- ` for a bullet and `1. ` for an ordered item. */
+const LIST_ITEM = /^\s*(?:[-*]\s|\d+[.)]\s)/;
+
+/**
+ * What a colon-ended flag announces: the next line that is content, and the whole RUN of it when that
+ * line is a list item. Returned joined, so the callout carries it as the one thing it is.
+ */
+function followingContent(unitLines, at) {
+  let j = at + 1;
+  while (j < unitLines.length && (!unitLines[j].trim() || AUTHORED_STYLE.test(unitLines[j]))) j += 1;
+  const first = unitLines[j];
+  if (first === undefined) return null;
+  if (!LIST_ITEM.test(first)) return first;
+  const run = [];
+  for (; j < unitLines.length; j += 1) {
+    if (!unitLines[j].trim()) continue;
+    if (!LIST_ITEM.test(unitLines[j])) break;
+    run.push(unitLines[j]);
+  }
+  return run.join("\n");
+}
+
 const unflag = (line) => {
   const m = FLAG.exec(line);
   if (!m) return line;
@@ -324,9 +346,13 @@ function walk(unitLines, HEADINGS, equationHeadings) {
        * is for, so it sits between the flag and the thing the flag announces: taking the first
        * non-empty line gives the callout a comment for a body and leaves the equation behind.
        */
-      const follows = clean.trim().endsWith(":")
-        ? unitLines.slice(i + 1).find((l) => l.trim() && !AUTHORED_STYLE.test(l))
-        : null;
+      /*
+       * AND A LIST IS ONE THING. Taking the first line that is content is right when a colon announces a
+       * sentence or an equation, and wrong when it announces a LIST: the callout then carries step one
+       * of ten and the other nine are left in the prose behind it, which is how a recap of the whole
+       * accounting cycle came out as "the process with 10 steps: 1. Identify and Analyze Transactions".
+       */
+      const follows = clean.trim().endsWith(":") ? followingContent(unitLines, i) : null;
       flags.push({
         title: headingForNextFlag,
         section,

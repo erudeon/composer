@@ -84,3 +84,47 @@ assert.deepEqual(
 );
 
 console.log("flags ok");
+
+/*
+ * A COLON-ENDED FLAG ANNOUNCES THE WHOLE LIST, not its first item. A recap of a ten-step cycle came
+ * out as "the process with 10 steps: 1. Identify and Analyze Transactions", with the other nine left
+ * in the prose behind it, and the reader's own lint is what noticed: an ordered list of one item.
+ */
+const listDir = mkdtempSync(join(tmpdir(), "composer-flaglist-"));
+mkdirSync(join(listDir, "02-source"), { recursive: true });
+mkdirSync(join(listDir, "04-manifest"), { recursive: true });
+writeFileSync(
+  join(listDir, "composer.json"),
+  JSON.stringify({ course: "T", slug: "t", courseShell: { programCode: "nl-x-y-bsc-en-y1" } }),
+);
+writeFileSync(
+  join(listDir, "02-source", "source-of-record.md"),
+  [
+    "# Unit One", "", "## A Section", "", "Prose so the section is not empty.", "",
+    "🎯 To recap, the whole thing has three steps:", "",
+    "1. The first step", "1. The second step", "1. The third step", "",
+    "Closing prose.", "",
+    "## Another Section", "", "More prose.", "",
+    "🎯 The rule is this:", "", "One sentence, and only this one.", "",
+    "A separate paragraph that must NOT be swallowed.", "",
+  ].join("\n"),
+);
+execFileSync("node", [join(__dirname, "build-manifest.mjs"), listDir, "--unit", "1"], { encoding: "utf8" });
+const listTopic = JSON.parse(readFileSync(join(listDir, "04-manifest", "manifest.json"), "utf8")).topics[0];
+const listCallouts = listTopic.blocks.filter((b) => b.type === "callout");
+
+const recap = listCallouts.find((c) => c.body.includes("three steps"));
+assert.ok(recap, `the flagged recap should be a callout: ${JSON.stringify(listCallouts.map((c) => c.body))}`);
+for (const step of ["The first step", "The second step", "The third step"])
+  assert.ok(recap.body.includes(step), `the whole list belongs to it, missing ${step}: ${recap.body}`);
+
+/* And a colon announcing a SENTENCE still takes one line, not everything after it. */
+const sentence = listCallouts.find((c) => c.body.includes("The rule is this"));
+assert.ok(sentence, "the second flag should be a callout too");
+assert.ok(sentence.body.includes("One sentence, and only this one."), sentence.body);
+assert.ok(
+  !sentence.body.includes("must NOT be swallowed"),
+  `a colon announcing a sentence takes one line: ${sentence.body}`,
+);
+
+console.log("flagged lists ok");

@@ -181,8 +181,14 @@ bookkeeping course is the unit with the full ledger exercise rather than the one
 credits. **Never add an opening entry the author did not write** to make the bars move.
 
 **A financial statement's standard running order** (Revenue, less Cost of Goods Sold, Gross Profit, and
-so on down to Net Income): a `table` with `variant: "steps"` or `data`, using `roles` to mark which rows
-are subtotals and which is the total. The subtotals are the lesson, and an ordinary table hides them.
+so on down to Net Income): a `table` with **`variant: "data"`**, using `roles` to mark which rows are
+subtotals and which is the total. The subtotals are the lesson, and an ordinary table hides them.
+
+**NOT `steps`.** A steps table is a procedure, and it draws each row's cells STACKED, one under the
+next. It takes neither `head` nor `roles`, so a running order drawn as one loses the column the amounts
+live in and every subtotal silently stops being one: thirteen rows of "Revenue" over "€X" over a rule,
+with Gross Profit no different from the line above it. Nothing refuses the combination, because a steps
+table is a valid table; the props it cannot use are simply dropped.
 
 **Never invent an amount, an account name or a side.** A debit posted as a credit is a wrong answer that
 renders perfectly, and it is the one error an accounting student will not forgive. If the source is
