@@ -73,8 +73,40 @@ const forUnit = (name, n, fallback = {}) => DATA[name]?.[n] ?? fallback;
  */
 const HEADING_IS_AN_EQUATION = /^(#{2,6})\s+(\$\$.*\$\$)\s*$/;
 
-/* The author's emoji flags become a callout's variant, and the emoji never survives. */
-const FLAG = /^\s*(?:\*\*)?\s*(🎯|💡|📌|⚠️)\s*(?:\*\*)?\s*/u;
+/*
+ * The author's emoji flags become a callout's variant, and the emoji never survives.
+ *
+ * THE MARKERS DO SURVIVE. An author writes the flag INSIDE their own emphasis, `**🎯 Try** doing this`
+ * or `**🎯 Note that ...**`, and eating the opening `**` along with the emoji leaves its partner
+ * behind: the first becomes `Try** doing this`, which draws a stray pair of asterisks and loses the
+ * author's emphasis, and the second becomes a body ending in a bare `**`. Thirteen callouts on one
+ * course. So the opening marker is MATCHED, to find the flag, and put back.
+ */
+const FLAG = /^(\s*\*\*)?\s*(?:🎯|💡|📌|⚠️)\s*/u;
+const FLAG_KIND = /(🎯|💡|📌|⚠️)/u;
+
+/**
+ * The emoji goes and the author's emphasis stays, which are two different answers depending on what
+ * the `**` before the flag was doing.
+ *
+ * `**🎯 Note the whole line.**` is a line the author emphasised WHOLE, and both markers belong to the
+ * flag: they go with it, and what is left is the plain sentence the callout carries.
+ *
+ * `**🎯 Try** doing this` is a flag sitting inside emphasis on ONE WORD. Taking the opener leaves its
+ * partner stranded, which draws a stray pair of asterisks and loses the author's emphasis, so the
+ * opener is put back.
+ *
+ * Told apart by where the emphasis closes: at the very end and nowhere else, it wrapped the line.
+ */
+const unflag = (line) => {
+  const m = FLAG.exec(line);
+  if (!m) return line;
+  const rest = line.slice(m[0].length);
+  if (!m[1]) return rest;
+  const closes = rest.indexOf("**");
+  if (closes !== -1 && closes === rest.length - 2) return rest.slice(0, -2);
+  return m[1].trimStart() + rest;
+};
 const POINTER = /(?:👉|➡️)\s*/gu;
 const VARIANT = {
   "🎯": "exam-tip",
@@ -179,8 +211,8 @@ function walk(unitLines, HEADINGS, equationHeadings) {
      */
     let clean = line
       .replace(/^\d+\.\s+(\*\*[^*]+\*\*:?)\s*$/, "$1")
-      .replace(FLAG, "")
       .replace(POINTER, "");
+    clean = unflag(clean);
 
     /*
      * AN ORDERED ITEM WITH NO SIBLINGS IS A SENTENCE. Stripping the number off the bold-only steps of a
@@ -235,7 +267,7 @@ function walk(unitLines, HEADINGS, equationHeadings) {
       continue;
     }
 
-    const m = FLAG.exec(line);
+    const m = FLAG.test(line) ? FLAG_KIND.exec(line) : null;
     if (m && clean.trim()) {
       /*
        * A FLAG ENDING IN A COLON INTRODUCES THE LINE UNDER IT, so the callout takes that line too.
