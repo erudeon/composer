@@ -126,6 +126,23 @@ function followingContent(unitLines, at) {
   return run.join("\n");
 }
 
+/**
+ * A SHORT LABEL IS NOT AN EXAMPLE, whatever style sits above it.
+ *
+ * An author reaches for one style for everything that is not body text, so the same style marks a
+ * worked example AND the one-line label introducing a table. 17 of 61 on one course: "Transactions
+ * Table", "LIFO Periodic:", "COGS Calculation:". Made into examples they are swallowed by the run that
+ * collects them, and three consecutive labels came out as ONE callout reading "Transactions Table /
+ * Results Comparison by Method / 1. FIFO", with the tables they introduced left behind.
+ *
+ * A label has no sentence in it: few words and no full stop. It stays prose, and a course that wants it
+ * to be a heading says so in `headings.json`, which is a decision rather than a guess.
+ */
+function isALabel(line) {
+  const text = line.trim().replace(/\*\*/g, "").replace(/^\s*(?:🎯|💡|📌|⚠️)\s*/u, "");
+  return text.split(/\s+/).filter(Boolean).length <= 6 && !/[.!?]$/.test(text);
+}
+
 const unflag = (line) => {
   const m = FLAG.exec(line);
   if (!m) return line;
@@ -230,7 +247,8 @@ function walk(unitLines, HEADINGS, equationHeadings) {
        * first also moved the flag off the start of the line, where the strip is anchored, so the emoji
        * survived into the body of a callout.
        */
-      if (!FLAG.test(line)) line = `**Example**: ${line.trim().replace(/^\**Examples?\**\s*:\s*/i, "")}`;
+      if (!FLAG.test(line) && !isALabel(line))
+        line = `**Example**: ${line.trim().replace(/^\**Examples?\**\s*:\s*/i, "")}`;
     }
 
     const asEquation = HEADING_IS_AN_EQUATION.exec(line);
@@ -790,9 +808,23 @@ function buildUnit(unitLines, number, title) {
 
     /* Then everything anchored to this section: the author's flags first, in their own words. */
     const mine = flags.filter((f) => f.section === s.heading);
-    const oneEach = mine.filter(
-      (f, i) => mine.findIndex((o) => o.variant === f.variant) === i,
-    );
+    /*
+     * TWO CALLOUTS OF THE SAME KIND MAY NOT TOUCH, SO THEY ARE ONE CALLOUT.
+     *
+     * This used to keep the FIRST flag of each kind and drop the rest, which is not the same thing at
+     * all: on one real course 12 of the author's 71 flagged sentences never reached the page, silently,
+     * because a section happened to carry two exam tips. Their notes are the part of a summary a student
+     * reads first.
+     *
+     * Merged in the order they were written, with the first one's title, because a title is one thing
+     * and the kind is what they have in common.
+     */
+    const oneEach = [];
+    for (const f of mine) {
+      const already = oneEach.find((o) => o.variant === f.variant);
+      if (already) already.body = `${already.body}\n\n${f.body}`;
+      else oneEach.push({ ...f });
+    }
     const anchored = [
       ...oneEach.map((f) => ({
         type: "callout",
