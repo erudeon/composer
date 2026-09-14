@@ -88,8 +88,11 @@ const AUTHORED_STYLE = /^\s*<!--\s*style:\s*(.+?)\s*-->\s*$/;
  * author's emphasis, and the second becomes a body ending in a bare `**`. Thirteen callouts on one
  * course. So the opening marker is MATCHED, to find the flag, and put back.
  */
-const FLAG = /^(\s*\*\*)?\s*(?:🎯|💡|📌|⚠️)\s*/u;
-const FLAG_KIND = /(🎯|💡|📌|⚠️)/u;
+/* THE SET IS THE AUTHOR'S, NOT OURS. ❗ and 👉 are how a real maths summary flags a warning and a
+   takeaway, and leaving them out left 8 of its 24 flagged lines in the prose WITH THE EMOJI IN
+   THEM. A flag a reader can see is a flag we failed to lift. */
+const FLAG = /^(\s*\*\*)?\s*(?:🎯|💡|📌|⚠️|❗|❕|👉|➡️)\uFE0F?\s*/u;
+const FLAG_KIND = /(🎯|💡|📌|⚠️|❗|❕|👉|➡️)/u;
 
 /**
  * The emoji goes and the author's emphasis stays, which are two different answers depending on what
@@ -139,7 +142,7 @@ function followingContent(unitLines, at) {
  * to be a heading says so in `headings.json`, which is a decision rather than a guess.
  */
 function isALabel(line) {
-  const text = line.trim().replace(/\*\*/g, "").replace(/^\s*(?:🎯|💡|📌|⚠️)\s*/u, "");
+  const text = line.trim().replace(/\*\*/g, "").replace(/^\s*(?:🎯|💡|📌|⚠️|❗|❕|👉|➡️)\uFE0F?\s*/u, "");
   return text.split(/\s+/).filter(Boolean).length <= 6 && !/[.!?]$/.test(text);
 }
 
@@ -152,12 +155,19 @@ const unflag = (line) => {
   if (closes !== -1 && closes === rest.length - 2) return rest.slice(0, -2);
   return m[1].trimStart() + rest;
 };
-const POINTER = /(?:👉|➡️)\s*/gu;
+/* A pointer MID-LINE is an arrow and is dropped; at the START of a line it is a flag, and the flag
+   branch below claims it. Stripping both left the author's one takeaway as ordinary prose. */
+const POINTER = /(?!^)(?:👉|➡️)\uFE0F?\s*/gmu;
 const VARIANT = {
   "🎯": "exam-tip",
   "💡": "intuition",
   "📌": "key-concept",
   "⚠️": "note",
+  /* An author who never types ⚠️ or 📌 reaches for these two instead. */
+  "❗": "note",
+  "❕": "note",
+  "👉": "key-concept",
+  "➡️": "key-concept",
 };
 
 /*
@@ -165,7 +175,11 @@ const VARIANT = {
  * the author wrote the words but never gave them a style. An `In Short` Word style is caught too, by
  * the style pass, because the author saying it outright beats anything inferred from the text.
  */
-const IS_A_RECAP = /^(?:in\s+short|in\s+summary|summary|recap|key\s+takeaways?|to\s+summari[sz]e)\s*$/i;
+/* A recap names itself, and a summary usually numbers it: "Week 3 Wrap-Up" is the same block as
+   "In Short". Left unmatched it reads as one more section of teaching, which is the one thing a
+   recap must not look like. */
+const IS_A_RECAP =
+  /^(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(?:wrap[\s-]?up|in\s+short|in\s+summary|summary|recap|key\s+takeaways?|to\s+summari[sz]e)\s*$/i;
 
 const DEFAULT_TITLE = {
   "exam-tip": "In the exam",
@@ -207,6 +221,34 @@ function walk(unitLines, HEADINGS, equationHeadings) {
       if (line.trim()) return false;
     }
     return false;
+  };
+
+  /*
+   * A HEADING ENDS A LEAD-IN. A bold line on its own is held until the paragraph it introduces
+   * arrives, and nothing stopped it being held ACROSS a heading: a section ending on a bold result
+   * handed that result to the first paragraph of the next section. "**Total COGS = EUR 220,500**",
+   * the answer of a three-step worked example, was drawn as the opening words of the In Short.
+   */
+  /*
+   * A SECTION IS AN OCCURRENCE, NOT A NAME. Anchored blocks used to find their section by matching its
+   * HEADING TEXT, so an author who writes "WA Method" twice -- once under Step 1 and once under Step 2
+   * -- had each section's flagged note drawn under BOTH of them, word for word.
+   *
+   * Both passes over the unit walk it top to bottom and see the same headings in the same order, so
+   * numbering each occurrence as it goes gives the two a key they agree on.
+   */
+  const nth = new Map();
+  const keyFor = (name) => {
+    const n = (nth.get(name) ?? 0) + 1;
+    nth.set(name, n);
+    return `${name}#${n}`;
+  };
+  let sectionKey = null;
+
+  const endLeadIn = () => {
+    if (lead) kept.push(lead);
+    lead = null;
+    leadWasAHeading = false;
   };
 
   for (let i = 0; i < unitLines.length; i += 1) {
@@ -261,7 +303,9 @@ function walk(unitLines, HEADINGS, equationHeadings) {
 
     const h2 = /^## (.+)$/.exec(line);
     if (h2) {
+      endLeadIn();
       section = h2[1].trim();
+      sectionKey = keyFor(section);
       promoting = false;
       kept.push(line);
       continue;
@@ -269,17 +313,21 @@ function walk(unitLines, HEADINGS, equationHeadings) {
 
     const h3 = /^### (.+)$/.exec(line);
     if (h3) {
+      endLeadIn();
       promoting = isALabel(i);
       if (promoting) continue;
       section = h3[1].trim();
+      sectionKey = keyFor(section);
       kept.push(line);
       continue;
     }
 
     const h4 = /^#{4,}\s+(.+)$/.exec(line);
     if (h4) {
+      endLeadIn();
       if (promoting) {
         section = h4[1].trim();
+        sectionKey = keyFor(section);
         kept.push(`### ${h4[1].trim()}`);
       } else {
         lead = `**${h4[1].trim()}**`;
@@ -374,6 +422,7 @@ function walk(unitLines, HEADINGS, equationHeadings) {
       flags.push({
         title: headingForNextFlag,
         section,
+        sectionKey,
         variant: VARIANT[m[1]],
         lead: clean.trim(),
         body: follows ? `${clean.trim()}\n\n${follows.trim()}` : clean.trim(),
@@ -392,7 +441,10 @@ function walk(unitLines, HEADINGS, equationHeadings) {
 const isTable = (p) => /^\|/.test(p.trim());
 const isBoldOnly = (p) => /^\*\*[^*]+\*\*:?\s*$/.test(p.trim());
 const EXAMPLE = /^\s*(?:[-*]\s+)?\*\*(Examples?[^*]*)\*\*\s*:?\s*/;
-const STEP = /^\*\*Step\s*\d+[^*]*?\*\*\s*/;
+/* The words a step is labelled with sit INSIDE the bold, so they are CAPTURED rather than eaten.
+   An author who writes "**Step 2: Solve for** $Q$**.**" puts half of them outside it instead,
+   which is why `workedBlock` joins the capture to what follows on the same line. */
+const STEP = /^\*\*Step\s*\d+\s*[:.)\-\u2013]?\s*([^*]*?)\*\*\s*/;
 const FINAL = /^\*\*Final Answer[^*]*\*\*\s*$/i;
 const DISPLAY = /^\$\$([\s\S]+)\$\$$/;
 const WHERE = /^\s*where\b/i;
@@ -466,19 +518,30 @@ function workedBlock(paras, title) {
        * number; the write path refuses it and truncating would lose their words. So the label is the
        * first clause and the rest becomes the step's note, which is where a sentence belongs anyway.
        */
-      const said = para
-        .trim()
-        .replace(STEP, "")
-        .replace(/[:\s]+$/, "");
+      /*
+       * THE LABEL IS THE AUTHOR'S WORDS, wherever they put them: inside the `**Step N: ...**` marker,
+       * after it on the same line, or split across both. Only the FIRST line joins the label; a
+       * second line is a sentence about the step and belongs in its note. Leftover emphasis is
+       * dropped, because "$Q$**.**" is a stray marker rather than something the author emphasised.
+       */
+      const inside = (STEP.exec(para.trim())?.[1] ?? "").trim();
+      const after = para.trim().replace(STEP, "").split("\n");
+      const carried = after.slice(1).join("\n").trim();
+      const said = [inside, after[0]]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\*\*/g, "")
+        .replace(/[:.,\s]+$/, "")
+        .trim();
       if (said.length <= 120) {
-        steps.push({ label: said || "Continue" });
+        steps.push({ label: said || "Continue", ...(carried ? { note: carried } : {}) });
         continue;
       }
       const at = said.lastIndexOf(" ", 118);
       const cut = at > 40 ? at : 118;
       steps.push({
         label: said.slice(0, cut).replace(/[,:\s]+$/, ""),
-        note: said.slice(cut).trim(),
+        note: [said.slice(cut).trim(), carried].filter(Boolean).join(" "),
       });
       continue;
     }
@@ -542,6 +605,13 @@ function buildUnit(unitLines, number, title) {
 
   const sections = [];
   let cur = null;
+  /* The same numbering `walk` gave the flags: both passes see these headings in this order. */
+  const nth = new Map();
+  const keyFor = (name) => {
+    const n = (nth.get(name) ?? 0) + 1;
+    nth.set(name, n);
+    return `${name}#${n}`;
+  };
   /*
    * A SECTION WITH NO PROSE OF ITS OWN IS STILL A SECTION, when what follows it is its SUBSECTIONS.
    *
@@ -563,7 +633,8 @@ function buildUnit(unitLines, number, title) {
     const h = /^(##|###) (.+)$/.exec(line);
     if (h) {
       closeSection(h[1].length);
-      cur = { level: h[1].length, heading: h[2].trim(), body: [] };
+      const heading = h[2].trim();
+      cur = { level: h[1].length, heading, key: keyFor(heading), body: [] };
       continue;
     }
     if (cur) cur.body.push(line);
@@ -586,6 +657,20 @@ function buildUnit(unitLines, number, title) {
   const EXTRA_TABLES = forUnit("EXTRA", number);
   const FORMULA_TERMS = forUnit("FORMULA_TERMS", number);
   const TITLES = forUnit("CALLOUT_TITLES", number);
+  /*
+   * A TITLE IS LOOKED UP ON A PREFIX, and an unused one is REPORTED.
+   *
+   * The key used to be the whole cleaned line, so a course that supplied "A quick sign check keeps
+   * your algebra perfect" against a sentence that runs on for another forty words matched nothing,
+   * silently, and every callout kept the generic default. Four of one course's titles were no-ops
+   * and nothing said so. A prefix makes the key writable; the report makes a miss visible.
+   */
+  const titlesUsed = new Set();
+  const titleFor = (lead) => {
+    const key = Object.keys(TITLES).find((k) => lead === k || lead.startsWith(k));
+    if (key) titlesUsed.add(key);
+    return key ? TITLES[key] : undefined;
+  };
 
   /** A long section splits at its own bold lead-ins, never mid-paragraph and never inside a table. */
   const MAX_WORDS = 460;
@@ -726,12 +811,23 @@ function buildUnit(unitLines, number, title) {
           stepsAhead ||
           STEP.test(next.trim()) ||
           FINAL.test(next.trim()) ||
-          /^\$\$|^\s*[-*]\s|^\$/.test(next) ||
+          /* An ORDERED item too. `1.` is how an author writes an example's own steps, and leaving it
+             out of this test cut every such example off after its first sentence. */
+          LIST_ITEM.test(next) ||
+          /^\$\$|^\$/.test(next) ||
           isTable(next);
         if (!continues) break;
         i += 1;
         (isTable(next) ? tables : run).push(next);
       }
+
+      /*
+       * AN "EXAMPLES:" UMBRELLA IS A HEADING, NOT AN EXAMPLE. An author labels a group and numbers
+       * the real ones under it, so this paragraph strips to nothing at all: it used to emit a
+       * callout with an EMPTY BODY, which the write path refuses, and to swallow the first numbered
+       * example's title on the way, leaving its equation standing as bare prose.
+       */
+      if (run.length === 1 && !run[0].replace(EXAMPLE, "").trim()) continue;
 
       /* Consecutive examples merge: two callouts of the same kind may not touch. */
       const siblings = [];
@@ -820,7 +916,17 @@ function buildUnit(unitLines, number, title) {
     }
 
     /* Then everything anchored to this section: the author's flags first, in their own words. */
-    const mine = flags.filter((f) => f.section === s.heading);
+    /*
+     * BY OCCURRENCE, falling back to the name. The two passes agree on the order of headings, but a
+     * repair that cuts a passage can take one out of the second, and a flag that finds no section is a
+     * note of the author's that never reaches the page. Better in the wrong one of two same-named
+     * sections than gone.
+     */
+    const byKey = flags.filter((f) => f.sectionKey === s.key);
+    const orphaned = (f) => !sections.some((x) => x.key === f.sectionKey);
+    const mine = byKey.length
+      ? byKey
+      : flags.filter((f) => f.section === s.heading && orphaned(f));
     /*
      * TWO CALLOUTS OF THE SAME KIND MAY NOT TOUCH, SO THEY ARE ONE CALLOUT.
      *
@@ -842,7 +948,7 @@ function buildUnit(unitLines, number, title) {
       ...oneEach.map((f) => ({
         type: "callout",
         variant: f.variant,
-        title: f.title ?? TITLES[f.lead] ?? DEFAULT_TITLE[f.variant],
+        title: f.title ?? titleFor(f.lead) ?? DEFAULT_TITLE[f.variant],
         body: f.body,
       })),
       ...(EXTRA_TABLES[s.heading] ?? []),
@@ -854,6 +960,12 @@ function buildUnit(unitLines, number, title) {
     for (const b of anchored)
       blocks.push({ id: idFor(`${s.heading}-${b.type}`), ...b });
   }
+
+  const unusedTitles = Object.keys(TITLES).filter((k) => !titlesUsed.has(k));
+  if (unusedTitles.length)
+    console.log(
+      `   ! ${unusedTitles.length} supplied callout title(s) matched no flagged line:\n       ${unusedTitles.join("\n       ")}`,
+    );
 
   if (equationHeadings.length)
     console.log(
