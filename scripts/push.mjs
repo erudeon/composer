@@ -168,6 +168,21 @@ function printOperations(operations) {
     .map((o) => o.slug ?? "?");
   if (rewrites.length > 0)
     console.log(`  lectures rewritten: ${rewrites.join(", ")}`);
+
+  /*
+   * AND WHAT AN OVERWRITE WOULD OVERWRITE WITH. A rolled-up count reading `1 × update-course` hides the
+   * only thing an operator needs in order to say yes: a course's TITLE and container word are what a
+   * student reads, and a manifest restores them on every run, so a file that quietly disagrees with a
+   * correction somebody made in the Hub undoes it on the next apply and the count looks identical
+   * either way. Same for a renamed lecture or paper.
+   */
+  for (const op of operations) {
+    if (!op?.changes || Object.keys(op.changes).length === 0) continue;
+    const what = Object.entries(op.changes)
+      .map(([field, value]) => `${field} -> ${JSON.stringify(value)}`)
+      .join(", ");
+    console.log(`  ${op.op}${op.slug ? ` ${op.slug}` : ""}: ${what}`);
+  }
 }
 
 /**
@@ -272,14 +287,47 @@ if (op === "verify") {
         `  ${t.slug}: declared ${t.declared}, stored ${t.stored}, missing ${t.missing.join(", ")}`,
       );
   }
+  /*
+   * AND THE PAPERS. The read-back has compared a mock paper's questions and its draw since v2.3.7, and
+   * this printed only the lectures — so a verify could say "every one matches" while a paper was short
+   * of questions or a Hub edit held a draw the file contradicts. A `matches` of false with nothing
+   * printed to explain it is worse than not asking.
+   */
+  const exams = Array.isArray(result?.exams) ? result.exams : [];
+  const short = exams.filter(
+    (e) =>
+      e?.exists === false ||
+      e?.missing?.length > 0 ||
+      e?.unkeyed > 0 ||
+      Object.keys(e?.settingsAdrift ?? {}).length > 0,
+  );
+  if (exams.length > 0) {
+    console.log(
+      `Verified ${exams.length} paper(s): ${short.length === 0 ? "every one matches" : `${short.length} do not`}`,
+    );
+    for (const e of short) {
+      if (e.exists === false) console.log(`  MISSING PAPER   ${e.slug}`);
+      else {
+        if (e.missing?.length > 0)
+          console.log(`  ${e.slug}: declared ${e.declared}, stored ${e.stored}, missing ${e.missing.join(", ")}`);
+        if (e.unkeyed > 0)
+          console.log(`  ${e.slug}: ${e.unkeyed} declared question(s) carry no key, so nothing compared them`);
+        for (const [field, stored] of Object.entries(e.settingsAdrift ?? {}))
+          console.log(`  ${e.slug}: the file names ${field}, the bank holds ${JSON.stringify(stored)}`);
+      }
+    }
+  }
+
   if (!result?.matches) {
     fail(
-      "\nBlocks this file declares are NOT stored. Re-send the whole file with --apply: a lesson body is " +
-        "a replace, so the lectures already right are a no-op and the ones that are not are rewritten whole.",
+      "\nWhat this file declares is NOT all stored. Re-send the whole file with --apply: a lesson body is " +
+        "a replace, so the lectures already right are a no-op and the ones that are not are rewritten whole, " +
+        "and a question converges on its key.",
     );
   }
   console.log(
-    "\nEvery lecture this file declares a body for holds exactly those blocks.",
+    "\nEvery lecture this file declares a body for holds exactly those blocks" +
+      (exams.length > 0 ? ", and every paper holds what it declares." : "."),
   );
   process.exit(0);
 }
