@@ -370,7 +370,13 @@ function main() {
   if (intakeClosed) phase = 1;
   if (gates.analyzeDone || gates.analyzeSkipped) phase = 2;
   if (gates.composeDone || gates.composeSkipped) phase = 3;
-  if (manifest && gates.verifyMatched) phase = 4;
+  /*
+   * LAYOUT IS NOT DONE WHEN THE WRITE VERIFIES. It is done when the author has SEEN the first unit and
+   * said whether to build the rest, which is the whole reason one unit goes first. Advancing on
+   * `verifyMatched` alone walked straight past that gate: the run reported Audit, waiting on nobody,
+   * on a course whose author had not been shown a single lecture.
+   */
+  if (manifest && gates.verifyMatched && gates.unitOneAccepted) phase = 4;
   if (gates.auditDone) phase = 5;
   if (gates.reviewDone) phase = 6;
   if (gates.published) phase = 7;
