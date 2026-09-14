@@ -14,6 +14,8 @@
  */
 const fs = require("node:fs");
 const { mathsSpans, fragileSpans } = require("./maths-spans.js");
+const { weldedSpaces } = require("./maths-spacing.js");
+const { stripTags } = require("./lib.js");
 
 /*
  * Resolved from the plugin's own dependencies. It used to reach two levels up into the platform
@@ -77,8 +79,54 @@ for (const e of eqs) {
  */
 const fragile = fragileSpans(text);
 
+/*
+ * A MULTI-WORD NAME LOSES ITS SPACES AND NOTHING COMPLAINS. Maths mode ignores ordinary spaces, so
+ * `Share Capital` is drawn as "ShareCapital" and `Depreciation Expense` as "DepreciationExpense". It
+ * parses, it stores, it renders, and it is wrong on the page in a way that reads as the author's own
+ * typo.
+ *
+ * ASKED OF THE RENDERER, ONE SPACE AT A TIME: delete the space and draw it again. If the drawing is
+ * unchanged, that space was never being drawn. Nothing here knows what the repair looks like, which is
+ * the point: a detector built out of the repair's own rules goes blind wherever the repair does, and
+ * the first version of this check did exactly that. It tested the drawn output for an ASCII space, and
+ * KaTeX draws U+00A0, so every multi-word expression came back welded whether it was repaired or not.
+ */
+const drawn = (tex, display) =>
+  /*
+   * The annotation carries the ORIGINAL LaTeX, so it goes whole rather than as tags: left in, every
+   * expression would appear to contain its own source and the comparison below would always match.
+   * `stripTags` for the rest, because one pass leaves tags behind on anything malformed.
+   */
+  stripTags(
+    katex
+      .renderToString(tex, { ...OPTIONS, displayMode: display })
+      .replace(/<annotation[\s\S]*?<\/annotation>/g, ""),
+  );
+
+const welded = [];
+for (const e of eqs) {
+  let whole;
+  try {
+    whole = drawn(e.tex, e.display);
+  } catch {
+    continue; // already counted as refused, and its message is the one worth reading
+  }
+  let count = 0;
+  for (let i = 1; i < e.tex.length - 1; i += 1) {
+    if (e.tex[i] !== " ") continue;
+    if (!/[A-Za-z]/.test(e.tex[i - 1]) || !/[A-Za-z]/.test(e.tex[i + 1])) continue;
+    const without = e.tex.slice(0, i) + e.tex.slice(i + 1);
+    try {
+      if (drawn(without, e.display) === whole) count += 1;
+    } catch {
+      /* removing it broke the expression, so it was load-bearing and is not a weld */
+    }
+  }
+  if (count > 0) welded.push({ ...e, count });
+}
+
 console.log(
-  `equations=${eqs.length} refused=${refused.length} fragile=${fragile.length}`,
+  `equations=${eqs.length} refused=${refused.length} fragile=${fragile.length} welded=${welded.length}`,
 );
 /*
  * NAME THE LIKELY CAUSE, because the refusal never does.
@@ -108,4 +156,25 @@ if (fragile.length > 0) {
   for (const span of fragile.slice(0, 5))
     console.log(`  ${JSON.stringify(span.tex.slice(0, 60))}\n    ${span.why}`);
 }
+/*
+ * Reported, never refused. The repair exists and is one command, but running it is a Compose decision
+ * and this script runs during Convert, where stopping the run would only strand the extract.
+ */
+if (welded.length > 0) {
+  console.log(
+    `\n! ${welded.length} equation(s) have a multi-word name whose spaces will not be drawn:`,
+  );
+  for (const e of welded.slice(0, 8)) {
+    const { tex } = weldedSpaces(e.tex);
+    console.log(
+      `  ${e.tex.slice(0, 80)}\n    ${e.count} space(s) not drawn; repaired it is  ${tex.slice(0, 80)}`,
+    );
+  }
+  if (welded.length > 8) console.log(`  ... and ${welded.length - 8} more`);
+  console.log(
+    `\n  Repair them all, in place, with:\n` +
+      `    node "${require("node:path").resolve(__dirname, "..")}/fix-maths-spacing.mjs" ${file}`,
+  );
+}
+
 process.exit(refused.length === 0 ? 0 : 1);

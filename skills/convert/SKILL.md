@@ -55,6 +55,11 @@ lines; do not route around them. **The raw file stays what you diff against.**
 **`katex-check.js`** runs every `$…$` through the reader's exact strict options. A refusal is met here,
 with the equation in front of you, instead of inside an apply of a 300 KB course.
 
+It also reports `welded`: an equation whose multi-word name will be drawn without its spaces, because
+maths mode ignores an ordinary space. Those are REPORTED here and REPAIRED at Compose, with
+`scripts/fix-maths-spacing.mjs`. Nothing refuses them, and an author reading their own course is
+otherwise the only thing that catches them.
+
 ## Two things that will bite
 
 **A Google Docs export may have no heading styles at all.** Then there is nothing in the file saying
