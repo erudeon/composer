@@ -190,6 +190,7 @@ passage is one of the shapes below, it becomes that block and stops being prose:
 | an example with `**Step 1:** ...` in it | a `worked-example` | a wall of bold numbers and boxed equations, with no reveal and no answer |
 | a markdown table | a `table` block | a markdown grid whose every cell draws its own boxed equation |
 | three or more `- **Name**: <formula>` | a `definitions` table | a column of bold words each trailing a display line |
+| a display equation a student must KNOW | a `formula` block | a bare equation, with the symbols explained in a sentence somewhere below it |
 
 **A step's label NAMES THE MOVE, and the author usually wrote it.** `**Step 4 (Step 1 again):** Divide
 the leading term by...` carries both: the number, which the reader forbids in a label, and the move,
@@ -201,6 +202,18 @@ in.
 
 **Two callouts of the same kind may not touch.** Where the author wrote two examples as two bullets of
 one list, that is ONE callout holding both, and every lead-in inside it is stripped, not just the first.
+
+**A formula block is drawn WHERE ITS DISPLAY LINE ALREADY SITS**, never appended to the end of the
+section. Every other authored block can follow its section; this one replaces a line in the middle of
+one, and the paragraph after it usually says "This limit gives..." about the equation directly above.
+
+**Only the equations a student is expected to know.** The reader's own test: a formula with nothing to
+explain is a display line in the prose. Three in a first calculus lecture is right; thirty is a lecture
+that has stopped distinguishing.
+
+**A flag under a folded heading keeps its flag, and the heading becomes the callout's title.** Merging
+the heading into the flagged sentence first swallows the flag, and an exam tip the author marked as
+examined goes in as an ordinary paragraph, taking its equation with it.
 
 **A lead-in whose content became another block goes WITH it.** A bold line introducing a table, left in
 the prose after the table is lifted out, is a heading with nothing under it and a block boundary
