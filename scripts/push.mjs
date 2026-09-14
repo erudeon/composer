@@ -309,8 +309,13 @@ if (op === "verify") {
   const damaged = topics.filter(
     (t) => t?.missing?.length > 0 || t?.stored === null || t?.exists === false,
   );
+  /*
+   * JUDGED ON THE LECTURES, not on `matches`. That answer became course-wide when the read-back learned
+   * to compare the papers, so a paper adrift printed "5 lecture(s): 0 do not" — a line that contradicts
+   * itself and points at the wrong half of the course.
+   */
   console.log(
-    `\nVerified ${topics.length} lecture(s): ${result?.matches ? "every one matches" : `${damaged.length} do not`}`,
+    `\nVerified ${topics.length} lecture(s): ${damaged.length === 0 ? "every one matches" : `${damaged.length} do not`}`,
   );
   for (const t of damaged) {
     if (t.exists === false) console.log(`  MISSING LECTURE ${t.slug}`);
