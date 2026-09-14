@@ -181,6 +181,10 @@ const VARIANT = {
 const IS_A_RECAP =
   /^(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(?:wrap[\s-]?up|in\s+short|in\s+summary|summary|recap|key\s+takeaways?|to\s+summari[sz]e)\s*$/i;
 
+/** The same names, written as a BOLD LEAD-IN with the summary running on after it. */
+const RECAP_LEAD =
+  /^\*\*(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(wrap[\s-]?up|in short|in summary|summary|recap|key takeaways?|to summari[sz]e)\*\*[:.]?\s*([\s\S]*)$/i;
+
 const DEFAULT_TITLE = {
   "exam-tip": "In the exam",
   intuition: "The idea behind it",
@@ -939,7 +943,7 @@ function buildUnit(unitLines, number, title) {
      * Only where the section is ALL prose. A recap holding a table or a worked example is not a recap,
      * and folding one into a callout would bury it.
      */
-    if (IS_A_RECAP.test(s.heading) && out.every((b) => b.type === "prose")) {
+    if (s.heading !== null && IS_A_RECAP.test(s.heading) && out.every((b) => b.type === "prose")) {
       const body = out
         .map((b) => b.body.trim())
         .filter(Boolean)
@@ -988,11 +992,11 @@ function buildUnit(unitLines, number, title) {
 
     for (const b of out) {
       if (b.type !== "prose") {
-        blocks.push({ id: idFor(`${s.heading}-${b.type}`), ...b });
+        blocks.push({ id: idFor(`${s.anchor ?? s.heading}-${b.type}`), ...b });
         continue;
       }
       for (const part of split(b.body))
-        blocks.push({ id: idFor(s.heading), type: "prose", body: part });
+        blocks.push({ id: idFor(s.anchor ?? s.heading), type: "prose", body: part });
     }
 
     /* Then everything anchored to this section: the author's flags first, in their own words. */
@@ -1043,6 +1047,37 @@ function buildUnit(unitLines, number, title) {
     ];
     for (const b of anchored)
       blocks.push({ id: idFor(`${s.anchor}-${b.type}`), ...b });
+  }
+
+  /*
+   * A CLOSING RECAP THE AUTHOR MARKED AS A BOLD LEAD-IN, not as a heading.
+   *
+   * The check above catches "In Short" when it is a SECTION. This house writes it as a bold paragraph
+   * at the foot of the last section instead, where the lead-in rule then joins it to the summary that
+   * follows, so the recap ends up as the tail of an ordinary prose block and reads as one more
+   * paragraph of teaching. Its whole job is to look different from the teaching, so a reader revising
+   * can find it. Lifted here, once the unit's blocks are settled, because only then is "last" known.
+   */
+  for (let i = blocks.length - 1; i >= 0; i -= 1) {
+    const b = blocks[i];
+    if (b.type !== "prose") continue;
+    const paras = b.body.split("\n\n");
+    const at = paras.findIndex((x) => RECAP_LEAD.exec(x.trim()));
+    if (at < 0) break;
+    const m = RECAP_LEAD.exec(paras[at].trim());
+    const body = [m[2].trim(), ...paras.slice(at + 1)].filter(Boolean).join("\n\n");
+    if (!body) break;
+    const kept = paras.slice(0, at).join("\n\n").trim();
+    if (kept) b.body = kept;
+    else blocks.splice(i, 1);
+    blocks.push({
+      id: `u${number}-in-short`,
+      type: "callout",
+      variant: "in-short",
+      title: "Smartly summarised",
+      body,
+    });
+    break;
   }
 
   const unusedTitles = Object.keys(TITLES).filter((k) => !titlesUsed.has(k));
