@@ -2,8 +2,12 @@
 
 How a course gets from the materials you have to something a student opens on pass the year.
 
-You need two things and only two: **this plugin**, and a connection to the Composer's MCP. You do not
-need the platform's code, a package manager, or anything from a developer.
+You need two things and only two: **this plugin**, and **access to pass the year's course tools**, which
+is the connection that lets it read and write your course. Whoever asked you to write the summary can
+set that up for you; if it is missing, everything here still runs on your own machine and only the last
+step, sending the course, is blocked.
+
+You do not need the platform's code, a package manager, or anything from a developer.
 
 ## Install
 
@@ -37,7 +41,7 @@ then lives in one place and stays there between sessions.
 01-inputs/     what you put in. Nothing ever writes here but you.
 02-source/     the text pulled out of your documents, with the maths intact
 03-figures/    the pictures, and where each one ended up
-04-manifest/   the course as a file, and versions/ keeping every one ever sent
+04-manifest/   your course as one file, and versions/ keeping every one ever sent
 05-reports/    what each step reported, so you can pick it up tomorrow
 ```
 
@@ -49,6 +53,21 @@ To see everything you have on the go:
 ```
 node ~/.claude/plugins/cache/erudeon/composer/*/scripts/workspace.mjs list
 ```
+
+## What it is actually like
+
+You talk to it. It reads your folder, tells you which step you are on, and does the work; where a
+decision is yours it asks, all at once, with a recommendation each, rather than a question at a time.
+
+There are four moments where it stops and waits for you: what a teaching unit is called and how the
+course is put together, any change that would alter what your text MEANS, the first unit once it is
+built so you can look before the rest follow, and the word `publish`.
+
+Everything else it gets on with, and writes down what it found. **Your writing is published exactly as
+you wrote it, typos included.** It does not rewrite you, tighten you, or improve you. Where something
+genuinely has to change, it asks first and tells you why.
+
+You can stop at any point and come back. The folder remembers.
 
 ## What goes in the folder
 
@@ -65,6 +84,21 @@ In order of how much it matters:
 
 A missing one does not stop you. It gets written down, and it has to be accepted by a person before the
 course can be published.
+
+## If something looks wrong
+
+Say so, in your own words. "This equation looks broken", "that section is in the wrong place", "this is
+not what I wrote". It will look, tell you what it finds, and either fix it or say why it cannot.
+
+Two things worth knowing, because they surprise people:
+
+**A file whose name is wrong is common.** A `.docx` that is really a PDF, a `.pdf` that is really a Word
+document. It checks the bytes rather than the name and tells you which you have, so if it says your file
+is not what it claims, it is not being difficult.
+
+**Not everything is a problem with your work.** Word does a lot on its own: styling a paragraph as a
+heading, splitting one sentence across three differently formatted pieces, leaving a lock file beside an
+open document. Most of what gets reported is that, not you.
 
 ## The eight phases
 

@@ -44,7 +44,9 @@ than by inspection.
 
 ## Phase 5 · Student View · a second person
 
-**NOT BUILT.** It needs two things neither of which exists: a reviewer, and a link. The platform can mint a preview only for a staff member's own preview student, bound to that person and short lived, so there is no link a current student of the course can be sent. Until that exists, the author reads their own work, which the phase says explicitly not to rely on.
+**NOT BUILT, and closer than it was.** It needs a reviewer and a link, and the LINK is now half built: the platform can mint a signed credential good for one course's draft, so the thing that used to be impossible is not. What is missing is the other half, and it is two pieces of work rather than a design question: the reader has to accept that credential, and one MCP op has to hand it out.
+
+Until both land there is still no link a current student of the course can be sent, so the author reads their own work, which this phase says explicitly not to rely on. **Do not improvise around it**: a preview link invented here is a URL that does not open.
 
 The reviewer opens the course and reads it as a student. **The reviewer is not the person who laid it
 out**, and where we have one they are a current student of the course, because the summary was written by
@@ -80,7 +82,7 @@ merely claims it will retire.
 
 ## Phase 7 · Observe · sensors
 
-**NOT BUILT.** Its one machine sensor, the student-facing content report, is built and running on the platform and has no MCP door, so this plugin cannot read it. The rest of the phase is people, not sessions. What a run CAN do is hand over: the findings list's accepted lines are the watch list, and the closing report says so.
+**NOT BUILT, and it is one door away.** Its one machine sensor, the student-facing content report, is built and running on the platform, already gated, already read by the Hub. Nothing over MCP reads it, so this plugin cannot. That is a single read op over a function that exists, not a phase that needs designing. The rest of the phase is people, not sessions. What a run CAN do is hand over: the findings list's accepted lines are the watch list, and the closing report says so.
 
 Not the session's phase. It is handed over.
 
