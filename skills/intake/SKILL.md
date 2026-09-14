@@ -108,6 +108,16 @@ Exactly one disposition each, and the class decides it.
 | A shape drawn over the text: a circle, an arrow, a floating equation box | `fold`: dropped, and what it said goes into the block it annotated |
 | A duplicate of an earlier picture | one chart, referenced twice |
 | Old branding: a cover, marketing | `drop` |
+| In a unit nobody is building yet | `later`, with the unit named in `why` |
+
+**`later` is how Intake closes on ONE unit.** A course with five units and seventy-nine drawings does
+not need all seventy-nine settled to build the first lecture, and pretending it does turns the first
+sitting into an afternoon. Park the rest as `later`, naming the unit each belongs to, and the gate
+closes honestly: the record says which drawings were decided and which were parked, and the state block
+says so on every run until they are.
+
+**Layout refuses to build a unit holding a `later` drawing.** That is what keeps the park honest: the
+parking is per unit, so reaching that unit means coming back here first.
 
 **A crop from a book, a slide, Chegg or the web is NEVER uploaded.** It is redrawn from the function the
 text gives. Reproducing images from books and lectures risks the institutional relationship, which is the

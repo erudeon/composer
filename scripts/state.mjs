@@ -355,6 +355,14 @@ function main() {
   const undisposed = Array.isArray(inventoryJson?.drawings)
     ? inventoryJson.drawings.filter((d) => d?.disposition == null).length
     : null;
+  /*
+   * PARKED, NOT DECIDED. `later` closes Intake's gate for the unit being built and says nothing about
+   * the rest, so it has to stay visible: a park that scrolls out of sight is the undisposed drawing
+   * this gate exists to prevent, wearing a different word.
+   */
+  const parked = Array.isArray(inventoryJson?.drawings)
+    ? inventoryJson.drawings.filter((d) => d?.disposition === "later").length
+    : 0;
 
   let phase = 0;
   const intakeClosed =
@@ -403,6 +411,10 @@ function main() {
   const { open: openFindings, misplaced } = readFindings(join(target, "findings.json"));
   const waiting = blockedOn(phase, gates, openFindings);
   lines.push(`Waiting on: ${waiting ?? "nobody, this is yours to move"}`);
+  if (parked)
+    lines.push(
+      `        ${parked} drawing(s) parked for a unit nobody is building yet. Settle them before building theirs.`,
+    );
   if (misplaced)
     lines.push(
       `        The findings list is under "${misplaced}" and every count here reads "lines", so open findings are\n` +

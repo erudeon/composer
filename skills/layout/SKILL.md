@@ -121,6 +121,12 @@ corrected file; everything that already landed is a no-op the second time.
 Build unit 1. Apply it. Verify it. Show the author, report, and **wait**. On their word, build the
 rest without further questions and report once.
 
+**A unit holding a drawing parked as `later` is refused, and the refusal is the point.** Intake may
+close on one unit at a time, which is what makes a first sitting an hour rather than an afternoon; the
+price is that reaching a parked unit means going back to Intake for its pictures first. Check the
+inventory for a `later` under any heading in the unit you are about to build, and say which ones rather
+than building around them.
+
 ## The shape of a unit
 
 Prose is verbatim; everything else is yours to place. Only prose is checked word for word, which is the
