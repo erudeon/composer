@@ -148,7 +148,14 @@ if (args.includes("--show-request")) {
 }
 
 const token = process.env.PTY_MCP_TOKEN;
-if (!token) fail("PTY_MCP_TOKEN is not set. It is in Doppler; this push is the operator's to run.");
+if (!token)
+  fail(
+    "PTY_MCP_TOKEN is not set, so there is no way to send the pictures.\n\n" +
+      "Mint one in the Hub: it is yours, it is scoped to what you can already reach, and it expires.\n" +
+      "Then put it in your shell profile so every session has it, and open a new terminal.\n\n" +
+      "Do not paste it into a chat, a file in a repository, or a command you type out in full: a\n" +
+      "command typed with the token in it is saved to your shell history in plain text.",
+  );
 
 const accessHeaders = {};
 
