@@ -32,7 +32,13 @@ assert.equal(escapeLatex("\\"), "\\backslash ");
 assert.equal(escapeLatex("{"), "\\{");
 assert.equal(escapeLatex("\\{"), "\\backslash \\{");
 assert.equal(escapeLatex("\\&"), "\\backslash \\&");
-assert.equal(escapeLatex("a^b~c"), "a\\wedge b\\sim c");
+/*
+ * A CARET IS A SUPERSCRIPT AND STAYS ONE. It used to become `\\wedge`, which renders logical AND: the
+ * author's `0^2` reached a live course as `0∧2`. Word writes a real superscript as `<m:sSup>`, so a
+ * caret in a text run is somebody typing one, and a bare `^` is already a LaTeX superscript.
+ */
+assert.equal(escapeLatex("a^b~c"), "a^b\\sim c");
+assert.equal(escapeLatex("D = (-6)(-2) - 0^2 = 12"), "D = (-6)(-2) - 0^2 = 12");
 assert.equal(escapeLatex("100%"), "100\\%");
 /*
  * Nothing it writes may be escaped a second time. Two backslashes in means two `\backslash` commands

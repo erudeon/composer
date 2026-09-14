@@ -30,16 +30,21 @@ const { unesc } = require("./docx-core.js");
  * Characters that mean something to LaTeX, escaped so a formula about 100% or $ does not break the
  * document it lands in. The backslash goes first or it would escape the escapes.
  *
- * ESCAPED FOR MATH MODE, NOT FOR TEXT MODE. `\\textbackslash`, `\\textasciicircum` and
- * `\\textasciitilde` are text-mode commands, and KaTeX does not define them: an equation carrying one
- * is REFUSED at the write path, which is the right outcome but the wrong reason. Measured on the real
- * Introduction to Mathematics summary, those three were the only refusals in 1,283 equations.
+ * ESCAPED FOR MATH MODE, NOT FOR TEXT MODE. `\\textbackslash` and `\\textasciitilde` are text-mode
+ * commands, and KaTeX does not define them: an equation carrying one is REFUSED at the write path,
+ * which is the right outcome but the wrong reason. The math-mode spellings below render the same
+ * characters and are what KaTeX accepts.
  *
- * The math-mode spellings below render the same characters and are what KaTeX accepts.
+ * `^` IS NOT IN HERE, AND MUST NOT BE. It used to map to `\\wedge`, on the reasoning that
+ * `\\textasciicircum` is text-mode — but `\\wedge` renders LOGICAL AND, a different character
+ * entirely, and, worse, an author who types `^` inside an equation means a SUPERSCRIPT. Word writes a
+ * real superscript as `<m:sSup>`, so a literal caret in an `<m:t>` run is someone typing `0^2` by
+ * hand, and a bare `^` is already exactly that in LaTeX. Escaping it published `D = (-6)(-2) - 0∧2`
+ * to students on a live course. Left alone it is a superscript; `katex-check.js` is what catches a
+ * caret with nothing after it.
  */
 const MATH_MODE = {
   "\\": "\\backslash ",
-  "^": "\\wedge ",
   "~": "\\sim ",
 };
 
@@ -49,7 +54,7 @@ const MATH_MODE = {
  * a character is looked at once and its replacement is never looked at again.
  */
 function escapeLatex(s) {
-  return s.replace(/[\\^~&%$#_{}]/g, (c) => MATH_MODE[c] ?? `\\${c}`);
+  return s.replace(/[\\~&%$#_{}]/g, (c) => MATH_MODE[c] ?? `\\${c}`);
 }
 
 /**
