@@ -53,7 +53,7 @@ Five things have to be right, and they were all settled in Intake:
 | --- | --- |
 | **Title** | What a student reads in the catalogue, and the source of the slug in every link |
 | **Programme** | A course belongs to exactly one, and moving it later is refused while it is placed |
-| **Period** | The block or term it is taught in. `course_schedule` lists a programme's own periods and places a course in one; a period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
+| **Period** | The block or term it is taught in. The manifest carries it, so a load sets it without a second call; `course_schedule` is the repair path and lists what a programme actually has. A period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
 | **Container word** | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets" |
 | **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows |
 
@@ -187,6 +187,12 @@ Everything else about questions and glossary terms comes from the server. These 
 where a unit has clearly too few, and SAY that you did. A source that prints no questions for its
 lectures is a content decision, not a gap to fill quietly. Nineteen invented questions to reach twenty
 is the failure this whole plugin exists to prevent, wearing the costume of thoroughness.
+
+## A lecture may carry a subtitle
+
+One line under the title, for what the lecture covers when the title alone does not say. It is the
+cheapest thing in the manifest and the one most often left out, and on a contents page of twelve
+lectures it is the difference between a list somebody scans and a list they read.
 
 ## Give every question a key
 

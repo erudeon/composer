@@ -138,8 +138,28 @@ const CHECKLIST = [
  * materials and every Word file contains `word/footnotes.xml` and `word/endnotes.xml`, both of which
  * match /notes/. Counting those reported a summary present in a folder holding none.
  */
+/**
+ * IS THIS ONE OF THE AUTHOR'S FILES, or is it something that is merely IN THE FOLDER?
+ *
+ * Two things live in `01-inputs` that nobody put there:
+ *
+ * WORD'S LOCK FILE. Opening `summary.docx` makes `~$summary.docx` beside it, and it exists for exactly
+ * as long as the document is open. Which is to say: it is there whenever somebody is looking at their
+ * summary, which is precisely when they come here. Counted, it reports two documents where there is
+ * one, and it is listed BY NAME as the pre-written summary.
+ *
+ * AND OUR OWN README. `workspace.mjs` writes one into `01-inputs` to say what goes there, and counting
+ * it means the folder never reads as empty: a student who has put nothing in yet is told they have one
+ * input, which is the one moment the count has to be right.
+ */
+const NOT_THE_AUTHORS = (name) =>
+  name.startsWith("~$") || name.startsWith(".") || name === "README.txt";
+
 function inputFiles(files, structured) {
-  return structured ? files.filter((f) => f.path.includes("01-inputs")) : files.filter((f) => f.depth === 0);
+  const mine = structured
+    ? files.filter((f) => f.path.includes("01-inputs"))
+    : files.filter((f) => f.depth === 0);
+  return mine.filter((f) => !NOT_THE_AUTHORS(f.name));
 }
 
 function classify(files) {

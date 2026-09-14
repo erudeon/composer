@@ -115,6 +115,29 @@ say(
     .join(" · "),
 );
 
+/*
+ * THE STATE SOMEBODY IS ACTUALLY IN WHEN THEY ARRIVE: their summary open in Word. That makes a `~$`
+ * lock file beside it for exactly as long as the document is open, and it used to be counted as a
+ * second document and named as the pre-written summary. Our own README in the same folder made an
+ * empty course report one input.
+ */
+{
+  const lock = join(paths, "01-inputs", "~$summary-e2e.docx");
+  writeFileSync(lock, "word lock file");
+  const withLock = state();
+  const counted = /Files:\s+(\d+) input/.exec(withLock)?.[1];
+  say(
+    counted === "1",
+    `a document open in Word does not become a second input (counted ${counted})`,
+    "the lock file exists exactly when somebody is looking at their summary, which is when they come here",
+  );
+  say(
+    !withLock.includes("~$"),
+    "  and it is never named as the summary",
+  );
+  execFileSync("rm", ["-f", lock]);
+}
+
 // ── PHASE 0 · convert ───────────────────────────────────────────────────────────────────────────────
 const work = join(paths, "02-source", "work");
 mkdirSync(dirname(work), { recursive: true });

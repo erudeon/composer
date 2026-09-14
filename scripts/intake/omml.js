@@ -19,21 +19,17 @@
  * this one.
  */
 
-/** XML entities, and the `<m:t>` text is the only place they appear. */
-function unesc(s) {
-  return s
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&");
-}
+/*
+ * XML entities are decoded in ONE place, and `<m:t>` text is the only place they appear here. This file had a byte-identical copy of `unesc`, which is two
+ * implementations of one rule: the kind that stays in step right up until somebody fixes a character in
+ * one of them.
+ */
+const { unesc } = require("./docx-core.js");
 
 /**
  * Characters that mean something to LaTeX, escaped so a formula about 100% or $ does not break the
  * document it lands in. The backslash goes first or it would escape the escapes.
- */
-/**
+ *
  * ESCAPED FOR MATH MODE, NOT FOR TEXT MODE. `\\textbackslash`, `\\textasciicircum` and
  * `\\textasciitilde` are text-mode commands, and KaTeX does not define them: an equation carrying one
  * is REFUSED at the write path, which is the right outcome but the wrong reason. Measured on the real
