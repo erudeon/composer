@@ -16,6 +16,7 @@ the shape it arrives in.
 
 - [A picture of a graph](#a-picture-of-a-graph)
   - [Every chart built from a picture is checked against that picture](#every-chart-built-from-a-picture-is-checked-against-that-picture)
+- [A heading is a section, not a page break](#a-heading-is-a-section-not-a-page-break)
 - [A passage of prose](#a-passage-of-prose)
 - [A callout, and which one](#a-callout-and-which-one)
 - [A worked computation](#a-worked-computation)
@@ -26,7 +27,6 @@ the shape it arrives in.
 - [A question lives in a bank, not in a lesson](#a-question-lives-in-a-bank-not-in-a-lesson)
 - [Where a block sits on the page, which is a choice you are making anyway](#where-a-block-sits-on-the-page-which-is-a-choice-you-are-making-anyway)
 - [Practice questions, and the field most people never fill in](#practice-questions-and-the-field-most-people-never-fill-in)
-
 ## A picture of a graph
 
 **The text states a function of x.** A `chart` with `fn` and a `domain`. This is the whole point: a plot
@@ -65,6 +65,12 @@ only because you can see. If they do not match, the expression is wrong or it wa
 and the honest outcome is a figure.
 
 ---
+
+## A heading is a section, not a page break
+
+Every `##` is a numbered section the reader lists in its contents and links to, so **one heading per
+idea**. Not one per screenful, and not one wherever the text felt long: the reader decides where pages
+break, and a heading added to force one puts a phantom entry in the contents of every student's copy.
 
 ## A passage of prose
 
@@ -108,7 +114,12 @@ original marked it (a target, a highlight, "note that this is examined"). `exam-
 one**: an exam tip nobody has evidence for is a claim the author did not make, and students weight it
 heavily.
 
-**The unit's closer.** `in-short`, once, last. What the unit was about, in the author's terms.
+**The unit's closer.** A final `in-short` callout, once, last, titled **Smartly summarised**. What the
+unit was about, in the author's terms.
+
+It is a CALLOUT and never a prose heading, and the reason is worth knowing: every heading inside a prose
+block has to appear in the source, and no source ends with a section called "Smartly summarised". Written
+as prose it is refused; written as the callout it is, it closes the lecture the way the reader expects.
 
 ---
 

@@ -161,3 +161,33 @@ and an artefact of the comparison.
 Fanning out is the wrong instinct here and the rate limit is keyed on the credential, so workers share
 one budget. Where somebody does it anyway: about five, and check the session budget first. Eight
 parallel upload agents were tried once and six died mid-write.
+
+## Punctuation comes back with a backslash, and that is correct
+
+Rich text is written PLAIN and stored ESCAPED. A literal `|`, `[`, `]`, `*`, `~` or `$` in prose comes
+back from a read with a backslash in front of it.
+
+**That is not damage and it is not something to fix.** The backslash is what stops the character opening
+a table column, or a mark, the next time the text is parsed. Strip it and the text is wrong the moment
+anything reads it again.
+
+So: never pre-escape on the way in, and never correct one on the way out. An audit that diffs stored
+text against what was sent will see these and must let them be. A pass that "cleans them up" rewrites
+every lecture in a course and breaks each one.
+
+## A long lecture is several calls, and a shorter lecture is better
+
+A body too large for one request goes in through `content_lesson` `append`, which is idempotent on
+block id, so a call repeated after a lost reply changes nothing. There is no lecture too long to load.
+
+But length is a teaching decision before it is a transport one. **Mastery is tracked per lecture**, so a
+lecture carrying two units of material gives a student one number for both and no way to see which half
+they have. Where a lecture is long enough to need several calls, ask whether it is really two.
+
+## Never renumber a course that runs two series
+
+`content_catalog` `renumber_topics` resets every lecture's number to its POSITION in the course. On a
+course with one run of lectures that is a repair. On a course with two named runs it is destruction:
+Problem 1 and Lecture 1 both exist on purpose, numbers are per series, and the reading order is the
+array rather than the numbers. Running it collapses both runs into one sequence and there is no undo.
+

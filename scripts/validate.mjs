@@ -155,6 +155,32 @@ for (const dir of skillNames) {
 }
 
 /*
+ * ── A TABLE OF CONTENTS THAT HAS STOPPED MATCHING ITS FILE ───────────────────────────────────────────
+ *
+ * A long reference gets one so somebody can find the one answer they came for. It then drifts the first
+ * time a section is added, which happened here within the hour: a contents list missing the section you
+ * need is worse than none, because it reads as proof the section does not exist.
+ *
+ * Checked rather than maintained. Any reference carrying a "What is in here" list must name every
+ * heading below it.
+ */
+for (const dir of skillNames) {
+  const refDir = join(ROOT, "skills", dir, "reference");
+  if (!existsSync(refDir)) continue;
+  for (const file of readdirSync(refDir).filter((f) => f.endsWith(".md"))) {
+    const text = readFileSync(join(refDir, file), "utf8");
+    if (!text.includes("## What is in here")) continue;
+    const where = `skills/${dir}/reference/${file}`;
+    for (const m of text.matchAll(/^#{2,3} (.+)$/gm)) {
+      const title = m[1].trim();
+      if (title === "What is in here") continue;
+      if (!text.includes(`[${title}](#`))
+        errors.push(`${where}: "${title}" is not in its own table of contents`);
+    }
+  }
+}
+
+/*
  * ── COMMANDS ─────────────────────────────────────────────────────────────────────────────────────────
  *
  * A command is what somebody TYPES, so it is the first thing that runs and the last thing anybody
