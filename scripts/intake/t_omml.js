@@ -59,7 +59,7 @@ const cases = [
 
   // ── The safety net the module is built around ─────────────────────────────────────────────────
   ["an unknown construct degrades to its text rather than vanishing", el("m:groupChr", el("m:e", r("a+b"))), "a+b"],
-  ["a LaTeX-special character is escaped", r("100% of $x"), "100\\% of \\$x"],
+  ["a LaTeX-special character is escaped, and the word between the two is a word", r("100% of $x"), "100\\%\\text{ of }\\$x"],
 
   // ── The two the real documents broke on ───────────────────────────────────────────────────────
   [
@@ -118,5 +118,45 @@ for (const [name, xml, want] of cases) {
   if (!ok) console.log(`       want: ${JSON.stringify(want)}\n       got : ${JSON.stringify(got)}`);
 }
 
-console.log(`\n${cases.length - failed}/${cases.length} passed`);
+
+/* ── words the author typed into an equation ─────────────────────────────────────────────────────── */
+
+let extra = 0;
+const run = (t, nor) =>
+  `<m:oMath><m:r>${nor ? "<m:rPr><m:nor/></m:rPr>" : ""}<m:t>${t}</m:t></m:r></m:oMath>`;
+
+for (const [what, xml, expected] of [
+  [
+    "WORDS WITH SPACES ARE WORDS. Math mode sets every letter as a variable and drops the spaces, so this rendered as changeiny on a published lecture.",
+    run("change in y"),
+    "\\text{change in }y",
+  ],
+  [
+    "a connective between conditions. This one read andx > 0.",
+    run("a>0, a≠1, and x>0"),
+    "a>0, a\\neq 1,\\text{ and }x>0",
+  ],
+  [
+    "A RUN THAT IS ONLY A SPACE. Word writes the gaps around a connective as their own runs and math mode drops every one.",
+    run(" "),
+    "~",
+  ],
+  ["a bare connective, which is prose wherever it appears", run("or"), "\\text{or}"],
+  [
+    "TWO LETTERS WITH NO SPACE ARE A PRODUCT, not a word: ab is a times b and stays italic.",
+    run("ab"),
+    "ab",
+  ],
+  ["a product written with a space is still a product", run("a b"), "a b"],
+  ["a run the author marked as normal text is unchanged", run("for any real number", true), "\\text{for any real number}"],
+]) {
+  const got = ommlToLatex(xml).trim();
+  const ok = got === expected;
+  if (!ok) failed += 1;
+  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
+  if (!ok) console.log(`       want: ${JSON.stringify(expected)}\n       got : ${JSON.stringify(got)}`);
+  extra += 1;
+}
+
+console.log(`\n${cases.length + extra - failed}/${cases.length + extra} passed`);
 assert.equal(failed, 0, `${failed} OMML case(s) came out wrong`);

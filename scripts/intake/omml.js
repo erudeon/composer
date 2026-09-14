@@ -121,6 +121,46 @@ const SYMBOLS = new Map([
  */
 const INVISIBLE = /[\u200b\u2061-\u2064]/g;
 
+
+/*
+ * ── WORDS THE AUTHOR TYPED INTO AN EQUATION ─────────────────────────────────────────────────────────
+ *
+ * Word keeps a literal space inside an `m:t` and shows it. Math mode does not: it sets every letter as
+ * a variable and throws the spaces away, so "change in y" becomes changeiny and "and x > 0" becomes
+ * andx > 0. Both were reported off a published lecture, and 57 spans of one summary carry the shape.
+ *
+ * The run is marked `<m:nor/>` when the author remembered to; these are the ones where they did not.
+ * The evidence that a run is prose rather than a product of variables is a SPACE INSIDE IT: `ab` is a
+ * times b and must stay italic, `a b` is still a times b, but `and x` is words. So a run is prose only
+ * when it holds whitespace AND a word of two letters or more.
+ *
+ * A run that is ONLY a space is the other half: Word writes the gaps around a connective as their own
+ * runs, and math mode drops every one.
+ */
+const CONNECTIVES = new Set([
+  "or", "and", "if", "for", "where", "is", "then", "otherwise", "when", "with", "such", "that",
+]);
+
+const WORD_RUN = /(\s*\b[A-Za-z]{2,}(?:\s+[A-Za-z]{2,})*\b\s*)/;
+
+/** The LaTeX for a run the author typed words into, or null when it is ordinary maths. */
+function prosify(raw, renderMaths, asText) {
+  if (!raw) return null;
+  /*
+   * A TIE, NOT A CONTROL SPACE. `\ ` is the right width and it is one trim away from a bare backslash,
+   * which KaTeX refuses outright; `~` is the same width and survives anything that strips whitespace.
+   */
+  if (!raw.trim()) return "~";
+  const word = raw.trim();
+  if (CONNECTIVES.has(word.toLowerCase())) return asText(word);
+  if (!/\s/.test(raw) || !/[A-Za-z]{2,}/.test(raw)) return null;
+  return raw
+    .split(WORD_RUN)
+    .filter((part) => part)
+    .map((part) => (WORD_RUN.test(part) && /[A-Za-z]{2,}/.test(part) ? asText(part) : renderMaths(part)))
+    .join("");
+}
+
 /** The function names KaTeX has a command for. Anything else is `\operatorname{…}`. */
 const KNOWN_FUNCTIONS = new Set([
   "ln",
@@ -389,11 +429,12 @@ function render(tag, inner) {
      * Mathematics summary are marked this way. The euro is the one symbol mapped inside text, as letters.
      */
     case "m:r": {
-      if (/<m:nor\s*\/>/.test(child(inner, "m:rPr"))) {
-        const text = unesc(child(inner, "m:t")).replace(INVISIBLE, "");
-        return `\\text{${textSafe(escapeLatex(text)).replace(/\u20ac/g, "EUR")}}`;
-      }
-      return renderAll(inner);
+      const asText = (t) =>
+        `\\text{${textSafe(escapeLatex(t)).replace(/\u20ac/g, "EUR")}}`;
+      const text = unesc(child(inner, "m:t")).replace(INVISIBLE, "");
+      if (/<m:nor\s*\/>/.test(child(inner, "m:rPr"))) return asText(text);
+      const prose = prosify(text, (part) => mapSymbols(escapeLatex(part)), asText);
+      return prose ?? renderAll(inner);
     }
 
     /** A function name (`ln`, `log`, `sin`) is upright and spaced as an operator, not a product of letters. */
