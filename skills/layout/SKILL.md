@@ -202,6 +202,11 @@ in.
 **Two callouts of the same kind may not touch.** Where the author wrote two examples as two bullets of
 one list, that is ONE callout holding both, and every lead-in inside it is stripped, not just the first.
 
+**A lead-in whose content became another block goes WITH it.** A bold line introducing a table, left in
+the prose after the table is lifted out, is a heading with nothing under it and a block boundary
+beneath that: on the page it reads as a bold line, a wide gap, and then a table that looks unrelated.
+Put it in the caption and take it out of the prose. No prose block should ever END on a bold line.
+
 **An example runs until the next example or the next folded heading.** Not until the next paragraph
 that does not look like maths: this document opens its longest worked example with a fraction and a
 sentence of intent before its first step, and a run that stopped there turned the most important example
