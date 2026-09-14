@@ -265,9 +265,9 @@ function main() {
         ? [
             "Nothing is in progress, so this is a first course.",
             "",
-            "Set it up with workspace.mjs init, then tell them where to put their files: the folder it",
-            "makes has 01-inputs, and that is the only place anything goes in. Their summary, the course",
-            "manual, past exams, whatever they have. Nothing else in there is ever written to by us.",
+            "Set it up with workspace.mjs init. Then ask where their files ARE rather than telling them",
+            "where to put them: workspace.mjs add copies whatever they name into the course, and leaves",
+            "the originals alone. Their summary, the course manual, past exams, whatever they have.",
             "",
             "They do not need to have everything. A missing input is written down and carried, not a stop.",
           ].join("\n")

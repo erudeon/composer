@@ -22,8 +22,16 @@ It makes one folder per course under `~/Documents/Composer`, numbered in the pip
 **`01-inputs` is the one folder nothing else ever writes to**, because every check downstream compares
 what was built against what is in there.
 
-The author puts the materials in `01-inputs`. Everything after this is written beside them, never
-over them.
+**They do not have to move anything themselves.** The natural thing somebody says is "it is in my
+Downloads", so take the path and do it:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/workspace.mjs" add "<course name>" <file> [<file> ...]
+```
+
+It COPIES, so the document they have been writing in stays where they left it, and it skips Word's lock
+file, which exists whenever that document is open and is not a document. Everything after this is
+written beside their files, never over them.
 
 ## 1. Check every file is what it claims to be
 

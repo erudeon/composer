@@ -55,6 +55,11 @@ This is most of the conversation, so it decides how the whole thing feels.
 fact about a file. "You styled two paragraphs as headings" reads as an accusation, and it is also
 usually wrong: Word does this on its own constantly.
 
+**Normalise it honestly.** "This is common" is true and worth saying. "This happens on almost every
+document" is reassurance bought with a number you made up, and somebody who later sees the real figure
+has no reason to believe the next thing you tell them. If you do not know how common it is, say it is
+common and stop there.
+
 **Say what it means for the reader**, because that is the part they care about: "these would come out
 as section titles a page long, so the contents list would be unusable."
 

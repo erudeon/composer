@@ -96,6 +96,18 @@ say(
 // An empty folder must not read as a course in progress.
 say(phaseOf(state()) === "0", "an empty course reads as Phase 0");
 
+/*
+ * THE WAY SOMEBODY ACTUALLY GETS A FILE IN: they say where it is, and the tool copies it. Asking an
+ * author to move a file into a numbered folder is a step that exists only because the pipeline needed
+ * it to.
+ */
+const added = run("workspace.mjs", ["add", COURSE, doc]);
+say(added.code === 0, "workspace.mjs add copies a named file into the course");
+say(
+  existsSync(join(paths, "01-inputs", basename(doc))),
+  "  the file is in 01-inputs",
+);
+say(existsSync(doc), "  and the original is still where it was");
 copyFileSync(doc, join(paths, "01-inputs", "summary-e2e.docx"));
 say(
   existsSync(join(paths, "01-inputs", "summary-e2e.docx")),
@@ -122,17 +134,17 @@ say(
  * empty course report one input.
  */
 {
+  const before = /Files:\s+(\d+) input/.exec(state())?.[1];
   const lock = join(paths, "01-inputs", "~$summary-e2e.docx");
   writeFileSync(lock, "word lock file");
-  const withLock = state();
-  const counted = /Files:\s+(\d+) input/.exec(withLock)?.[1];
+  const after = /Files:\s+(\d+) input/.exec(state())?.[1];
   say(
-    counted === "1",
-    `a document open in Word does not become a second input (counted ${counted})`,
+    before === after,
+    `opening a document in Word does not change the input count (${before} then ${after})`,
     "the lock file exists exactly when somebody is looking at their summary, which is when they come here",
   );
   say(
-    !withLock.includes("~$"),
+    !state().includes("~$"),
     "  and it is never named as the summary",
   );
   execFileSync("rm", ["-f", lock]);

@@ -170,6 +170,61 @@ export function init(name) {
  * Keep the exact bytes that were SENT and the exact reply, together, under one timestamp. This pair is
  * the only durable evidence of what a course was at a moment.
  */
+/**
+ * COPY THE FILES INTO `01-inputs`, because asking somebody to do it is a step nobody should need.
+ *
+ * The natural thing to say on arriving here is "it is in my Downloads", and that was the one thing this
+ * could not act on: every path in the pipeline starts at `01-inputs`, and getting a file there was
+ * manual. Now it is a sentence.
+ *
+ * COPIED, NEVER MOVED. The file somebody has been writing in stays exactly where they left it. A tool
+ * that relocates a person's work on its own is a tool they stop trusting.
+ *
+ * Word's lock file is skipped: `~$summary.docx` exists whenever the document is OPEN, which is whenever
+ * somebody is doing this, and it is not a document.
+ */
+export function addInputs(name, paths) {
+  const p = coursePaths(name);
+  if (!existsSync(p.root))
+    throw new Error(
+      `No course called "${name}" yet. Run: workspace.mjs init "${name}"`,
+    );
+
+  const added = [];
+  const skipped = [];
+  for (const from of paths) {
+    const base = basename(from);
+    if (base.startsWith("~$") || base.startsWith(".")) {
+      skipped.push(`${base} (a lock file, not a document)`);
+      continue;
+    }
+    if (!existsSync(from)) {
+      skipped.push(`${base} (no file at ${from})`);
+      continue;
+    }
+    if (statSync(from).isDirectory()) {
+      skipped.push(`${base} (a folder: name the files inside it)`);
+      continue;
+    }
+    /*
+     * A NAME ALREADY THERE IS NOT OVERWRITTEN. Two courses worth of "summary.docx" is a real thing that
+     * happens, and silently replacing the first is how somebody loses the version they meant.
+     */
+    let to = join(p.inputs, base);
+    if (existsSync(to)) {
+      const dot = base.lastIndexOf(".");
+      const stem = dot > 0 ? base.slice(0, dot) : base;
+      const ext = dot > 0 ? base.slice(dot) : "";
+      let n = 2;
+      while (existsSync(join(p.inputs, stem + "-" + n + ext))) n += 1;
+      to = join(p.inputs, stem + "-" + n + ext);
+    }
+    copyFileSync(from, to);
+    added.push(basename(to));
+  }
+  return { added, skipped, inputs: p.inputs };
+}
+
 export function snapshot(name, manifestPath, replyPath, label = "apply") {
   const p = coursePaths(name);
   if (!existsSync(p.versions))
@@ -241,6 +296,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
           );
         }
       }
+    } else if (cmd === "add") {
+      const [name, ...paths] = rest;
+      if (!name || paths.length === 0)
+        throw new Error('usage: workspace.mjs add "<course>" <file> [<file> ...]');
+      const { added, skipped, inputs } = addInputs(name, paths);
+      for (const f of added) console.log("  added    " + f);
+      for (const f of skipped) console.log("  skipped  " + f);
+      console.log(
+        "\n" + added.length + " file(s) now in " + inputs + "\nThe originals are untouched.",
+      );
     } else if (cmd === "snapshot") {
       const [name, manifestPath, replyPath, label] = rest;
       if (!name || !manifestPath)
@@ -255,6 +320,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
           "",
           `  init "<course name>"    make or repair the structure (safe to re-run)`,
           `  path "<course name>"    print the paths`,
+          `  add "<course>" <file>   copy files into 01-inputs, originals untouched`,
           `  list                    every course and its phase`,
           `  snapshot "<course>" <manifest.json> <reply.json|-> [label]`,
           "",

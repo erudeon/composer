@@ -30,15 +30,18 @@ this bites on the first command and on no other.
 /composer
 ```
 
-It asks which course, makes the folder for it, and tells you what to do next. Everything for that course
-then lives in one place and stays there between sessions.
+It asks which course, makes the folder for it, and tells you what to do next. You do not have to move
+any files: say where they are, even "they are in my Downloads", and it copies them in. Your originals
+stay exactly where they were.
+
+Everything for that course then lives in one place and stays there between sessions.
 
 ## Where your work lives
 
 `~/Documents/Composer/<course>/`, made for you, the same shape every time:
 
 ```
-01-inputs/     what you put in. Nothing ever writes here but you.
+01-inputs/     your files. Tell it where they are and it copies them in for you.
 02-source/     the text pulled out of your documents, with the maths intact
 03-figures/    the pictures, and where each one ended up
 04-manifest/   your course as one file, and versions/ keeping every one ever sent
