@@ -44,7 +44,7 @@ than by inspection.
 
 ## Phase 5 · Student View · a second person
 
-**NOT BUILT.** It needs two things neither of which exists: a reviewer, and a link. The platform can mint a preview only for a staff member's own preview student, bound to that person and short lived, so there is no link a current student of the course can be sent. Until that exists, the operator reads their own work, which the phase says explicitly not to rely on.
+**NOT BUILT.** It needs two things neither of which exists: a reviewer, and a link. The platform can mint a preview only for a staff member's own preview student, bound to that person and short lived, so there is no link a current student of the course can be sent. Until that exists, the author reads their own work, which the phase says explicitly not to rely on.
 
 The reviewer opens the course and reads it as a student. **The reviewer is not the person who laid it
 out**, and where we have one they are a current student of the course, because the summary was written by
@@ -69,7 +69,7 @@ students for students and that is who can say whether it reads right.
 ### What comes back
 
 Turn it into lines on the findings list. Fix the mechanical ones and re-verify. Bring the rest to the
-operator in one message with a recommendation each.
+author in one message with a recommendation each.
 
 **And write the rubric.** Every observation that a check could have caught goes into `rubric.md` in the
 course folder, naming the observation and the course it came from. An entry that has fired on three

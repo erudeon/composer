@@ -54,10 +54,13 @@ node ~/.claude/plugins/cache/erudeon/composer/*/scripts/workspace.mjs list
 
 In order of how much it matters:
 
-1. **The course manual.** Without it we do not know what we are doing.
-2. **Past exams, with their answer keys.** Without them we do not know if we are exam-oriented.
+1. **The course manual.** It settles what a teaching unit is called and where one stops, which is the
+   decision everything else is built on.
+2. **Past exams, with their answer keys.** They are how anyone can tell whether the course prepares
+   somebody for the thing they actually sit.
 3. **Teaching materials**: slides, tutorials, the formula sheet.
-4. **What the cohort thinks**: their frustrations, who they compare us to, what they say.
+4. **What students on this course find hard.** What they ask about, what they get stuck on, what they
+   wish the material did differently.
 5. **The summary**, as the file it came in, with everything in it.
 
 A missing one does not stop you. It gets written down, and it has to be accepted by a person before the
@@ -74,7 +77,7 @@ course can be published.
 | 3 | **Layout** | make it a course |
 | 4 | **Audit** | prove it, with nobody |
 | 5 | *Student View* | a second person reads it as a student. Not built yet |
-| 6 | **Publish** | one press, and it says which environment |
+| 6 | **Publish** | one press, once you say the word |
 | 7 | *Observe* | watch it until the exam. Not built yet |
 
 The bold ones have skills behind them today and take a written summary all the way to a published
@@ -92,4 +95,5 @@ It will not upload a picture cropped from a textbook, a slide, Chegg or the web.
 what the text states. Reproducing somebody else's images is the one mistake that costs more than a bad
 course.
 
-It will not touch staging, in any phase, for any reason.
+It will not publish anything without being told to, by name, in so many words. Every step before that
+one can be run again, and `plan` rehearses a whole course without writing a thing.

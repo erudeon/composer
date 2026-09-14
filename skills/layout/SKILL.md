@@ -1,6 +1,6 @@
 ---
 name: layout
-description: Phase 3 of the Composer. Turn a source of record into a course manifest and apply it to a draft course on production, one unit first and then the rest. Use when the Composer's state says Phase 3 Layout, when building or pushing a manifest, when a unit needs laying out into blocks, or when figures need uploading before a course is written.
+description: Phase 3. Set the course itself up correctly, then turn the text into lectures, sections, tables, worked examples and charts, and send it, one lecture first so it can be looked at before the rest follow. Use when the Composer's state says Phase 3 Layout, and whenever somebody asks how their course will look, wants it built or sent or pushed, asks about charts, graphs, tables, callouts, worked examples or the glossary, asks where a picture will go, or asks what a course is named and which teaching period it sits in.
 ---
 
 # Phase 3 · Layout
@@ -54,7 +54,7 @@ Five things have to be right, and they were all settled in Intake:
 | **Container word** | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets" |
 | **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows |
 
-**Then READ THE ROW BACK and show the operator what it says**, in one line each: title, programme,
+**Then READ THE ROW BACK and show the author what it says**, in one line each: title, programme,
 period, container word, address. Not what you sent. What is stored.
 
 **Stop there and get a yes.** This is the last cheap moment. After the first lecture is written, every
@@ -113,7 +113,7 @@ corrected file; everything that already landed is a no-op the second time.
 
 ## One unit, then stop
 
-Build unit 1. Apply it. Verify it. Show the operator, report, and **wait**. On their word, build the
+Build unit 1. Apply it. Verify it. Show the author, report, and **wait**. On their word, build the
 rest without further questions and report once.
 
 ## The shape of a unit

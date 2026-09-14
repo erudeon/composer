@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Phase 6 of the Composer. Turn a drafted course into one students can see, after checking every open line on the findings list is closed or accepted in writing. Use when the Composer's state says Phase 6 Publish, when somebody wants to make a course visible or live, or when a course is finished and needs shipping.
+description: Phase 6. Make a finished course visible to students, once every open finding is closed or accepted in writing by a person. Use when the Composer's state says Phase 6 Publish, and whenever somebody says publish, go live, make it visible, release it, ship it, or asks whether a course is ready for students to see or what is still standing in the way.
 ---
 
 # Phase 6 · Publish
@@ -16,7 +16,7 @@ This is the one irreversible act in the pipeline, which is the only reason it is
 carry a `why`, written by the person accepting it.
 
 **2. Ask about the open lines once**, in one message, with a recommendation each: accept or hold. That
-is the last of the four moments in this pipeline where the operator decides something.
+is the last of the four moments in this pipeline where the author decides something.
 
 **3. Read what the cascade will touch.** A course-level publish carries every lecture, bank and paper
 with it, **which silently reverses a deliberate withdrawal**. If a unit was withdrawn on purpose, this
@@ -26,7 +26,7 @@ puts it back. For a single mid-block fix there is a lecture-level door; use that
 
 ## The press
 
-Press only on the word `publish` from the operator. Not on "looks good", not on "go ahead with
+Press only on the word `publish` from the author. Not on "looks good", not on "go ahead with
 everything", not on silence.
 
 Then report the status in the platform's own words, **with the environment named**.
@@ -35,7 +35,7 @@ Then report the status in the platform's own words, **with the environment named
 
 The publish door refuses while any lecture it would publish has no body. **There is an optional flag
 that turns that refusal off. Never pass it.** A refusal means a unit is empty, and shipping a stub to
-students is not something this pipeline does quietly. If the operator genuinely means to ship a stub,
+students is not something this pipeline does quietly. If the author genuinely means to ship a stub,
 that is a finding they accept in writing first, and then it is their sentence on the record rather than
 a boolean in a tool call.
 

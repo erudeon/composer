@@ -13,7 +13,7 @@
  * WHERE the maths is comes from `maths-spans.js`, which is the one answer every tool here uses.
  */
 const fs = require("node:fs");
-const { mathsSpans } = require("./maths-spans.js");
+const { mathsSpans, fragileSpans } = require("./maths-spans.js");
 
 /*
  * Resolved from the plugin's own dependencies. It used to reach two levels up into the platform
@@ -51,7 +51,8 @@ if (!file) {
   process.exit(2);
 }
 
-const eqs = mathsSpans(fs.readFileSync(file, "utf8"));
+const text = fs.readFileSync(file, "utf8");
+const eqs = mathsSpans(text);
 const refused = [];
 for (const e of eqs) {
   try {
@@ -60,7 +61,43 @@ for (const e of eqs) {
     refused.push([e.tex, err instanceof Error ? err.message : String(err)]);
   }
 }
-console.log(`equations=${eqs.length} refused=${refused.length}`);
-for (const [tex, why] of refused)
+/*
+ * A SPAN CAN PARSE AND STILL NOT SURVIVE BEING READ BACK. KaTeX accepts an escaped dollar, so it is
+ * stored happily; reading the lecture back gives a different expression, and the next repair run sees a
+ * change nobody made. Reported, never refused: the equation is correct, and rewriting somebody's maths
+ * to suit a round trip is not this script's call.
+ */
+const fragile = fragileSpans(text);
+
+console.log(
+  `equations=${eqs.length} refused=${refused.length} fragile=${fragile.length}`,
+);
+/*
+ * NAME THE LIKELY CAUSE, because the refusal never does.
+ *
+ * A long, word-heavy span is almost never an equation somebody wrote wrong. It is a currency sign in
+ * prose that has paired with the opening delimiter of a real equation further along the line, and
+ * everything between them has been read as maths. KaTeX then refuses it for whatever punctuation it
+ * met first, which sends a reader hunting through a sentence for a LaTeX error that is not there.
+ *
+ * The write path applies the same rule, so this is a real refusal and not an artefact of checking.
+ */
+const proseLike = (tex) =>
+  tex.trim().split(/\s+/).length > 6 && !/[\\^_{}]/.test(tex);
+
+for (const [tex, why] of refused) {
   console.log(`\n  ${JSON.stringify(tex)}\n  ${why}`);
+  if (proseLike(tex))
+    console.log(
+      `  This reads as a sentence, so it is probably a currency sign that has paired with a real\n` +
+        `  equation later on the line. Escape the amount as \\$ and the sentence stops being maths.`,
+    );
+}
+if (fragile.length > 0) {
+  console.log(
+    `\n${fragile.length} equation(s) parse but do not survive a read back:`,
+  );
+  for (const span of fragile.slice(0, 5))
+    console.log(`  ${JSON.stringify(span.tex.slice(0, 60))}\n    ${span.why}`);
+}
 process.exit(refused.length === 0 ? 0 : 1);

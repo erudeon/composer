@@ -212,3 +212,33 @@ a question without them, and the selection quietly gets worse.
 which is what makes a manifest carrying pins portable: a row id is correct only on the environment that
 minted it and paints nothing anywhere else.
 
+## Where a block sits on the page, which is a choice you are making anyway
+
+Every block takes two placement controls, and leaving them out is itself a decision: the block takes the
+whole column and the text stops for it. That is right for the thing a reader must not skip and wrong for
+the small aside they should read past.
+
+**Reach for a narrow block beside the text** when the thing is a remark on the paragraph next to it: a
+short intuition, a note, a small definition. The text keeps its flow and the aside sits in the margin
+where the eye finds it without losing the line.
+
+**Keep the full width** for anything a reader has to stop and work through: a worked example, a table of
+any size, a chart, an equation they will copy out. Splitting a reader's attention across a formula and a
+paragraph is how both get skimmed.
+
+**On a phone every block is full width regardless.** So the narrow choice is a desktop refinement, never
+the thing that makes a layout work. Build it so it reads on a phone first, then place for the desktop.
+
+**A table says what each ROW is**, which is what makes an accounting table legible: an ordinary line, a
+heading inside the table, a subtotal, a total. A trial balance whose total row is not marked as one is a
+grid of numbers with the answer hidden in it. The same goes for marking the one row that matters, and
+for how a steps table numbers itself.
+
+**A figure may be written before its picture exists.** A draft lecture accepts a figure with no image and
+a published one refuses it, so a unit can be laid out while the drawings are still being made. Nothing
+publishes while one is still empty, which is the point: it is a placeholder that cannot be forgotten.
+
+**Ask `content_guide` `blocks` for the exact spelling of any of this** before writing it. The names and
+the ranges are generated from the schema the write path validates against, so they are right there and
+nowhere else, including here.
+

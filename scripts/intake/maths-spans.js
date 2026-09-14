@@ -39,25 +39,23 @@ function withoutCode(text) {
 }
 
 /**
- * IS THIS SPAN MATHS, OR IS IT TWO AMOUNTS WITH A PHRASE BETWEEN THEM?
+ * THERE IS NO HEURISTIC HERE ANY MORE, AND REMOVING IT WAS A CORRECTNESS FIX.
  *
- * Real inline maths carries a signal: a command, a script, a group, or symbol density. Running prose
- * carries spaces and words.
+ * This file used to carry `looksLikeMaths`, a filter asking whether a span "looked like" an equation:
+ * few words, or a command, or a brace. It existed because the delimiter rule was loose, and a stray
+ * currency sign in prose could pair with the next one and swallow half a chapter.
+ *
+ * Once the real rule was in place the filter had nothing left to catch, and it never stopped
+ * REMOVING things. Measured over 134 real summaries: 11,955 spans satisfy the write path's own rule,
+ * and the heuristic dropped 725 of them. Every one was an equation. `TC = FC + vQ`, `y = mx + c`,
+ * `E = C + I + G + X - M`: ordinary economics, too many words to look like maths to a word count.
+ *
+ * Those 725 were never validated. The checker exists to meet a refusal here rather than inside an
+ * apply, and for each of them it was silently doing the opposite.
+ *
+ * So the rule is now the write path's rule and nothing else. A checker that disagrees with the thing
+ * it is checking for is not a safety net, it is a second opinion nobody asked for.
  */
-function looksLikeMaths(span) {
-  // Maths says something. A span with no letter and no digit is punctuation between two currency
-  // signs: a lone backslash, a comma, a dash. Eleven of these came out of one summary about money.
-  if (!/[A-Za-z0-9]/.test(span)) return false;
-  /*
-   * NOTHING ENDS ON A DANGLING OPERATOR. `x =` is not an equation anybody wrote; it is the left half of
-   * a sentence that happens to sit between two currency signs. Every spelling of every binary operator
-   * belongs in this class, typographic ones included: a document written in Word is full of U+2212 and
-   * U+00D7 where a keyboard would have given `-` and `*`.
-   */
-  if (/[-+*/=<>~–—−±×÷]\s*$/.test(span)) return false;
-  if (/[\\^_{}]/.test(span)) return true;
-  return span.trim().split(/\s+/).length <= 3;
-}
 
 /*
  * Display maths is a doubled dollar and may cross lines. Inline maths is a single one and may NOT: one
@@ -75,9 +73,17 @@ function looksLikeMaths(span) {
  * so every amount inside an equation truncated it to `... \times \` and KaTeX refused the stump. On
  * documents about money, which is where `\$` lives, that turned 5 refusals across the corpus into 24.
  */
+/*
+ * AND A SPAN MAY NOT BE FOLLOWED BY A DIGIT. `$x$2` is not maths on the write path, which takes it as
+ * text, and it is one of the three shapes the reader names as not surviving a round trip. A checker
+ * that disagrees with the write path about where the maths IS is worse than no checker: it validates
+ * something that will never be rendered as maths, and stays silent about the one that will.
+ *
+ * Read from `content_guide` `maths` rather than inferred, so it is the same rule and not a guess at it.
+ */
 const DISPLAY = /\$\$([\s\S]+?)\$\$/g;
 const INLINE =
-  /(^|[^\\$])\$(?![\s$])((?:\\\$|[^$\n]){0,398}?(?:\\\$|[^$\s\\]))\$/g;
+  /(^|[^\\$])\$(?![\s$])((?:\\\$|[^$\n]){0,398}?(?:\\\$|[^$\s\\]))\$(?!\d)/g;
 
 /**
  * Every maths span in `text`, in document order, each with the offsets it occupies in the ORIGINAL
@@ -104,7 +110,6 @@ function mathsSpans(text) {
       inlineOnly.slice(d.end);
   }
   for (const m of inlineOnly.matchAll(INLINE)) {
-    if (!looksLikeMaths(m[2])) continue;
     const start = m.index + m[1].length;
     found.push({
       display: false,
@@ -116,4 +121,26 @@ function mathsSpans(text) {
   return found.sort((a, b) => a.start - b.start);
 }
 
-module.exports = { mathsSpans, looksLikeMaths, withoutCode };
+/**
+ * SPANS THAT PARSE NOW AND COME BACK DIFFERENT LATER.
+ *
+ * KaTeX accepts all of these, so `katex-check` passes them and the write path stores them. What the
+ * reader warns about is the ROUND TRIP: read the lecture back and the expression is not the one that
+ * was sent, so a repair run sees a change nobody made and rewrites a lecture it did not need to.
+ *
+ * The three shapes come from `content_guide` `maths`. Two of them cannot occur here, because the
+ * scanner above refuses a span that opens or closes on a space and one followed by a digit. The third
+ * can: an equation about money carries an escaped dollar, and Word writes those constantly.
+ */
+function fragileSpans(text) {
+  return mathsSpans(text)
+    .filter((span) => /\\\$/.test(span.tex) || /\n/.test(span.tex))
+    .map((span) => ({
+      ...span,
+      why: /\\\$/.test(span.tex)
+        ? "holds a dollar sign, which does not survive being read back"
+        : "holds a newline, which does not survive being read back",
+    }));
+}
+
+module.exports = { mathsSpans, withoutCode, fragileSpans };

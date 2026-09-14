@@ -1,6 +1,6 @@
 ---
 name: compose
-description: Phase 2 of the Composer. Make the finite list of mechanical changes a converted document needs, and no others, keeping the author's prose exactly as written and recording every substantive edit with its reason. Use when the Composer's state says Phase 2 Compose, when a source of record needs cleaning before layout, or when somebody wants to fix something in a summary.
+description: Phase 2. Make the short list of mechanical corrections a converted document needs and nothing more, leaving the author's own words exactly as they wrote them, and asking before any change of meaning. Use when the Composer's state says Phase 2 Compose, and whenever somebody wants something in a summary fixed, cleaned, tidied or corrected, asks about branding or old logos still in the text, asks whether their writing will be edited, or asks what happens to a mistake in the source.
 ---
 
 # Phase 2 · Compose
@@ -50,7 +50,7 @@ which is the author's. A topic the professor has since changed, which is Observe
 author's, verbatim, typos included.
 
 Ask about every substantive candidate **once**, in one message, with a recommendation each. Make the
-ones the operator confirms. Leave the rest as open lines.
+ones the author confirms. Leave the rest as open lines.
 
 ## Gate
 

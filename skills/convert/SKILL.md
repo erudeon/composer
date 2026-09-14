@@ -1,6 +1,6 @@
 ---
 name: convert
-description: Turn a Word document into a source of record - Markdown with the maths as LaTeX - and inventory every picture, text box and drawn shape in it so each can be given a disposition. Use when a .docx needs converting, when a summary has to become something a course can be built from, when equations or images need extracting from a document, or when the Composer's state says the source of record is missing.
+description: Pull the text out of a Word document as Markdown with every equation intact, and list every picture, text box and drawn shape so none is lost. Use this whenever a .docx has to become something a course can be built from, and whenever somebody asks about equations, formulas, maths or images surviving an upload, says their document has graphs in it, asks why a converted file looks wrong or is missing formulas, or when the Composer's state says the text has not been pulled out yet.
 ---
 
 # Convert
@@ -86,7 +86,7 @@ the thing every fidelity rule checks against.
 
 ## The media inventory
 
-Every entry comes out with `disposition: null`. **Choosing is the operator's**, made against the prose,
+Every entry comes out with `disposition: null`. **Choosing is the author's**, made against the prose,
 and it is Intake's gate rather than yours. Your job is that nothing is missing from the list.
 
 Report the counts by kind, name anything that looks like a crop from a book or the web, and stop.

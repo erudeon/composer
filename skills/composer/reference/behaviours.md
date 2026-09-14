@@ -40,7 +40,7 @@ That a lecture was written is not that the body stored is the body you sent. Tho
 TWO DIFFERENT REFUSALS, and conflating them is how a course gets re-uploaded onto itself. A manifest
 carrying a lint ERROR is refused whole, before the first write. An apply that gets PAST the lint is
 **not atomic**: it answers per operation, so a lecture refused for a bad block names itself and the
-ones after it still land. An operator who reads "3 operations refused" as "nothing was written" and
+ones after it still land. An author who reads "3 operations refused" as "nothing was written" and
 re-runs is re-running against a course that already changed.
 
 ## Which doors are safe to retry

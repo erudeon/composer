@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Phase 0 of the Composer. Prove a course's materials are present and are what they claim to be, give every drawing a disposition, settle the course's identity and the six structure questions, and open the findings list. Use when starting a course, when materials have just arrived, when checking whether files are complete or the right ones, or when the Composer's state says Phase 0 Intake.
+description: Phase 0. Work out what a course actually has, prove each file is what its name claims, decide what happens to every picture, and settle the course's identity and structure with the author before a word is built. Use this at the very start of any course, and whenever somebody says they have materials, has just sent or uploaded files, asks what else is needed, asks whether a document is usable or the right one, wonders why a file will not open, or wants to begin. Use it too when the Composer's state reports Phase 0 Intake, or when a drawing still has no decision against it.
 ---
 
 # Phase 0 · Intake
@@ -22,7 +22,7 @@ It makes one folder per course under `~/Documents/Composer`, numbered in the pip
 **`01-inputs` is the one folder nothing else ever writes to**, because every check downstream compares
 what was built against what is in there.
 
-The operator puts the materials in `01-inputs`. Everything after this is written beside them, never
+The author puts the materials in `01-inputs`. Everything after this is written beside them, never
 over them.
 
 ## 1. Check every file is what it claims to be
@@ -85,7 +85,7 @@ where it found nothing. **It exits non-zero while anything is uncertain**, becau
 person must look at.
 
 **Look at those pictures.** You can see them: they are files under `02-source/work/word/media`. Open the
-uncertain ones, read the prose beside them, and decide. Then present the proposals to the operator as
+uncertain ones, read the prose beside them, and decide. Then present the proposals to the author as
 GROUPS, in one message, with a recommendation each. Seventy-nine drawings becomes about five decisions,
 and not one of them is a guess.
 
@@ -117,7 +117,7 @@ exactly, because the Publish gate parses this file.
 
 ## 6. Ask the six structure questions
 
-In ONE message, with a recommendation each. They are the operator's and nobody else's, and asking them
+In ONE message, with a recommendation each. They are the author's and nobody else's, and asking them
 later is expensive: renaming a unit re-derives its address, a title renders **as authored**, and
 changing the reading order later means renaming, renumbering and reordering live rows.
 
@@ -133,8 +133,8 @@ changing the reading order later means renaming, renumbering and reordering live
 4. **The title.** Does it repeat its number, or omit it?
 5. **House style beyond the mechanical edits.** Em dashes and heading numbers are removed without
    asking. Subtitles, capitalisation and title format are not, and nobody else decides them. **This is
-   the most expensive question to ask late**: on one course it arrived after three banks were written
-   and cost 124 questions deleted one at a time, about 29 per cent of that upload's token budget.
+   the most expensive question to ask late**: answered after the questions are written, every one of
+   them has to be rewritten by hand.
 6. **Practice questions or mock exams?** They are different things and both get called "exam questions".
    A mock exam is a standalone PAPER; the questions embedded in each unit are PRACTICE QUESTIONS and
    always get built. "Upload everything except the mock exams" means the papers. Reading it the other

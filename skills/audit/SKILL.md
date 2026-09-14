@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Phase 4 of the Composer. Run every check on a course that needs no human - the write path's own refusals, source lint, residue, transcription fidelity, and glossary and practice quality - and fix what the write path refused. Use when the Composer's state says Phase 4 Audit, when a course has just been applied and needs checking, or when somebody asks whether a course is correct before publishing.
+description: Phase 4. Run every check on a built course that needs no person: what the write path itself refuses, whether the text still matches the source, leftover branding, whether the equations came through right, and whether the glossary and practice questions hold up. Use when the Composer's state says Phase 4 Audit, once a course has just been sent, and whenever somebody asks if a course is correct, wants it checked or reviewed or proofed, or asks what could still be wrong before students see it.
 ---
 
 # Phase 4 · Audit
@@ -59,13 +59,13 @@ summaries referenced and no block count could see it.
 
 A passage marked as edited in the source of record must have a line on the findings list with a `why`.
 **One without is a failure of this phase**, whatever the passage says. This is the only check that
-polices the operator rather than the file.
+polices the author rather than the file.
 
 ## What you may fix, and what you may not
 
 **Fix what the write path refused and re-apply.** That is mechanical and it is yours.
 
-**Touch no substantive line.** A wrong sign is the operator's call, with a reason on the record. A gap is
+**Touch no substantive line.** A wrong sign is the author's call, with a reason on the record. A gap is
 published as a gap or left. Ask nothing: every decision in this phase is already made, and the ones that
 are not become findings.
 

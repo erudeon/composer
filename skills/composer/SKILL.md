@@ -1,6 +1,6 @@
 ---
 name: composer
-description: Drive a course from raw materials to published on pass the year, through phases with gates. Use this whenever somebody wants to upload, ingest, build, fix, check or publish course content - a summary, a set of lectures, practice questions, a glossary or a mock exam - and whenever they mention the Composer, a course folder, a manifest, or getting a course up. Use it even when they name only one step, because the step belongs to a phase and the phase decides what has to be true before and after it. Start here rather than reaching for the MCP tools directly.
+description: Take a course from the materials somebody has to a published course on pass the year, in phases, each with something that has to be true before the next one starts. USE THIS FIRST, and use it generously: any mention of uploading, adding, importing, building, fixing, checking, reviewing or publishing course material belongs here, and so does 'I wrote a summary', 'can you put my notes up', 'get this course online', 'is my course ready', 'something looks wrong in my lecture'. Use it when somebody names only one small step, because the step belongs to a phase and the phase decides what has to hold around it. Use it before reaching for any content tool directly, and before answering a question about how content gets onto the platform.
 ---
 
 # Composer
@@ -42,14 +42,39 @@ and a third of a lecture missing.
 The three unbuilt phases are one page each in `reference/short-phases.md`, with what has to exist before
 they can be. **Do not improvise them.** Say they are not built, say what is missing, and carry on.
 
+## Who you are talking to
+
+**The person on the other side wrote the summary.** They are an author, usually a student, who knows
+this course better than anything here does. They have never seen this tool and they are doing this
+between lectures.
+
+**Read `composer/reference/voice.md` once, at the start of a run, before the first message.** It is
+short, and it governs every message in every phase: the words to use and the ones that mean nothing to
+them, how to raise a problem with their document without it reading as a verdict on their teaching, and
+what to do when something cannot be done. Getting that wrong is the difference between a tool somebody
+finishes with and one they abandon halfway.
+
+Two things from it are load-bearing enough to state here as well:
+
+**Never narrate the plumbing.** Which box answered, which build, how a payload was validated, what a
+step cost: checked, never said. That is ours, not theirs.
+
+**Their prose is published exactly as written, typos included.** Say so early. It is the most
+reassuring fact about this system for somebody handing over their own writing, and the one they are
+least likely to assume.
+
 ## How you run
 
-**Say the phase.** Every message starts with the phase it is in.
+**Say the phase.** Every message starts with the phase it is in, in their words rather than ours.
 
-**Ask once, ask together.** Every decision that is the operator's is asked at the START of the phase that
+**Ask once, ask together.** Every decision that is the AUTHOR'S is asked at the START of the phase that
 needs it, as one set of multiple-choice questions with a recommendation each. Never one at a time, never
-mid-phase. There are four such moments: the structure questions at Intake, the substantive edits at
-Compose, unit 1 at Layout, the open lines at Publish.
+mid-phase. There are four such moments: the course and structure questions at Intake, the substantive
+edits at Compose, unit 1 at Layout, the open lines at Publish.
+
+A recommendation every time. They are being asked because the answer is theirs, not because we have no
+view, and somebody who has never done this before cannot choose between four options they have never
+had to think about.
 
 **Record instead of stopping.** A finding goes on the list, a skip goes on the record, a doubt becomes an
 open line. None is a reason to pause. The pauses are the gates that name a person.
@@ -67,13 +92,15 @@ every re-emission can corrupt text the upload exists to reproduce exactly.
 edit is made with its reason on the record. Anything else is a gap, and when in doubt it is a gap. A
 claim the author did not make does not belong in their course, however well it reads.
 
-**Production, always.** Staging is not in this pipeline, in any phase, for any reason. The rehearsal is
-`content_import` `plan`, which pre-flights every block and question and writes nothing.
+**Rehearse with `plan`, which writes nothing.** It runs every section and every question through the
+same validator that would store them, so a clean plan means a clean apply. There is one destination and
+this pipeline never writes anywhere else.
 
-**Confirm which hub answered before the first write.** `get_my_context`, reading `server.deployment` AND
-`server.commit`, said in one line. Production and staging run the same build and resolve to the same
-role, so a write sent to the wrong one succeeds, reads back correct, and never appears on the site you
-meant.
+**Check which box answered before the first write, and do not say so.** `get_my_context`, reading
+`server.deployment` AND `server.commit`. Two deployments run the same build and resolve to the same
+role, so a write sent to the wrong one succeeds, reads back correct, and never appears where it was
+meant to: this check is the only thing that can tell them apart. **It is a check, not a sentence.** If
+it does not say production, stop and tell the author you cannot reach pass the year right now.
 
 ## The phase report
 
