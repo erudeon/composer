@@ -23,6 +23,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, with no exception, so this script
@@ -71,6 +73,37 @@ const hub = hubFlag !== -1 ? args[hubFlag + 1] : PRODUCTION_HUB;
 if (!hub) fail(`--hub needs a URL.\n\n${USAGE}`);
 
 const body = fs.readFileSync(file, "utf8");
+
+/*
+ * NOTHING GOES UP STILL DRAWN BY HAND.
+ *
+ * Every other check in this pipeline asks whether the write path will ACCEPT the file. It will accept
+ * a journal entry drawn as a pipe table, a question asked in a paragraph, and an answer pointing at a
+ * footnote, because all three are valid blocks. They are just not the blocks the author's material is
+ * made of, and a course goes up looking built and reading dumped.
+ *
+ * It gates the SEND rather than the build, because the build is not the last word: a course folder
+ * places its own elements over the derived file afterwards, and gating the build would refuse work
+ * that is about to be done. Here the file is final.
+ *
+ * A plan is allowed through, because a plan writes nothing and seeing the operations is often how
+ * somebody works out which element a passage wants.
+ */
+if (apply) {
+  const handcraft = spawnSync(
+    process.execPath,
+    [path.join(path.dirname(fileURLToPath(import.meta.url)), "handcraft-check.mjs"), file],
+    { encoding: "utf8" },
+  );
+  if (handcraft.stdout) process.stdout.write(handcraft.stdout);
+  if (handcraft.status !== 0) {
+    console.error(
+      "\nNothing was sent. Each finding above names the block and the element it should be.\n" +
+        "Place them, build again, and re-run. To see the operations first, drop --apply.",
+    );
+    process.exit(1);
+  }
+}
 /*
  * PARSED HERE, so a JSON error is reported against the file rather than as a 400 from the far end. A
  * manifest is usually machine-written, and a builder that emitted something unparseable should be told

@@ -111,7 +111,23 @@ duplicate block id.
 **Put each unit's slice on the lecture as `source`.** It is the text Intake extracted, and it is what
 every fidelity rule diffs the headings, prose and numbers against.
 
-**3. Plan, then apply, then verify.**
+**3. Nothing goes up still drawn by hand.** `push.mjs --apply` runs `handcraft-check.mjs` over the
+final file and refuses to send while anything is found. It is the only check in this pipeline that does
+not ask whether the write path will ACCEPT the file: it will accept a journal entry drawn as a pipe
+table, a question asked in a paragraph, and an answer pointing at a footnote, because all three are
+valid blocks. They are simply not the blocks the author's material is made of.
+
+It reads the manifest and names the block and the element it should be:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/handcraft-check.mjs" 04-manifest/manifest.json
+```
+
+**It exists because an AUTHOR caught it twice**, on a lecture that was already on the site. On one
+accounting course it found 43: forty entries still drawn as grids, an exercise asked inside an example
+box, and a sentence telling the reader the answer was at the bottom of a page that has no bottom.
+
+**3b. Plan, then apply, then verify.**
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json            # plans, writes nothing

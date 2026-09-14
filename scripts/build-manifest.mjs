@@ -201,8 +201,14 @@ function walk(unitLines, HEADINGS, equationHeadings) {
      * would move it to the end, away from the thing it illustrates.
      */
     if (pendingExample && line.trim()) {
-      line = `**Example**: ${line.trim().replace(/^\**Examples?\**\s*:\s*/i, "")}`;
       pendingExample = false;
+      /*
+       * A FLAG ON THE LINE WINS. The style marks a whole paragraph and the flag marks that sentence, so
+       * the flag is the more specific of the two and its own path handles it, variant and all. Rewriting
+       * first also moved the flag off the start of the line, where the strip is anchored, so the emoji
+       * survived into the body of a callout.
+       */
+      if (!FLAG.test(line)) line = `**Example**: ${line.trim().replace(/^\**Examples?\**\s*:\s*/i, "")}`;
     }
 
     const asEquation = HEADING_IS_AN_EQUATION.exec(line);
@@ -934,3 +940,5 @@ for (const t of topics) {
 console.log(
   `\n${out} (${(JSON.stringify(manifest).length / 1024).toFixed(0)} KB)`,
 );
+
+
