@@ -1,7 +1,7 @@
 {
   "name": "composer",
   "displayName": "Composer",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "Turn a course summary you have written into a course on pass the year, without rewriting a word of it. Reads your Word document with its equations, tables and figures intact, checks what it finds, builds the lectures, questions and glossary, and walks you through every decision that is yours.",
   "author": {
     "name": "erudeon"
