@@ -215,6 +215,7 @@ passage is one of the shapes below, it becomes that block and stops being prose:
 | a markdown table | a `table` block | a markdown grid whose every cell draws its own boxed equation |
 | three or more `- **Name**: <formula>` | a `definitions` table | a column of bold words each trailing a display line |
 | a display equation a student must KNOW | a `formula` block | a bare equation, with the symbols explained in a sentence somewhere below it |
+| a closing section headed `In Short`, `Summary` or `Recap` | an `in-short` callout | one more section of the lecture, reading exactly like the teaching before it, when its whole job is to look different to somebody revising |
 
 **A step's label NAMES THE MOVE, and the author usually wrote it.** `**Step 4 (Step 1 again):** Divide
 the leading term by...` carries both: the number, which the reader forbids in a label, and the move,

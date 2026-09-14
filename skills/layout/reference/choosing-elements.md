@@ -170,6 +170,16 @@ element at three moments, and the title carries which.
 Where the source walks a transaction through and shows the equation still balancing, that is the
 element doing its job.
 
+**But an `accounting-equation` needs an OPENING BALANCE, and most first-lecture examples have none.**
+The element draws two bars from the transactions given, so a set of entries that nets to zero draws two
+EMPTY bars, and a reader stepping through sees nothing move. A teaching example that opens by spending
+cash the company was never given does exactly that: buying a computer for cash is one asset up and
+another down, and so is buying stock, so both sides sit at zero until something is earned. **Add the
+three sums before writing the block**, per side and per step, and if a step leaves both sides at zero
+the example does not support this element. Put it where the source FUNDS the company first, which in a
+bookkeeping course is the unit with the full ledger exercise rather than the one introducing debits and
+credits. **Never add an opening entry the author did not write** to make the bars move.
+
 **A financial statement's standard running order** (Revenue, less Cost of Goods Sold, Gross Profit, and
 so on down to Net Income): a `table` with `variant: "steps"` or `data`, using `roles` to mark which rows
 are subtotals and which is the total. The subtotals are the lesson, and an ordinary table hides them.

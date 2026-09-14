@@ -83,6 +83,13 @@ const VARIANT = {
   "⚠️": "note",
 };
 
+/*
+ * What an author calls the closing recap. Matched on the HEADING, so it catches the common case where
+ * the author wrote the words but never gave them a style. An `In Short` Word style is caught too, by
+ * the style pass, because the author saying it outright beats anything inferred from the text.
+ */
+const IS_A_RECAP = /^(?:in\s+short|in\s+summary|summary|recap|key\s+takeaways?|to\s+summari[sz]e)\s*$/i;
+
 const DEFAULT_TITLE = {
   "exam-tip": "In the exam",
   intuition: "The idea behind it",
@@ -625,6 +632,33 @@ function buildUnit(unitLines, number, title) {
       for (const t of tables) out.push(tableBlock(t, label));
     }
     flushProse();
+
+    /*
+     * THE CLOSING RECAP IS A CALLOUT, NOT A SECTION. Almost every summary ends each unit with one, and
+     * its author names it: "In Short", "In short", "Summary", "Recap", or a paragraph styled `In Short`
+     * in Word. Left as prose it reads as one more section of the lecture, indistinguishable from the
+     * teaching that went before it, when its whole job is to look different so a reader revising can
+     * find it. The reader has a variant for exactly this.
+     *
+     * Only where the section is ALL prose. A recap holding a table or a worked example is not a recap,
+     * and folding one into a callout would bury it.
+     */
+    if (IS_A_RECAP.test(s.heading) && out.every((b) => b.type === "prose")) {
+      const body = out
+        .map((b) => b.body.trim())
+        .filter(Boolean)
+        .join("\n\n");
+      if (body) {
+        blocks.push({
+          id: idFor(s.heading),
+          type: "callout",
+          variant: "in-short",
+          title: s.heading,
+          body,
+        });
+        continue;
+      }
+    }
 
     /* The heading goes on the first block that can carry one, which is the first prose block. */
     const firstProse = out.find((b) => b.type === "prose");
