@@ -75,4 +75,43 @@ assert.ok(
 for (const p of ["Ordinary prose so the section is not empty.", "More prose between them.", "Closing prose.", "The last paragraph."])
   assert.ok(text.includes(p), `a paragraph did not reach a block: ${p}`);
 
+/*
+ * A SECTION WITH NO PROSE OF ITS OWN IS STILL A SECTION when what follows it is its SUBSECTIONS.
+ * Dropping it lost nine grouping headings on one course, each a line missing from the contents a
+ * student navigates by, including one on a lecture that was already published.
+ */
+const groupDir = mkdtempSync(join(tmpdir(), "composer-groups-"));
+mkdirSync(join(groupDir, "02-source"), { recursive: true });
+mkdirSync(join(groupDir, "04-manifest"), { recursive: true });
+writeFileSync(
+  join(groupDir, "composer.json"),
+  JSON.stringify({ course: "T", slug: "t", courseShell: { programCode: "nl-x-y-bsc-en-y1" } }),
+);
+writeFileSync(
+  join(groupDir, "02-source", "source-of-record.md"),
+  [
+    "# Unit One", "",
+    "## Cash vs Accrual Basis Accounting", "",
+    "### Cash Basis Accounting", "", "Records revenue when cash is received.", "",
+    "### Accrual Basis Accounting", "", "Records revenue when it is earned.", "",
+    "## A Heading With Nothing At All Under It", "",
+    "## A Real Section", "", "With prose of its own.", "",
+  ].join("\n"),
+);
+execFileSync("node", [join(__dirname, "build-manifest.mjs"), groupDir, "--unit", "1"], { encoding: "utf8" });
+const groups = JSON.parse(readFileSync(join(groupDir, "04-manifest", "manifest.json"), "utf8")).topics[0];
+const headings = groups.blocks.flatMap((b) => (b.body ?? "").match(/^#{2,3} .+$/gm) ?? []);
+
+assert.ok(
+  headings.some((h) => h === "## Cash vs Accrual Basis Accounting"),
+  `a section that groups subsections keeps its heading: ${JSON.stringify(headings)}`,
+);
+assert.ok(headings.some((h) => h === "### Cash Basis Accounting"));
+assert.ok(headings.some((h) => h === "## A Real Section"));
+/* And a heading with nothing under it at all is still dropped, which is the other half of the rule. */
+assert.ok(
+  !headings.some((h) => h.includes("Nothing At All")),
+  `a heading with no children and no prose is not a section: ${JSON.stringify(headings)}`,
+);
+
 console.log("coverage ok");
