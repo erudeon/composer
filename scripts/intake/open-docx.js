@@ -160,6 +160,7 @@ function drawings(dir) {
   );
 
   const found = [];
+  const headings = [];
   let heading = null;
   let index = 0;
 
@@ -193,7 +194,10 @@ function drawings(dir) {
       // A heading's text is only knowable once the paragraph closes, and it labels what comes AFTER it.
       if (paraIsHeading && paraStart !== -1) {
         const text = textOf(xml.slice(paraStart, m.index));
-        if (text) heading = text;
+        if (text) {
+          heading = text;
+          headings.push({ at: m.index, text });
+        }
       } else if (paraStart !== -1 && !usesHeadings) {
         const text = textOf(xml.slice(paraStart, m.index));
         // A line with real words stands in ONLY where a document carries no heading styles at all.
@@ -206,6 +210,7 @@ function drawings(dir) {
       const target = rels[m[2]];
       const abs = target ? path.join(dir, "word", target) : null;
       found.push({
+        at: m.index,
         index: index++,
         kind: "picture",
         under: heading,
@@ -215,10 +220,28 @@ function drawings(dir) {
         disposition: null,
       });
     } else if (tok === "<w:txbxContent") {
-      found.push({ index: index++, kind: "textbox", under: heading, file: null, bytes: null, text: null, disposition: null });
+      found.push({ at: m.index, index: index++, kind: "textbox", under: heading, file: null, bytes: null, text: null, disposition: null });
     } else {
-      found.push({ index: index++, kind: "shape", under: heading, file: null, bytes: null, text: null, disposition: null });
+      found.push({ at: m.index, index: index++, kind: "shape", under: heading, file: null, bytes: null, text: null, disposition: null });
     }
+  }
+
+  /*
+   * A FLOATING DRAWING'S ANCHOR IS NOT WHERE IT SITS. 51 of 53 pictures in one real maths summary are
+   * `wp:anchor`, and Word stores those against whatever paragraph they were attached to, which is
+   * routinely the tail of the section BEFORE the one they illustrate: the absolute-value graph anchored
+   * under "Interval Notation", the parabola under "Linear Functions", the power-function curves under
+   * "Polynomial Division". Reporting only the heading above would put every figure one section early,
+   * and it would look right.
+   *
+   * We cannot recover the visual position from the anchor, so we do not guess. Both neighbours are
+   * reported and `floating` says which drawings the question applies to.
+   */
+  for (const d of found) {
+    const next = headings.find((h) => h.at > d.at);
+    d.before = next ? next.text : null;
+    d.floating = xml.lastIndexOf("<wp:anchor", d.at) > xml.lastIndexOf("<wp:inline", d.at);
+    delete d.at;
   }
 
   return found;
