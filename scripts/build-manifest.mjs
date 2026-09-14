@@ -57,13 +57,21 @@ const dataPath = join(folder, "course-data.mjs");
 const DATA = existsSync(dataPath)
   ? await import(pathToFileURL(dataPath).href)
   : {};
-const forUnit = (name, n) =>
-  DATA[name]?.[n] ?? (Array.isArray(DATA[name]) ? [] : {});
+/** What a unit supplies under `name`, or the empty shape the caller expects when it supplies nothing. */
+const forUnit = (name, n, fallback = {}) => DATA[name]?.[n] ?? fallback;
 
 /* ── the transformations, over a whole unit, before anything is sliced ───────────────────────────── */
 
-/* A heading whose text is a display equation. The equation stays; no title is invented for it. */
-const HEADING_IS_AN_EQUATION = /^#{3,6}\s+\$\$.*\$\$\s*$/;
+/*
+ * A HEADING WHOSE TEXT IS A DISPLAY EQUATION. A formula standing where a title should be.
+ *
+ * Deep in the outline it is dropped and the equation kept as the line it is. At `##` it carries a
+ * whole section, so dropping it would take the section with it: there the course supplies a title its
+ * own text supports, under HEADINGS in `course-data.mjs`. Nothing is invented here either way, and a
+ * `##` with no supplied title is left alone and reported, because a section titled with an equation is
+ * a question for the author rather than something to guess at.
+ */
+const HEADING_IS_AN_EQUATION = /^(#{2,6})\s+(\$\$.*\$\$)\s*$/;
 
 /* The author's emoji flags become a callout's variant, and the emoji never survives. */
 const FLAG = /^\s*(?:\*\*)?\s*(🎯|💡|📌|⚠️)\s*(?:\*\*)?\s*/u;
@@ -91,7 +99,7 @@ const DEFAULT_TITLE = {
  * Returns the lines, the flagged sentences with the section each belongs to, and the set of lines that
  * WERE headings, so the block walker can tell a new subject from a bold sentence.
  */
-function walk(unitLines) {
+function walk(unitLines, HEADINGS, equationHeadings) {
   const kept = [];
   const flags = [];
   const folded = new Set();
@@ -117,8 +125,14 @@ function walk(unitLines) {
   };
 
   for (let i = 0; i < unitLines.length; i += 1) {
-    const line = unitLines[i];
-    if (HEADING_IS_AN_EQUATION.test(line)) continue;
+    let line = unitLines[i];
+    const asEquation = HEADING_IS_AN_EQUATION.exec(line);
+    if (asEquation) {
+      const supplied = HEADINGS[asEquation[2]];
+      if (supplied) line = `${asEquation[1]} ${supplied}`;
+      else if (asEquation[1].length > 2) continue;
+      else equationHeadings.push(asEquation[2]);
+    }
 
     const h2 = /^## (.+)$/.exec(line);
     if (h2) {
@@ -150,10 +164,34 @@ function walk(unitLines) {
     }
 
     /* A numbered item that is ONLY a bold lead-in is not a sequence; the words stay, the number goes. */
-    const clean = line
+    /*
+     * A NUMBERED ITEM THAT IS ONLY A BOLD LEAD-IN IS NOT A SEQUENCE. Authors number a set of steps and
+     * then bullet the working under each, which breaks the list in Markdown and leaves an ordered list
+     * of one item apiece. The words and the emphasis stay; only the number goes. The same applies where
+     * the number is followed by a bold lead-in and then more text on the line.
+     */
+    let clean = line
       .replace(/^\d+\.\s+(\*\*[^*]+\*\*:?)\s*$/, "$1")
       .replace(FLAG, "")
       .replace(POINTER, "");
+
+    /*
+     * AN ORDERED ITEM WITH NO SIBLINGS IS A SENTENCE. Stripping the number off the bold-only steps of a
+     * procedure can leave the one step that carried trailing text standing alone, and a list of one
+     * item is not a sequence: the reader's own lint says to write it as a sentence.
+     */
+    if (/^\d+\.\s/.test(clean)) {
+      const near = (from, step) => {
+        for (let k = from; k >= 0 && k < unitLines.length; k += step) {
+          const other = unitLines[k];
+          if (!other.trim()) continue;
+          if (/^#{1,6}\s/.test(other)) return false;
+          return /^\d+\.\s/.test(other) && !/^\d+\.\s+\*\*[^*]+\*\*:?\s*$/.test(other);
+        }
+        return false;
+      };
+      if (!near(i - 1, -1) && !near(i + 1, 1)) clean = clean.replace(/^\d+\.\s+/, "");
+    }
 
     /* The author's own bold-only line leads its paragraph for the same reason a folded heading does. */
     if (!lead && /^\*\*[^*]+\*\*:?\s*$/.test(clean.trim())) {
@@ -289,12 +327,24 @@ function workedBlock(paras, title) {
       continue;
     }
     if (STEP.test(para.trim())) {
+      /*
+       * A LABEL NAMES THE MOVE, IN 120 CHARACTERS. Some authors write a whole sentence after the step
+       * number; the write path refuses it and truncating would lose their words. So the label is the
+       * first clause and the rest becomes the step's note, which is where a sentence belongs anyway.
+       */
+      const said = para
+        .trim()
+        .replace(STEP, "")
+        .replace(/[:\s]+$/, "");
+      if (said.length <= 120) {
+        steps.push({ label: said || "Continue" });
+        continue;
+      }
+      const at = said.lastIndexOf(" ", 118);
+      const cut = at > 40 ? at : 118;
       steps.push({
-        label:
-          para
-            .trim()
-            .replace(STEP, "")
-            .replace(/[:\s]+$/, "") || "Continue",
+        label: said.slice(0, cut).replace(/[,:\s]+$/, ""),
+        note: said.slice(cut).trim(),
       });
       continue;
     }
@@ -324,7 +374,8 @@ function workedBlock(paras, title) {
 /* ── one unit becomes blocks ─────────────────────────────────────────────────────────────────────── */
 
 function buildUnit(unitLines, number, title) {
-  const { kept, flags, folded } = walk(unitLines);
+  const equationHeadings = [];
+  const { kept, flags, folded } = walk(unitLines, forUnit("HEADINGS", number), equationHeadings);
 
   /*
    * THE SOURCE IS THE WHOLE UNIT, and the prose is what is left once the blocks that carry a passage
@@ -334,6 +385,7 @@ function buildUnit(unitLines, number, title) {
    */
   const source = tidy(kept);
 
+  const REPAIRS = forUnit("REPAIRS", number);
   const dropped = new Set(
     flags.flatMap((f) => [f.lead, f.alsoDrop]).filter(Boolean),
   );
@@ -344,7 +396,7 @@ function buildUnit(unitLines, number, title) {
    * must be found or the build stops, so an edited source fails loudly rather than silently leaving
    * the passage in twice.
    */
-  for (const { from, to, label } of forUnit("REPAIRS", number).cut ?? []) {
+  for (const { from, to, label } of REPAIRS.cut ?? []) {
     const lines = proseText.split("\n");
     const a = lines.findIndex((l) => l.trim() === from);
     const b = lines.findIndex((l, i) => i >= a && l.trim() === to);
@@ -384,10 +436,9 @@ function buildUnit(unitLines, number, title) {
   const CHARTS = forUnit("CHARTS", number);
   const TERMS = forUnit("TERMS", number);
   const CHECKS = forUnit("CHECKS", number);
-  const EXTRA_TABLES = forUnit("TABLES", number);
+  const EXTRA_TABLES = forUnit("EXTRA", number);
   const FORMULA_TERMS = forUnit("FORMULA_TERMS", number);
   const TITLES = forUnit("CALLOUT_TITLES", number);
-  const REPAIRS = forUnit("REPAIRS", number);
 
   /** A long section splits at its own bold lead-ins, never mid-paragraph and never inside a table. */
   const MAX_WORDS = 460;
@@ -455,7 +506,14 @@ function buildUnit(unitLines, number, title) {
        */
       const display = DISPLAY.exec(para.trim());
       const terms = display ? FORMULA_TERMS[display[1].trim()] : null;
-      if (display && terms) {
+      /*
+       * A DEFINING EQUATION IS NOT ONE THE AUTHOR IS PARTWAY THROUGH INTRODUCING. Where the paragraph
+       * above it is a bold lead-in ("Define the Lagrangian:"), the equation is a step in a procedure
+       * rather than a definition standing on its own: lifting it leaves the lead-in as the last line of
+       * a prose block, which is the bold-line-with-nothing-under-it shape again. It stays in the prose.
+       */
+      const leadsIt = prose.length && isBoldOnly(prose[prose.length - 1]);
+      if (display && terms && !leadsIt) {
         flushProse();
         out.push({ type: "formula", latex: display[1].trim(), terms });
         if (WHERE.test(paras[i + 1] ?? "")) i += 1;
@@ -609,6 +667,11 @@ function buildUnit(unitLines, number, title) {
       blocks.push({ id: idFor(`${s.heading}-${b.type}`), ...b });
   }
 
+  if (equationHeadings.length)
+    console.log(
+      `   ! ${equationHeadings.length} section heading(s) are a display equation and no title was supplied:\n       ${equationHeadings.join("\n       ")}`,
+    );
+
   return {
     slug: slug(title),
     title,
@@ -616,7 +679,7 @@ function buildUnit(unitLines, number, title) {
     series: course.structure?.containerWord ?? "Lecture",
     source,
     blocks,
-    questions: forUnit("QUESTIONS", number) ?? [],
+    questions: forUnit("QUESTIONS", number, []),
   };
 }
 
@@ -655,7 +718,7 @@ const topics = units
 if (!topics.length) fail(`No unit matched --unit ${wanted.join(", ")}.`);
 
 const glossary = topics.flatMap((t) =>
-  (forUnit("GLOSSARY", t.number) ?? []).map((g) => ({
+  forUnit("GLOSSARY", t.number, []).map((g) => ({
     ...g,
     topicSlug: t.slug,
   })),
@@ -698,7 +761,7 @@ for (const t of topics) {
       .join(", ")}`,
   );
   console.log(
-    `   ${t.questions.length} questions, ${(forUnit("GLOSSARY", t.number) ?? []).length} glossary terms, longest prose ${Math.max(0, ...prose.map((b) => words(b.body)))} words`,
+    `   ${t.questions.length} questions, ${forUnit("GLOSSARY", t.number, []).length} glossary terms, longest prose ${Math.max(0, ...prose.map((b) => words(b.body)))} words`,
   );
 
   const ids = t.blocks.map((b) => b.id);

@@ -101,7 +101,7 @@ callout each becomes, and where a defining equation wants a formula block.
 **What `<course folder>/course-data.mjs` supplies**, keyed by unit number, because the document cannot
 give it up: `CHARTS` (somebody has to LOOK at the drawing, and a plausible wrong curve renders
 perfectly and teaches something false), `QUESTIONS`, `GLOSSARY`, `FORMULA_TERMS` (the gloss per symbol),
-`TERMS`, `CHECKS`, `TABLES`, `REPAIRS` (a passage whose layout did not survive Word), and
+`TERMS`, `CHECKS`, `EXTRA`, `REPAIRS` (a passage whose layout did not survive Word), and
 `CALLOUT_TITLES`. A unit with nothing supplied still builds.
 
 **It runs the checks the server will run**, before the round trip: a paragraph that is not in the
