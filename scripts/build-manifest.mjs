@@ -347,27 +347,34 @@ function walk(unitLines, HEADINGS, equationHeadings) {
      * of one item apiece. The words and the emphasis stay; only the number goes. The same applies where
      * the number is followed by a bold lead-in and then more text on the line.
      */
-    let clean = line
-      .replace(/^\d+\.\s+(\*\*[^*]+\*\*:?)\s*$/, "$1")
-      .replace(POINTER, "");
+    let clean = line.replace(POINTER, "");
     clean = unflag(clean);
 
     /*
-     * AN ORDERED ITEM WITH NO SIBLINGS IS A SENTENCE. Stripping the number off the bold-only steps of a
-     * procedure can leave the one step that carried trailing text standing alone, and a list of one
-     * item is not a sequence: the reader's own lint says to write it as a sentence.
+     * AN ORDERED ITEM WITH NO SIBLINGS IS A SENTENCE, and one WITH siblings keeps its number.
+     *
+     * Authors number a set of steps and then bullet the working under each, which breaks the list in
+     * Markdown and leaves an ordered list of one item apiece; there the number means nothing and the
+     * words alone are right. But the bold-only strip used to run BEFORE this test, so a genuine step
+     * that happens to be a bold lead-in with its detail bulleted underneath lost its number while its
+     * siblings kept theirs: "1. Theory / 2. Hypothesis / **Data collection:** / 4. Verification",
+     * published to students as a five-step method with a hole in it.
+     *
+     * So the test comes first, on the raw line, and BOTH strips are gated on it.
      */
-    if (/^\d+\.\s/.test(clean)) {
-      const near = (from, step) => {
-        for (let k = from; k >= 0 && k < unitLines.length; k += step) {
-          const other = unitLines[k];
-          if (!other.trim()) continue;
-          if (/^#{1,6}\s/.test(other)) return false;
-          return /^\d+\.\s/.test(other) && !/^\d+\.\s+\*\*[^*]+\*\*:?\s*$/.test(other);
-        }
-        return false;
-      };
-      if (!near(i - 1, -1) && !near(i + 1, 1)) clean = clean.replace(/^\d+\.\s+/, "");
+    const near = (from, step) => {
+      for (let k = from; k >= 0 && k < unitLines.length; k += step) {
+        const other = unitLines[k];
+        if (!other.trim()) continue;
+        if (/^#{1,6}\s/.test(other)) return false;
+        return /^\d+\.\s/.test(other) && !/^\d+\.\s+\*\*[^*]+\*\*:?\s*$/.test(other);
+      }
+      return false;
+    };
+    if (/^\d+\.\s/.test(clean) && !near(i - 1, -1) && !near(i + 1, 1)) {
+      clean = clean
+        .replace(/^\d+\.\s+(\*\*[^*]+\*\*:?)\s*$/, "$1")
+        .replace(/^\d+\.\s+/, "");
     }
 
     /* The author's own bold-only line leads its paragraph for the same reason a folded heading does. */
