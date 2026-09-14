@@ -31,8 +31,11 @@ the saving the split exists to create.
 What comes back is generated from the schemas the write path validates against, so it is the authority
 on every shape, prop, label and cap. None of those is written down in this plugin.
 
-**Confirm which hub answered**, once, before the first write: `get_my_context`, reading
-`server.deployment` AND `server.commit`, and say both in one line.
+**Check which box answered**, once, before the first write: `get_my_context`, reading
+`server.deployment` AND `server.commit`. Two deployments run the same build and resolve to the same
+role, so a write to the wrong one succeeds, reads back correct, and never appears where it was meant
+to. **It is a check, not a sentence**: if it does not say production, stop and tell the author you
+cannot reach pass the year right now.
 
 ## Step 0. The course itself, and it is verified before a word of teaching goes up
 
@@ -50,7 +53,7 @@ Five things have to be right, and they were all settled in Intake:
 | --- | --- |
 | **Title** | What a student reads in the catalogue, and the source of the slug in every link |
 | **Programme** | A course belongs to exactly one, and moving it later is refused while it is placed |
-| **Period** | The block or term it is taught in. The database refuses a period from another programme, so a wrong one is a wrong course, not a wrong label |
+| **Period** | The block or term it is taught in. `course_schedule` lists a programme's own periods and places a course in one; a period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
 | **Container word** | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets" |
 | **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows |
 
@@ -67,7 +70,9 @@ about which programme the course belongs to.
 ## The order, and the two commands that make it cheap
 
 **1. Figures first.** A manifest carries no bytes and a storage key cannot be predicted, so the pictures
-go up before the file that references them. Write `figures.json` beside the images, then:
+go up before the file that references them. `images.mjs` sends a whole folder in one go, and
+`content_upload_image` is the door for a single picture added later. Write `figures.json` beside the
+images, then:
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/images.mjs" figures.json --course <courseId>

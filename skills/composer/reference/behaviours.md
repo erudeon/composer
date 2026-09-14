@@ -45,7 +45,7 @@ re-runs is re-running against a course that already changed.
 
 ## Which doors are safe to retry
 
-- The append door is idempotent on block id and answers whether it had already applied. Safe.
+- `content_lesson` `append` is idempotent on block id and answers whether it had already applied. Safe.
 - A rate-limited call is refused before any write. Safe.
 - **Almost nothing else is. Re-running a create makes a second row.**
 

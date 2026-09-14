@@ -154,6 +154,37 @@ for (const dir of skillNames) {
   }
 }
 
+/*
+ * ── COMMANDS ─────────────────────────────────────────────────────────────────────────────────────────
+ *
+ * A command is what somebody TYPES, so it is the first thing that runs and the last thing anybody
+ * checks. It names a skill and may point at a reference, and neither was verified: a command naming a
+ * skill that does not exist fails at the moment a person is trying to start.
+ */
+const commandsDir = join(ROOT, "commands");
+if (existsSync(commandsDir)) {
+  for (const file of readdirSync(commandsDir).filter((f) => f.endsWith(".md"))) {
+    const text = readFileSync(join(commandsDir, file), "utf8");
+    const where = `commands/${file}`;
+    const fm = frontmatter(text, where);
+    if (fm) {
+      for (const key of Object.keys(fm.keys))
+        if (!ALLOWED_KEYS.has(key))
+          errors.push(`${where}: frontmatter key "${key}" is not a real key`);
+      if (!fm.keys.description)
+        errors.push(`${where}: no description, so nothing says what it is for`);
+    }
+    if (text.includes("—")) errors.push(`${where}: contains an em dash`);
+    // Every skill it names must exist, and so must every reference it points at.
+    for (const m of text.matchAll(/`([a-z0-9-]+)` skill/g))
+      if (!skillNames.includes(m[1]))
+        errors.push(`${where}: names the "${m[1]}" skill, which does not exist`);
+    for (const m of text.matchAll(/`((?:[a-z0-9-]+\/)*reference\/[a-z0-9-]+\.md)`/g))
+      if (!existsSync(join(ROOT, "skills", m[1])))
+        errors.push(`${where}: points at ${m[1]}, which does not exist`);
+  }
+}
+
 // A script nothing invokes is either dead or a skill forgot to mention it. Either is worth knowing.
 const skillText = skillNames
   .map((d) => join(ROOT, "skills", d, "SKILL.md"))

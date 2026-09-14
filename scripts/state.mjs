@@ -183,6 +183,17 @@ function whatNext({ phase, missing, sourceOfRecord, undisposed, gates, structure
   return todo.length ? `Next: ${todo[0]}.${todo.length > 1 ? ` Then ${todo.length - 1} more thing(s).` : ""}` : "Intake is done. Move to Compose.";
 }
 
+/** The course folders in the workspace, by name. Empty when there are none, and never a throw. */
+function knownCourses() {
+  try {
+    return readdirSync(WORKSPACE, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+      .map((d) => d.name);
+  } catch {
+    return [];
+  }
+}
+
 function listCourses() {
   try {
     const rows = readdirSync(WORKSPACE, { withFileTypes: true })
@@ -218,15 +229,35 @@ function main() {
   }
 
   if (!target) {
+    const courses = knownCourses();
     return [
-      "COMPOSER: no course folder given.",
+      "COMPOSER: no course named yet.",
       "",
-      "Ask the operator which course this is, then run again with its NAME or its folder.",
+      /*
+       * THE FIRST THING ANYBODY SEES, and for most people it is also the first time. Somebody arriving
+       * here has a document, not a folder, and asking them for a path is asking them to already know
+       * how this works. Ask for the COURSE, in the words they would use for it.
+       */
+      "Ask the author which course they are working on, by name, the way they would say it out loud:",
+      '"Introduction to Mathematics", not a path. Then run this again with that name.',
       "",
-      `Courses already in the workspace (${WORKSPACE}):`,
-      listCourses(),
-      "",
-      'A new one: node scripts/workspace.mjs init "<course name>"',
+      courses.length === 0
+        ? [
+            "Nothing is in progress, so this is a first course.",
+            "",
+            "Set it up with workspace.mjs init, then tell them where to put their files: the folder it",
+            "makes has 01-inputs, and that is the only place anything goes in. Their summary, the course",
+            "manual, past exams, whatever they have. Nothing else in there is ever written to by us.",
+            "",
+            "They do not need to have everything. A missing input is written down and carried, not a stop.",
+          ].join("\n")
+        : [
+            "Courses already in progress:",
+            listCourses(),
+            "",
+            "Offer these before making a new one: somebody saying a course name usually means one of them,",
+            "and a second folder for the same course splits the work in half without telling anyone.",
+          ].join("\n"),
     ].join("\n");
   }
 
