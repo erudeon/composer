@@ -158,5 +158,29 @@ for (const [what, xml, expected] of [
   extra += 1;
 }
 
+for (const [what, xml, expected] of [
+  [
+    "TWO LETTERS AROUND AN OPERATOR ARE VARIABLES. `ac > bc` is a times c against b times c, and wrapping it shipped a whole course in upright text.",
+    run("ac > bc"),
+    "ac > bc",
+  ],
+  ["a three-letter product is still variables when it is not a word", run("xyz + 1"), "xyz + 1"],
+  ["a function name keeps its own spelling", run("ln(x) + 1"), "ln(x) + 1"],
+  ["the space BEFORE a word belongs to it too", run("100 of x"), "100\\text{ of }x"],
+  [
+    "A RUN ENDING ON A WORD. The lookahead for the next token runs off the end, which crashed the whole extraction on the first real document.",
+    run("x is positive"),
+    "x\\text{ is positive}",
+  ],
+])
+  {
+  const got = ommlToLatex(xml).trim();
+  const ok = got === expected;
+  if (!ok) failed += 1;
+  console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
+  if (!ok) console.log(`       want: ${JSON.stringify(expected)}\n       got : ${JSON.stringify(got)}`);
+  extra += 1;
+}
+
 console.log(`\n${cases.length + extra - failed}/${cases.length + extra} passed`);
 assert.equal(failed, 0, `${failed} OMML case(s) came out wrong`);

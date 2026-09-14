@@ -137,28 +137,77 @@ const INVISIBLE = /[\u200b\u2061-\u2064]/g;
  * A run that is ONLY a space is the other half: Word writes the gaps around a connective as their own
  * runs, and math mode drops every one.
  */
-const CONNECTIVES = new Set([
-  "or", "and", "if", "for", "where", "is", "then", "otherwise", "when", "with", "such", "that",
+/*
+ * A TOKEN IS A WORD, OR IT IS VARIABLES. `ac > bc` is a times c against b times c and must stay
+ * italic; `and x > 0` is words. Length alone does not separate them, so the test is:
+ *
+ *   a lowercase run of three letters or more that is not a function name  →  a word
+ *   one of the short connectives below                                    →  a word
+ *   anything else                                                         →  variables
+ *
+ * A run is prose only when it holds at least one word. Wrapping `ac` cost nothing to spot and would
+ * have gone out as upright text across a whole course.
+ */
+const SHORT_WORDS = new Set([
+  "or", "and", "if", "for", "is", "in", "of", "to", "at", "on", "by", "as", "an", "no", "so",
+  "the", "all", "any", "one", "two", "not", "let", "its", "can", "are", "was", "be", "we", "it",
 ]);
 
-const WORD_RUN = /(\s*\b[A-Za-z]{2,}(?:\s+[A-Za-z]{2,})*\b\s*)/;
+/*
+ * The WHOLE token has to be letters. `ln(x)` is a function applied to a variable, not the word "lnx",
+ * and stripping the punctuation before testing turned every one of those into upright text.
+ */
+const isWord = (token) => {
+  if (typeof token !== "string") return false; // the lookahead runs off the end of the last run
+  const t = token.replace(/[,.;:!?]+$/, "");
+  if (!/^[A-Za-z]+$/.test(t)) return false;
+  /*
+   * FOUR LETTERS, or a short word from the closed list. Three is where words and variable products
+   * overlap: `xyz` and `abc` are products, `and` and `the` are words, and nothing in the spelling
+   * separates them. So the short ones are named, and everything else has to be long enough to be
+   * a word rather than a handful of variables written together.
+   */
+  return /^[a-z]{4,}$/.test(t) ? !KNOWN_FUNCTIONS.has(t) : SHORT_WORDS.has(t.toLowerCase());
+};
 
 /** The LaTeX for a run the author typed words into, or null when it is ordinary maths. */
 function prosify(raw, renderMaths, asText) {
   if (!raw) return null;
   /*
-   * A TIE, NOT A CONTROL SPACE. `\ ` is the right width and it is one trim away from a bare backslash,
-   * which KaTeX refuses outright; `~` is the same width and survives anything that strips whitespace.
+   * A TIE, NOT A CONTROL SPACE. `\ ` is the right width and one trim away from a bare backslash, which
+   * KaTeX refuses outright; `~` is the same width and survives anything that strips whitespace.
    */
   if (!raw.trim()) return "~";
-  const word = raw.trim();
-  if (CONNECTIVES.has(word.toLowerCase())) return asText(word);
-  if (!/\s/.test(raw) || !/[A-Za-z]{2,}/.test(raw)) return null;
-  return raw
-    .split(WORD_RUN)
-    .filter((part) => part)
-    .map((part) => (WORD_RUN.test(part) && /[A-Za-z]{2,}/.test(part) ? asText(part) : renderMaths(part)))
-    .join("");
+
+  /* Split on whitespace, keeping it, so a wrapped word can carry the space that belongs to it. */
+  const parts = raw.split(/(\s+)/).filter((x) => x !== "");
+  const space = (x) => /^\s+$/.test(x);
+  if (!parts.some((t) => !space(t) && isWord(t))) return null;
+
+  /*
+   * The spaces on BOTH SIDES of a word belong inside its text run. Math mode drops a space either way,
+   * so leaving the leading one outside published "100% of" as "100% of" with the gap before "of" gone.
+   */
+  let latex = "";
+  for (let i = 0; i < parts.length; i += 1) {
+    if (space(parts[i]) && parts[i + 1] && isWord(parts[i + 1])) continue; // taken by the word below
+    if (!isWord(parts[i])) {
+      latex += renderMaths(parts[i]);
+      continue;
+    }
+    const before = i > 0 && space(parts[i - 1]) ? parts[i - 1] : "";
+    let run = parts[i];
+    while (parts[i + 1] && space(parts[i + 1]) && isWord(parts[i + 2])) {
+      run += parts[i + 1] + parts[i + 2];
+      i += 2;
+    }
+    if (parts[i + 1] && space(parts[i + 1])) {
+      run += parts[i + 1];
+      i += 1;
+    }
+    latex += asText(before + run);
+  }
+  return latex;
 }
 
 /** The function names KaTeX has a command for. Anything else is `\operatorname{…}`. */

@@ -80,9 +80,33 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/images.mjs" figures.json --course <courseId>
 
 It answers a file-name-to-markdown map. Substitute that into the manifest verbatim.
 
-**2. Build the manifest as a FILE, with a script you write.** Not by emitting it into a tool call: that
-costs its whole length in tokens twice, and every re-emission can corrupt text this upload exists to
-reproduce exactly. **The model writes the parser; the parser writes the course.**
+**2. Build the course file with `build-manifest.mjs`.** Not by emitting it into a tool call: that costs
+its whole length in tokens twice, and every re-emission can corrupt text this upload exists to
+reproduce exactly.
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <course folder> --unit 1
+```
+
+**You do not write a parser per course.** The rules for turning a document into blocks are the same for
+every summary ever written, and written out again per course they drift: the second course silently
+loses whatever the first learned. This script carries the rules; the course folder carries only what no
+amount of reading the text can produce.
+
+**What it derives, for any course**: the unit boundaries, the section tree, prose blocks and where they
+split, examples and whether one is stepped, worked-example steps and their labels, tables and their
+kind, lists of named rules, folded headings and what they lead, the author's emoji flags and which
+callout each becomes, and where a defining equation wants a formula block.
+
+**What `<course folder>/course-data.mjs` supplies**, keyed by unit number, because the document cannot
+give it up: `CHARTS` (somebody has to LOOK at the drawing, and a plausible wrong curve renders
+perfectly and teaches something false), `QUESTIONS`, `GLOSSARY`, `FORMULA_TERMS` (the gloss per symbol),
+`TERMS`, `CHECKS`, `TABLES`, `REPAIRS` (a passage whose layout did not survive Word), and
+`CALLOUT_TITLES`. A unit with nothing supplied still builds.
+
+**It runs the checks the server will run**, before the round trip: a paragraph that is not in the
+source, a prose block still holding a table or an example, a prose block ending on a bold line, and a
+duplicate block id.
 
 **Put each unit's slice on the lecture as `source`.** It is the text Intake extracted, and it is what
 every fidelity rule diffs the headings, prose and numbers against.
