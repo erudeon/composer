@@ -52,6 +52,26 @@ const cases = [
     "\\sum_{i=1}^n{x}",
   ],
 
+  /*
+   * AN N-ARY WITH NO OPERATOR IS AN INTEGRAL, and Word writes one exactly this way: the default is
+   * omitted, so an integral is a `m:nary` carrying no `m:chr` at all. Reading the absence as a sum
+   * turned all 41 integrals of a calculus summary into summation signs, and every one of them
+   * parsed, stored and rendered. The bounds case below is how the definite integrals were written.
+   */
+  [
+    "an n-ary with NO operator, which is Word's integral",
+    el("m:nary", el("m:naryPr", "<m:limLoc m:val=\"subSup\"/>") + el("m:e", r("f(x)dx"))),
+    "\\int{f(x)dx}",
+  ],
+  [
+    "a definite integral, still with no operator named",
+    el(
+      "m:nary",
+      el("m:naryPr", "") + el("m:sub", r("a")) + el("m:sup", r("b")) + el("m:e", r("f(x)dx")),
+    ),
+    "\\int_a^b{f(x)dx}",
+  ],
+
   // ── The operator map ──────────────────────────────────────────────────────────────────────────
   ["a delta, which KaTeX has no glyph for", r("∆Equity"), "\\Delta Equity"],
   ["a bullet operator", r("Price∙Shares"), "Price\\cdot Shares"],

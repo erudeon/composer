@@ -99,3 +99,24 @@ const again = execFileSync("node", [join(here, "..", "fix-maths-spacing.mjs"), f
 assert.match(again, /0 repaired/, `second run must repair nothing, got: ${again}`);
 
 console.log("maths spacing end to end ok");
+
+/*
+ * THE EDGE OF A TEXTUAL GROUP. A space next to `\text{...}` is OUTSIDE it, so it was never skipped
+ * and never repaired either: the letter-on-both-sides rule sees a `}` or a `\`. Every money amount
+ * in a finance summary is written this way, and every one of them drew "EUR1,120.50".
+ */
+to(String.raw`\text{EUR} 1,120.50`, String.raw`\text{EUR}\ 1,120.50`, 1);
+to(String.raw`\left(100 \text{and} 540\right)`, String.raw`\left(100\ \text{and}\ 540\right)`, 2);
+to(
+  String.raw`\boxed{\text{EUR} 72.25 \text{per month}}`,
+  String.raw`\boxed{\text{EUR}\ 72.25\ \text{per month}}`,
+  2,
+);
+/* A binary operator already draws its own space, and the one after it ends the control word. */
+same(String.raw`\frac{1}{2}\times \text{base}\times \text{height}`);
+/* ... and the amount after that operator's own textual group still needs its space. */
+to(String.raw`3.5\times \text{EUR} 220.50`, String.raw`3.5\times \text{EUR}\ 220.50`, 1);
+/* A space the author put INSIDE the group is already real and stays exactly one space. */
+same(String.raw`\text{for any real number }n`);
+
+console.log("maths spacing at a textual edge ok");

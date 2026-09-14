@@ -589,7 +589,14 @@ function render(tag, inner) {
     }
 
     case "m:nary": {
-      const op = propChar(inner, "m:chr") ?? "∑";
+      /*
+       * THE DEFAULT N-ARY OPERATOR IS THE INTEGRAL, not the sum. Word omits `m:chr` when the
+       * operator is the one OOXML defaults to (ECMA-376 § 22.1.2.20: U+222B), which is exactly
+       * what an integral looks like in the file: nothing. Defaulting to ∑ turned all 41
+       * integrals of one calculus summary into summation signs, every one of them parsing,
+       * storing and rendering perfectly while saying something else.
+       */
+      const op = propChar(inner, "m:chr") ?? "∫";
       const name = op === "∏" ? "\\prod" : op === "∫" ? "\\int" : "\\sum";
       const sub = renderAll(child(inner, "m:sub"));
       const sup = renderAll(child(inner, "m:sup"));

@@ -37,6 +37,8 @@ function textualRanges(tex) {
 }
 
 const isLetter = (c) => c !== undefined && /[A-Za-z]/.test(c);
+/** A word or an amount: what a space between a name and a number has to sit between to be real. */
+const isWordish = (c) => c !== undefined && /[A-Za-z0-9]/.test(c);
 
 /**
  * Restore the spaces inside one expression. Returns { tex, fixed } where `fixed` counts the spaces
@@ -48,11 +50,28 @@ const isLetter = (c) => c !== undefined && /[A-Za-z]/.test(c);
 function weldedSpaces(tex) {
   const skip = textualRanges(tex);
   const inSkip = (i) => skip.some(([a, b]) => i >= a && i < b);
+  /*
+   * THE EDGE OF A TEXTUAL GROUP IS THE SAME DEFECT, and it was the blind spot here: the interior of
+   * `\\text{...}` is skipped, correctly, but the space BESIDE one is outside every skipped range and
+   * has a `}` or a `\\` on one side, so the letter-on-both-sides rule never saw it. `\\text{EUR} 1,120.50`
+   * draws "EUR1,120.50" and `100 \\text{and} 540` draws "100and540". Thirty of one finance summary's
+   * equations carried one, every one of them a money amount a student reads off the page.
+   */
+  const opensTextual = new Set(skip.map(([a]) => a));
+  const closesTextual = new Set(skip.map(([, b]) => b));
+  const atTextualEdge = (i) => opensTextual.has(i + 1) || closesTextual.has(i);
+
   let out = "";
   let fixed = 0;
   for (let i = 0; i < tex.length; i += 1) {
     const c = tex[i];
-    if (c !== " " || inSkip(i) || !isLetter(tex[i - 1]) || !isLetter(tex[i + 1])) {
+    /* A textual group counts as a word on whichever side of the space it sits. */
+    const leftIsWord = closesTextual.has(i) || isWordish(tex[i - 1]);
+    const rightIsWord = opensTextual.has(i + 1) || isWordish(tex[i + 1]);
+    const welded = atTextualEdge(i)
+      ? leftIsWord && rightIsWord
+      : isLetter(tex[i - 1]) && isLetter(tex[i + 1]);
+    if (c !== " " || inSkip(i) || !welded) {
       out += c;
       continue;
     }
