@@ -216,6 +216,26 @@ for (const s of scriptsUnder("scripts")) {
 }
 
 /*
+ * ── NO SOURCE FILE IS BINARY ─────────────────────────────────────────────────────────────────────────
+ *
+ * `normalise.js` needs a placeholder character no document contains, and U+0000 is the honest choice.
+ * Typed as a literal byte it makes the SOURCE binary: grep skips the file, git diffs it as binary, and
+ * a formatter may eat it. It was written that way, fixed, and written that way again, because a `\u0000`
+ * escape in the content was turned back into the byte on the way to disk both times.
+ *
+ * Checked rather than remembered, since remembering it failed twice.
+ */
+for (const rel of scriptsUnder("scripts")) {
+  const bytes = readFileSync(join(ROOT, "scripts", rel));
+  const nuls = bytes.filter((b) => b === 0).length;
+  if (nuls > 0)
+    errors.push(
+      `scripts/${rel}: ${nuls} NUL byte(s) in the source, which makes the file binary. ` +
+        `Build the character with String.fromCharCode(0) instead of typing or escaping it.`,
+    );
+}
+
+/*
  * ── THE FIELD GUIDE ──────────────────────────────────────────────────────────────────────────────────
  *
  * `formats/registry.json` is knowledge as DATA, which only works while it stays machine-readable: an

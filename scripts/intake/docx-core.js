@@ -89,7 +89,6 @@ function runsOf(p) {
  * picked up again and printed twice.
  */
 function paraText(p, ommlToLatex) {
-  let t = "";
   const runRe =
     /<m:oMath\b[\s\S]*?<\/m:oMath>|<w:r\b[\s\S]*?<\/w:r>|<w:br\b[^>]*\/>|<w:tab\b[^>]*\/>/g;
   /*
@@ -98,6 +97,29 @@ function paraText(p, ommlToLatex) {
    * from "this formula is a phrase in a sentence", and the two take different delimiters.
    */
   const display = /<m:oMathPara\b/.test(p);
+
+  /*
+   * COLLECTED FIRST, EMITTED AFTERWARDS, and that order is the whole fix.
+   *
+   * Marking each run as it arrives is what produced nested emphasis. Word splits one phrase across
+   * runs by formatting, so "From *Foundations of Physics* (1740)" is three runs: bold, bold+italic,
+   * bold. Wrapping each one on its own gives `**From **` + `***...***` + `**(1740)**`, and the tidy-up
+   * pass then leaves `**From *Foundations of Physics *(1740)**`: a mark inside a mark.
+   *
+   * THE READER'S DIALECT CARRIES ONE MARK PER SPAN, so a nested one is not emphasis at all. It is
+   * stored with its inner asterisks as literal characters and the student reads them on the page. The
+   * write path refuses it by name (`no-nested-emphasis`), which is how this was found.
+   *
+   * So each run is reduced to ONE mark before anything is written, and adjacent runs carrying the same
+   * mark are merged into a single span. Nesting then cannot be constructed.
+   */
+  const pieces = [];
+  const push = (mark, text) => {
+    const last = pieces[pieces.length - 1];
+    if (last && last.mark === mark) last.text += text;
+    else pieces.push({ mark, text });
+  };
+
   let r;
   while ((r = runRe.exec(p))) {
     const rs = r[0];
@@ -108,30 +130,47 @@ function paraText(p, ommlToLatex) {
       // An equation that renders to nothing is one Word left empty. An empty pair of delimiters is a
       // parse error downstream and says less than saying nothing at all.
       if (latex)
-        t += display
-          ? DISPLAY_OPEN + latex + DISPLAY_OPEN
-          : INLINE + latex + INLINE;
+        push(
+          "",
+          display
+            ? DISPLAY_OPEN + latex + DISPLAY_OPEN
+            : INLINE + latex + INLINE,
+        );
       continue;
     }
     if (/^<w:br/.test(rs)) {
-      t += "\n";
+      push("", "\n");
       continue;
     }
     if (/^<w:tab/.test(rs)) {
-      t += "\t";
+      push("", "\t");
       continue;
     }
     for (const run of runsOf(rs)) {
-      let txt = run.txt;
-      if (run.bold && run.italic) txt = "***" + txt + "***";
-      else if (run.bold) txt = "**" + txt + "**";
-      else if (run.italic) txt = "*" + txt + "*";
-      t += txt;
+      /*
+       * BOLD WINS over italic where Word set both. One of the two has to go and neither is
+       * recoverable, so it is the one these documents use for a key term, which is what a reader most
+       * needs to see.
+       */
+      push(run.bold ? "**" : run.italic ? "*" : "", run.txt);
     }
   }
-  // Adjacent runs that carried the same emphasis leave the markers back to back; an emphasis span with
-  // nothing but whitespace in it is not emphasis at all.
-  return t.replace(/\*\*\*\*/g, "").replace(/\*\*(\s*)\*\*/g, "$1");
+
+  let t = "";
+  for (const piece of pieces) {
+    if (!piece.mark) {
+      t += piece.text;
+      continue;
+    }
+    /*
+     * THE MARKERS GO ROUND THE WORDS, NOT ROUND THE SPACES. Word happily marks a trailing space bold,
+     * and `**behaviour **is` renders as asterisks rather than as emphasis. A span that is only
+     * whitespace is not emphasis at all.
+     */
+    const [, before, core, after] = /^(\s*)([\s\S]*?)(\s*)$/.exec(piece.text);
+    t += core ? before + piece.mark + core + piece.mark + after : piece.text;
+  }
+  return t;
 }
 
 /**
