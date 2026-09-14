@@ -542,14 +542,27 @@ function buildUnit(unitLines, number, title) {
 
   const sections = [];
   let cur = null;
-  const closeSection = () => {
-    if (cur && cur.body.join("\n").trim()) sections.push(cur);
+  /*
+   * A SECTION WITH NO PROSE OF ITS OWN IS STILL A SECTION, when what follows it is its SUBSECTIONS.
+   *
+   * Dropping an empty one is right for a heading with nothing at all under it. It is wrong for a `##`
+   * that groups two `###`, which is ordinary document structure: "Cash vs Accrual Basis Accounting"
+   * over "Cash Basis" and "Accrual Basis", "Inventory Ratios and Turnover" over the two ratios. Nine of
+   * them on one course, every one a line missing from the contents a student navigates by, including
+   * one on a lecture that was already published.
+   *
+   * Told apart by what comes next: a deeper heading means it has children, so it is kept.
+   */
+  const closeSection = (nextLevel) => {
+    if (!cur) return;
+    const hasProse = cur.body.join("\n").trim();
+    if (hasProse || (nextLevel !== undefined && nextLevel > cur.level)) sections.push(cur);
     cur = null;
   };
   for (const line of proseText.split("\n").slice(1)) {
     const h = /^(##|###) (.+)$/.exec(line);
     if (h) {
-      closeSection();
+      closeSection(h[1].length);
       cur = { level: h[1].length, heading: h[2].trim(), body: [] };
       continue;
     }

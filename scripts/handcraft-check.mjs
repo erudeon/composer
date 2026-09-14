@@ -115,6 +115,19 @@ const RULES = [
     },
   },
   {
+    /*
+     * A PARAGRAPH IS NOT A HEADING, whatever style Word gave it. It does this on its own constantly, and
+     * one 350-character paragraph came through as a `###`: the contents list then carries a section
+     * title four lines long, and the outline it belongs to is unusable.
+     */
+    name: "a paragraph styled as a heading",
+    becomes: null,
+    test: (b) => {
+      const long = /^#{1,6} (.{121,})$/m.exec(b.body ?? "");
+      return long && `${long[1].length} characters is a paragraph, not a title`;
+    },
+  },
+  {
     name: "prose ends on a bold line",
     becomes: null,
     test: (b) => {
