@@ -15,6 +15,7 @@
 const fs = require("node:fs");
 const { mathsSpans, fragileSpans } = require("./maths-spans.js");
 const { weldedSpaces } = require("./maths-spacing.js");
+const { stripTags } = require("./lib.js");
 
 /*
  * Resolved from the plugin's own dependencies. It used to reach two levels up into the platform
@@ -91,10 +92,16 @@ const fragile = fragileSpans(text);
  * KaTeX draws U+00A0, so every multi-word expression came back welded whether it was repaired or not.
  */
 const drawn = (tex, display) =>
-  katex
-    .renderToString(tex, { ...OPTIONS, displayMode: display })
-    .replace(/<annotation[\s\S]*?<\/annotation>/g, "")
-    .replace(/<[^>]+>/g, "");
+  /*
+   * The annotation carries the ORIGINAL LaTeX, so it goes whole rather than as tags: left in, every
+   * expression would appear to contain its own source and the comparison below would always match.
+   * `stripTags` for the rest, because one pass leaves tags behind on anything malformed.
+   */
+  stripTags(
+    katex
+      .renderToString(tex, { ...OPTIONS, displayMode: display })
+      .replace(/<annotation[\s\S]*?<\/annotation>/g, ""),
+  );
 
 const welded = [];
 for (const e of eqs) {
