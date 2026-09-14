@@ -88,7 +88,7 @@ function runsOf(p) {
  * FIRST in the alternation because it swallows its own contents: a run inside an equation must not be
  * picked up again and printed twice.
  */
-function paraText(p, ommlToLatex) {
+function paraText(p, ommlToLatex, forceInline = false) {
   const runRe =
     /<m:oMath\b[\s\S]*?<\/m:oMath>|<w:r\b[\s\S]*?<\/w:r>|<w:br\b[^>]*\/>|<w:tab\b[^>]*\/>/g;
   /*
@@ -96,7 +96,13 @@ function paraText(p, ommlToLatex) {
    * equation in `<m:oMathPara>`, which is the only thing separating "this formula is the paragraph"
    * from "this formula is a phrase in a sentence", and the two take different delimiters.
    */
-  const display = /<m:oMathPara\b/.test(p);
+  /*
+   * A TABLE CELL IS NEVER DISPLAY MATHS. Word wraps a cell holding nothing but an equation in
+   * `<m:oMathPara>` exactly as it would a standalone paragraph, so the cell came out with `$$`
+   * delimiters and the reader drew a centred block inside a table column. A cell is inline by
+   * definition, whatever the paragraph inside it says, so the caller overrides it.
+   */
+  const display = !forceInline && /<m:oMathPara\b/.test(p);
 
   /*
    * COLLECTED FIRST, EMITTED AFTERWARDS, and that order is the whole fix.

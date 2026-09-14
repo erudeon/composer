@@ -97,7 +97,10 @@ while ((m = BLOCK_RE.exec(body))) {
 
   if (blk.startsWith("<w:tbl")) {
     const rows = tableRows(blk, (tc) =>
-      (tc.match(/<w:p\b[\s\S]*?<\/w:p>/g) || []).map(text).join(" "),
+      (tc.match(/<w:p\b[\s\S]*?<\/w:p>/g) || [])
+        // A cell is inline by definition, so its equations take single delimiters.
+        .map((cellPara) => flatten(paraText(cellPara, ommlToLatex, true)))
+        .join(" "),
     );
     const lines = gfmTable(rows);
     if (lines.length === 0) continue;
