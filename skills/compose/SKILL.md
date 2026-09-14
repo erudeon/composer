@@ -21,6 +21,22 @@ with its reason, so the course still says which phases it went through.
    markers, and this is the version that survived them.
 3. **Delete empty headings, and emoji in headings.** Keep en dashes and every other character.
 4. **Retype every equation that was pasted as a picture**, as LaTeX.
+
+   **And restore the spaces a multi-word name lost.** Maths mode ignores an ordinary space, so
+   `Share Capital` is drawn as "ShareCapital" and `Depreciation Expense` as "DepreciationExpense".
+   Nothing refuses it: it parses, it stores, it renders, and it is wrong on the page in a way that
+   reads as the author's own typo. Word causes it, by recording a typed space between two maths runs
+   as presentation, which is why the SAME equation can carry one welded name and one intact phrase.
+   **41 of 56 equations in the first accounting summary carried one**, across every lecture, and the
+   only reason it was caught is that somebody read one. `katex-check.js` reports them as `welded`:
+
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/fix-maths-spacing.mjs" <source-of-record.md>
+   ```
+
+   It touches nothing but those spaces: not one inside `\text{}`, where the space is already real, and
+   not one that ends a control word, where it is load-bearing. Re-run `katex-check.js` afterwards and
+   `welded` must be 0.
 5. **Fold every shape drawn over the text** into the block it annotated, and delete the shape.
 6. **Collapse a duplicated picture** to one reference.
 
