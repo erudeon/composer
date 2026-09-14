@@ -231,8 +231,24 @@ if (Array.isArray(result?.unmanaged) && result.unmanaged.length > 0) {
   console.log(
     `\nUnmanaged (${result.unmanaged.length}) — on the course, not named by this file. Never deleted:`,
   );
+  /*
+   * THE ID IS PRINTED FOR A GLOSSARY TERM, and for that reason only: it is the one unmanaged row a
+   * course usually wants GONE — a term written the wrong way round, or renamed in a later draft, which
+   * then sits in the flashcard deck forever because nothing an import does ever deletes. That rule is
+   * deliberate and stays: a file that simply forgets a term must not remove it. So the deletion is a
+   * separate, deliberate act, and `content_glossary` takes a termId nothing else here hands back.
+   */
   for (const row of result.unmanaged.slice(0, 20))
-    console.log(`  ${row.kind} ${row.title ?? row.id}`);
+    console.log(
+      row.kind === "glossary-term"
+        ? `  ${row.kind} ${row.title ?? row.id}   ${row.id}`
+        : `  ${row.kind} ${row.title ?? row.id}`,
+    );
+  if (result.unmanaged.some((r) => r.kind === "glossary-term"))
+    console.log(
+      `\n  A glossary term you want gone is deleted on purpose, one call per term:\n` +
+        `  content_glossary {"request":{"op":"delete","termId":"<the id above>"}}`,
+    );
 }
 
 /*
