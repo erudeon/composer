@@ -316,7 +316,8 @@ practice and wrong for a mock: a student who has only ever picked from four opti
 the thing being examined. Give each one the marking scheme the paper itself would publish, so they can
 mark their own answer the way the grader will. Every positive criterion is worth 1 or 2 points and they
 must sum to the question's points; a repeatable negative one deducts for a minor mistake and sits
-outside that sum.
+outside that sum. The build refuses a scheme that breaks either rule, because the write boundary does
+too, and finding out there costs a round trip.
 
 "Upload everything except the mock exams" means the standalone PAPERS. The questions embedded in each
 unit are PRACTICE QUESTIONS and always get built. Reading it the other way skips every bank in the

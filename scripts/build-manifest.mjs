@@ -743,6 +743,30 @@ const both = exams.flatMap((e) => e.questions.map((q) => q.key)).filter((k) => i
 if (both.length)
   fail(`A question is in a paper AND a lecture bank, so it would be written twice: ${[...new Set(both)].join(", ")}`);
 
+/*
+ * A MARKING SCHEME THE WRITE BOUNDARY WOULD REFUSE. The band is the server's, not a preference:
+ * `lib/passos/core/marking-scheme.ts` caps a criterion at 2 either way, refuses a zero, and requires the
+ * POSITIVES to sum to the question's points. The offline lint does not see criteria at all — a manifest
+ * is carried past it unvalidated, by design, because the question schemas own that shape — so without
+ * this an over-weighted criterion is found by an APPLY that refuses it, one round trip and one course
+ * later. It is a build error rather than a warning for the same reason: the push cannot succeed.
+ */
+const schemeFaults = [];
+for (const q of [...topics.flatMap((t) => t.questions), ...exams.flatMap((e) => e.questions)]) {
+  if (!q.criteria) continue;
+  const seen = new Set();
+  for (const c of q.criteria) {
+    if (!Number.isInteger(c.points) || c.points === 0 || Math.abs(c.points) > 2)
+      schemeFaults.push(`${q.key}: criterion ${c.id} is worth ${c.points}; a criterion awards or deducts 1 or 2`);
+    if (seen.has(c.id)) schemeFaults.push(`${q.key}: two criteria share the id ${c.id}`);
+    seen.add(c.id);
+  }
+  const awarded = q.criteria.filter((c) => c.points > 0).reduce((n, c) => n + c.points, 0);
+  if (awarded !== q.points)
+    schemeFaults.push(`${q.key}: the scheme awards ${awarded} and the question is worth ${q.points}`);
+}
+if (schemeFaults.length) fail(`Marking schemes the import will refuse:\n  ${schemeFaults.join("\n  ")}`);
+
 const manifest = {
   version: 1,
   course: {
