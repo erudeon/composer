@@ -58,10 +58,12 @@ assert.ok(
   "the umbrella label was drawn as a block of its own",
 );
 
-/*
- * KNOWN AND NOT FIXED HERE: the sibling merge takes a following example's LEAD but not the
- * paragraph under it, so Example 2's equation is still left outside the box. That is a separate
- * defect in the sibling rule, recorded against the course rather than patched around here.
- */
+/* Each numbered example keeps its own body: the sibling rule only merges BULLETED siblings now, and
+   two standalone examples that end up adjacent are merged on the finished blocks instead. */
+for (const eq of ["y=x^3", "Q^{5/4}"])
+  assert.ok(
+    blocks.some((b) => b.type === "callout" && (b.body ?? "").includes(eq)),
+    `an example's equation was left outside the box: ${eq}`,
+  );
 
 console.log("t_umbrella: an examples heading is not an empty example");

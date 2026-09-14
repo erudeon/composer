@@ -440,7 +440,13 @@ function walk(unitLines, HEADINGS, equationHeadings) {
 
 const isTable = (p) => /^\|/.test(p.trim());
 const isBoldOnly = (p) => /^\*\*[^*]+\*\*:?\s*$/.test(p.trim());
-const EXAMPLE = /^\s*(?:[-*]\s+)?\*\*(Examples?[^*]*)\*\*\s*:?\s*/;
+/*
+ * AN AUTHOR MAY LABEL THEIR EXAMPLE THEIR OWN WAY. "**Method 1 Example: Solving by elimination**"
+ * is an example, and requiring the word FIRST meant two complete three-step solutions stayed in one
+ * paragraph. A prefix is allowed, but only where a colon follows the word, so "**For example**, take
+ * y = 2x + 1" stays the sentence it is rather than becoming a box.
+ */
+const EXAMPLE = /^\s*(?:[-*]\s+)?\*\*((?:[^*]{1,24}?\bExamples?\s*:|Examples?)[^*]*)\*\*\s*:?\s*/;
 /* The words a step is labelled with sit INSIDE the bold, so they are CAPTURED rather than eaten.
    An author who writes "**Step 2: Solve for** $Q$**.**" puts half of them outside it instead,
    which is why `workedBlock` joins the capture to what follows on the same line. */
@@ -554,7 +560,12 @@ function workedBlock(paras, title) {
       const last = steps[steps.length - 1];
       /* The display line a step produces is its result; anything else is why the move works. */
       if (display && !last.result) last.result = display[1].trim();
-      else last.note = [last.note, para.trim()].filter(Boolean).join(" ");
+      /*
+       * A NOTE IS PLAIN TEXT, like the label above it. The label has its emphasis stripped and the
+       * note did not, so a bulleted answer under a step reached the page as "**EUR 8,000**" with the
+       * asterisks drawn. There is nowhere for the author's emphasis to go here, so it goes.
+       */
+      else last.note = [last.note, para.trim().replace(/\*\*/g, "")].filter(Boolean).join(" ");
       continue;
     }
     problem.push(para.trim());
@@ -629,12 +640,23 @@ function buildUnit(unitLines, number, title) {
     if (hasProse || (nextLevel !== undefined && nextLevel > cur.level)) sections.push(cur);
     cur = null;
   };
+  /*
+   * A UNIT'S TEXT BEFORE ITS FIRST SUBHEADING IS STILL ITS TEXT. Sections were collected from `##`
+   * and `###` alone, so an opening run was collected by nothing and vanished: a unit with NO
+   * subheadings produced zero blocks, which the publish door then refused for having no body, three
+   * screens from the cause. The opening run is a section with no heading to print, because that is
+   * what it is.
+   */
+  /* `anchor` is what a course keys its supplied blocks on; `heading` is what prints. An opening
+     run has the first and not the second, so it can still carry a chart or a callout. */
+  cur = { level: 2, heading: null, anchor: "(opening)", key: keyFor("(opening)"), body: [] };
+
   for (const line of proseText.split("\n").slice(1)) {
     const h = /^(##|###) (.+)$/.exec(line);
     if (h) {
       closeSection(h[1].length);
       const heading = h[2].trim();
-      cur = { level: h[1].length, heading, key: keyFor(heading), body: [] };
+      cur = { level: h[1].length, heading, anchor: heading, key: keyFor(heading), body: [] };
       continue;
     }
     if (cur) cur.body.push(line);
@@ -645,7 +667,7 @@ function buildUnit(unitLines, number, title) {
   const used = new Map();
   /** Derived from the heading and never positional: a block id is what progress and deep links key on. */
   const idFor = (stem) => {
-    const base = `u${number}-${slug(stem)}`;
+    const base = `u${number}-${slug(stem ?? "opening")}`;
     const n = (used.get(base) ?? 0) + 1;
     used.set(base, n);
     return n === 1 ? base : `${base}-${n}`;
@@ -716,7 +738,7 @@ function buildUnit(unitLines, number, title) {
     const captionFor = (i) => {
       const last = prose[prose.length - 1];
       if (last && isBoldOnly(last)) return leadOf(prose.pop());
-      return leadOf(paras[i - 1]) ?? s.heading;
+      return leadOf(paras[i - 1]) ?? s.anchor;
     };
 
     for (let i = 0; i < paras.length; i += 1) {
@@ -803,19 +825,51 @@ function buildUnit(unitLines, number, title) {
 
       const run = [para];
       const tables = [];
+      /** Working: a step, a list, a display line or a table. What an example is made of. */
+      const isWorking = (p) =>
+        p !== undefined &&
+        (STEP.test(p.trim()) ||
+          FINAL.test(p.trim()) ||
+          /* An ORDERED item too. `1.` is how an author writes an example's own steps, and leaving it
+             out of this test cut every such example off after its first sentence. */
+          LIST_ITEM.test(p) ||
+          /^\$\$|^\$/.test(p) ||
+          isTable(p));
       while (i + 1 < paras.length) {
         const next = paras[i + 1];
         if (EXAMPLE.test(next)) break;
         if (folded.has(next.trim().split("\n")[0].trim())) break;
+        /*
+         * AN EXAMPLE RUNS UNTIL IT HAS ITS WORKING, AND THE FIRST ORDINARY PARAGRAPH AFTER THAT ENDS
+         * IT.
+         *
+         * Authors put one or two sentences of intent between the question and the answer: "The plan
+         * is to use the sum formula", "Our plan is to discount each inflow". Stopping at the first
+         * of them left the box holding a question it did not answer, on 33 of one course's 45
+         * examples. Crossing them unconditionally is the opposite mistake: it swallows the closing
+         * remark, the next subsection and everything after.
+         *
+         * What tells the two apart is whether this example has found its working YET. Before it has,
+         * a sentence is crossed if working lies ahead of it; after it has, prose means the example
+         * is over and the author's remark stays where they put it.
+         */
+        const reachesWorking = () => {
+          for (let k = i + 1; k < paras.length && k <= i + 4; k += 1) {
+            const p = paras[k];
+            if (EXAMPLE.test(p) || folded.has(p.trim().split("\n")[0].trim())) return false;
+            if (isWorking(p)) return true;
+          }
+          return false;
+        };
         const continues =
           stepsAhead ||
-          STEP.test(next.trim()) ||
-          FINAL.test(next.trim()) ||
-          /* An ORDERED item too. `1.` is how an author writes an example's own steps, and leaving it
-             out of this test cut every such example off after its first sentence. */
-          LIST_ITEM.test(next) ||
-          /^\$\$|^\$/.test(next) ||
-          isTable(next);
+          isWorking(next) ||
+          /* One sentence of intent, anywhere in the example: prose, then working, is still it. */
+          isWorking(paras[i + 2]) ||
+          /* And a LONGER reach while the example has no working at all, because an author may take
+             two or three sentences to get from the question to the first line of the answer. Once
+             working has been seen this is off, so a closing remark ends the example. */
+          (!run.some(isWorking) && reachesWorking());
         if (!continues) break;
         i += 1;
         (isTable(next) ? tables : run).push(next);
@@ -829,9 +883,15 @@ function buildUnit(unitLines, number, title) {
        */
       if (run.length === 1 && !run[0].replace(EXAMPLE, "").trim()) continue;
 
-      /* Consecutive examples merge: two callouts of the same kind may not touch. */
+      /*
+       * TWO EXAMPLES ARE ONE CALLOUT WHEN THE AUTHOR WROTE THEM AS TWO BULLETS, which is the shape
+       * the no-two-callouts-may-touch rule is about. A STANDALONE example is its own, and claiming
+       * it took only its lead: the paragraphs under it were left behind as prose, which dissolved a
+       * five-step worked example on integration by substitution into a bare display line and a
+       * heading. A sibling is a list item; anything else starts a new example.
+       */
       const siblings = [];
-      while (i + 1 < paras.length && EXAMPLE.test(paras[i + 1]))
+      while (i + 1 < paras.length && EXAMPLE.test(paras[i + 1]) && LIST_ITEM.test(paras[i + 1]))
         siblings.push(paras[(i += 1)].replace(EXAMPLE, "").trim());
 
       flushProse();
@@ -896,11 +956,31 @@ function buildUnit(unitLines, number, title) {
       }
     }
 
+    /*
+     * TWO CALLOUTS OF ONE KIND MAY NOT TOUCH, so two that do become one box.
+     *
+     * Each keeps the author's own label, as a bold lead inside the merged body, because "Example 2:
+     * Logarithm of a linear term" is how they told the reader which is which. The older merge did
+     * this at the paragraph level and took only the following example's LEAD, leaving its working
+     * outside; doing it on the finished blocks means each one arrives whole.
+     */
+    for (let k = out.length - 1; k > 0; k -= 1) {
+      const here = out[k];
+      const before = out[k - 1];
+      if (here.type !== "callout" || before.type !== "callout") continue;
+      if (here.variant !== before.variant) continue;
+      const lead = (b, body) => (b.title && !/^Examples?$/i.test(b.title) ? `**${b.title}**\n\n${body}` : body);
+      before.body = `${lead(before, before.body)}\n\n${lead(here, here.body)}`.trim();
+      before.title = before.variant === "example" ? "Examples" : before.title;
+      out.splice(k, 1);
+    }
+
     /* The heading goes on the first block that can carry one, which is the first prose block. */
     const firstProse = out.find((b) => b.type === "prose");
-    if (firstProse)
+    /* An opening run has no heading of its own, so it simply keeps its paragraphs. */
+    if (s.heading && firstProse)
       firstProse.body = `${"#".repeat(s.level)} ${s.heading}\n\n${firstProse.body}`;
-    else
+    else if (s.heading && !firstProse)
       out.unshift({
         type: "prose",
         body: `${"#".repeat(s.level)} ${s.heading}`,
@@ -948,17 +1028,21 @@ function buildUnit(unitLines, number, title) {
       ...oneEach.map((f) => ({
         type: "callout",
         variant: f.variant,
-        title: f.title ?? titleFor(f.lead) ?? DEFAULT_TITLE[f.variant],
+        /* A SUPPLIED TITLE WINS. It is the course saying this one is wrong, and the commonest
+           reason to reach for it is that the line above the flag was taken as a heading when it
+           was really the previous example's answer. An unused key is reported, so overriding
+           nothing is never silent. */
+        title: titleFor(f.lead) ?? f.title ?? DEFAULT_TITLE[f.variant],
         body: f.body,
       })),
-      ...(EXTRA_TABLES[s.heading] ?? []),
-      ...(REPAIRS.worked?.[s.heading] ?? []),
-      ...(CHARTS[s.heading] ?? []),
-      ...(TERMS[s.heading] ?? []),
-      ...(CHECKS[s.heading] ?? []),
+      ...(EXTRA_TABLES[s.anchor] ?? []),
+      ...(REPAIRS.worked?.[s.anchor] ?? []),
+      ...(CHARTS[s.anchor] ?? []),
+      ...(TERMS[s.anchor] ?? []),
+      ...(CHECKS[s.anchor] ?? []),
     ];
     for (const b of anchored)
-      blocks.push({ id: idFor(`${s.heading}-${b.type}`), ...b });
+      blocks.push({ id: idFor(`${s.anchor}-${b.type}`), ...b });
   }
 
   const unusedTitles = Object.keys(TITLES).filter((k) => !titlesUsed.has(k));
