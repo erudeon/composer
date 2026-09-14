@@ -29,11 +29,19 @@ try {
    * this script gets to assume. Crashing with a module-resolution stack trace in the middle of an intake
    * tells the operator nothing they can act on, so say the one command that fixes it and stop cleanly.
    */
+  /*
+   * THE PATH, NOT THE PHRASE. "Run npm install in the plugin directory" is useless to somebody who has
+   * never seen the plugin directory, and a plugin lives under a cache path nobody would guess. This
+   * script knows exactly where it is, so it says so, as a command that can be pasted.
+   */
+  const pluginRoot = require("node:path").resolve(__dirname, "..", "..");
   console.error(
-    "katex is not installed, so the maths cannot be checked before the apply.\n" +
-      "Run `npm install` once inside the plugin directory, then run this again.\n" +
-      "Do NOT skip this step on a maths course: an equation the reader refuses is met here with the\n" +
-      "equation in front of you, or inside an apply of a 300 KB course, and those are not the same day.",
+    "The maths checker needs one package installed, and it is not there yet.\n\n" +
+      "Run this once, then try again:\n\n" +
+      `  cd "${pluginRoot}" && npm install\n\n` +
+      "It is worth doing rather than skipping. An equation the reader will not accept is met here,\n" +
+      "with the equation in front of you, or inside a whole-course upload later, and those are very\n" +
+      "different days.",
   );
   process.exit(2);
 }

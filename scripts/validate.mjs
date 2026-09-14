@@ -155,6 +155,45 @@ for (const dir of skillNames) {
 }
 
 /*
+ * ── A COUNT WRITTEN IN PROSE, AGAINST THE LIST IT COUNTS ─────────────────────────────────────────────
+ *
+ * "the six structure questions", "the seven families". These drift the moment one is added, and they
+ * drift SILENTLY: the list is right and the sentence above it is wrong, so a session following the
+ * sentence stops early. It happened tonight when four structure questions became six and the state
+ * script went on saying four.
+ */
+const WORDS = {
+  two: 2, three: 3, four: 4, five: 5, six: 6,
+  seven: 7, eight: 8, nine: 9, ten: 10,
+};
+for (const [file, heading, noun, item] of [
+  // Each file numbers its own list its own way, so the pattern comes with the file.
+  ["skills/intake/SKILL.md", "structure questions", "numbered question", /^\d+\. \*\*/gm],
+  ["skills/audit/SKILL.md", "families", "numbered family", /^\*\*\d+\./gm],
+]) {
+  const full = join(ROOT, file);
+  if (!existsSync(full)) continue;
+  const text = readFileSync(full, "utf8");
+  const said = new RegExp(`(${Object.keys(WORDS).join("|")}) ${heading}`).exec(text);
+  if (!said) continue;
+  /*
+   * COUNT THE LIST THE SENTENCE IS ABOUT, not every numbered line in the file. Intake carries a
+   * checklist and a set of questions, and counting both together says eleven where the sentence, quite
+   * correctly, says six.
+   */
+  const from = text.lastIndexOf("\n## ", said.index);
+  const rest = text.slice(from === -1 ? 0 : from + 1);
+  const nextHeading = rest.indexOf("\n## ", 1);
+  const section = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
+  const actual = (section.match(item) ?? []).length;
+  if (WORDS[said[1]] !== actual)
+    errors.push(
+      `${file}: says "${said[0]}" and carries ${actual} ${noun}(s). ` +
+        `A session following the sentence stops at the wrong one.`,
+    );
+}
+
+/*
  * ── A TABLE OF CONTENTS THAT HAS STOPPED MATCHING ITS FILE ───────────────────────────────────────────
  *
  * A long reference gets one so somebody can find the one answer they came for. It then drifts the first

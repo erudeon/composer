@@ -19,6 +19,17 @@ You do not need the platform's code, a package manager, or anything from a devel
 You also need Node.js, which the scripts run on. `node --version` should print something. If it does
 not, install it from nodejs.org and reopen your terminal.
 
+**If your course has equations in it, install the one package that checks them:**
+
+```
+cd ~/.claude/plugins/cache/erudeon/composer/*/ && npm install
+```
+
+Everything else works without it. That step is what catches an equation the reader will not accept,
+while you can still see which equation it is, so on a maths, statistics or accounting course it is worth
+the minute. If you skip it and need it, the tool tells you and prints the exact command for your
+machine.
+
 **On Windows, write paths the way Node reads them.** Your shell may understand `/tmp` and `/c/Users`;
 Node does not. It resolves `/tmp` to `C:\tmp` and stops with a file-not-found error that names a path
 you never typed. Use `C:/Users/...`. Every phase here runs a Node script over a path you give it, so
