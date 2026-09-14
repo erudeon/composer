@@ -65,6 +65,26 @@ function safeJson(path) {
   }
 }
 
+/*
+ * THE FINDINGS FILE, COUNTED ONCE. Publish refuses while any line is `open`, so a run that writes its
+ * findings under a key this does not read passes that gate with open findings on the list. It happened:
+ * a course carried three open lines under `findings` while `lines` sat empty and every count said zero.
+ * A shape we do not recognise is therefore reported, never counted as nothing.
+ */
+function readFindings(path) {
+  const f = safeJson(path);
+  if (!f) return { open: 0, misplaced: null };
+  if (Array.isArray(f.lines)) {
+    const misplaced = Object.entries(f).find(([k, v]) => k !== "lines" && Array.isArray(v) && v.length);
+    return {
+      open: f.lines.filter((l) => l?.state === "open").length,
+      misplaced: f.lines.length === 0 && misplaced ? misplaced[0] : null,
+    };
+  }
+  const any = Object.entries(f).find(([, v]) => Array.isArray(v) && v.length);
+  return { open: 0, misplaced: any ? any[0] : null };
+}
+
 function walk(dir, depth = 0) {
   if (depth > 2) return [];
   let entries;
@@ -177,11 +197,11 @@ function classify(files) {
  */
 function blockedOn(phase, gates, openFindings) {
   if (phase === 3 && !gates.courseShellVerified)
-    return "the operator, to confirm the course row itself: title, programme, period, container word, unit order";
-  if (phase === 3 && !gates.unitOneAccepted) return "the operator, to look at unit 1 and say whether the rest should be built";
+    return "the author, to confirm the course itself: title, programme, period, container word, unit order";
+  if (phase === 3 && !gates.unitOneAccepted) return "the author, to look at the first unit and say whether the rest should be built";
   if (phase === 5) return "the reviewer, to read the course as a student";
   if (phase === 6 && openFindings > 0) return `a person, to accept or close ${openFindings} open finding(s)`;
-  if (phase === 6) return "the operator, to say the word publish";
+  if (phase === 6) return "the author, to say the word publish";
   return null;
 }
 
@@ -220,8 +240,7 @@ function listCourses() {
       .filter((d) => d.isDirectory() && !d.name.startsWith("."))
       .map((d) => {
         const st = safeJson(join(WORKSPACE, d.name, STATE_FILE)) ?? {};
-        const f = safeJson(join(WORKSPACE, d.name, "findings.json"));
-        const open = Array.isArray(f?.lines) ? f.lines.filter((l) => l?.state === "open").length : 0;
+        const { open } = readFindings(join(WORKSPACE, d.name, "findings.json"));
         const g = st.gates ?? {};
         // The same ladder main() walks, read off the recorded gates alone.
         const phase = g.published ? 7 : g.reviewDone ? 6 : g.auditDone ? 5 : g.verifyMatched ? 4 : g.composeDone || g.composeSkipped ? 3 : g.analyzeDone || g.analyzeSkipped ? 2 : g.structureAnswered ? 1 : 0;
@@ -381,11 +400,15 @@ function main() {
     `Mode:   ${mode ?? "undecided"}${modeWhy ? `  (${modeWhy})` : ""}`,
   );
   lines.push(`Phase:  ${PHASES[phase]}`);
-  const openFindings = Array.isArray(safeJson(join(target, "findings.json"))?.lines)
-    ? safeJson(join(target, "findings.json")).lines.filter((l) => l?.state === "open").length
-    : 0;
+  const { open: openFindings, misplaced } = readFindings(join(target, "findings.json"));
   const waiting = blockedOn(phase, gates, openFindings);
   lines.push(`Waiting on: ${waiting ?? "nobody, this is yours to move"}`);
+  if (misplaced)
+    lines.push(
+      `        The findings list is under "${misplaced}" and every count here reads "lines", so open findings are\n` +
+        `        invisible to the gate that gets them fixed. Move them to "lines" before going further; the shape\n` +
+        `        is in composer/reference/findings-format.md.`,
+    );
   lines.push(
     `Files:  ${inputs.length} input(s)  ·  ${docx.length} .docx  ·  ${pdfs.length} .pdf`,
   );
@@ -436,28 +459,37 @@ function main() {
   lines.push("Next");
   if (!mode) {
     lines.push(
-      "  The folder is empty. Ask the operator to put the materials in it, then run again.",
+      "  The folder is empty. Ask the author where their files are, copy them in, then run again.",
     );
   } else if (phase === 0) {
-    lines.push(
-      "  Phase 0, Intake. Convert the summary, inventory every drawing, open the findings list,",
-    );
-    lines.push(
-      "  and ask the six structure questions in ONE message with a recommendation each.",
-    );
+    /*
+     * WHAT IS ACTUALLY MISSING, not the whole of Intake every time. A resumed run reads this block first,
+     * and telling somebody to convert a summary they converted last night sends them back over work that
+     * is done while the real gate, most often a drawing without a disposition, goes unnamed.
+     */
+    const todo = [];
+    if (!sourceOfRecord.length) todo.push("pull the text out of the summary");
+    if (!inventory) todo.push("inventory every drawing");
+    if (!findings) todo.push("open the findings list");
+    if (undisposed) todo.push(`decide what happens to ${undisposed} drawing(s) still without one`);
+    if (!gates.structureAnswered)
+      todo.push("settle the structure: ask the six questions in ONE message, a recommendation each");
+    lines.push("  Phase 0, Intake. Still to do here:");
+    for (const t of todo) lines.push(`    - ${t}`);
     /*
      * THE SUMMARY, not merely the first `.docx`. A course folder holds exams and teaching materials as
      * Word files too, and pointing the operator at a past exam paper as though it were the summary starts
      * the run by converting the wrong document, which is the exact failure this phase exists to prevent.
      * Where nothing is named like a summary, ask rather than pick.
      */
-    const summaryFile =
-      docx.find((f) => CHECKLIST[4].match.test(f.name)) ?? null;
+    const summaryFile = sourceOfRecord.length
+      ? null
+      : (docx.find((f) => CHECKLIST[4].match.test(f.name)) ?? null);
     if (summaryFile) {
       lines.push(
         `  Start with: node $CLAUDE_PLUGIN_ROOT/scripts/intake/open-docx.js "${summaryFile.path}" "${join(target, "work")}"`,
       );
-    } else if (docx.length) {
+    } else if (!sourceOfRecord.length && docx.length) {
       lines.push(
         `  ${docx.length} Word file(s) here and none named like a summary. ASK which one it is before converting.`,
       );
@@ -480,7 +512,7 @@ try {
       "",
       `Reason: ${err && err.message ? err.message : String(err)}`,
       "",
-      "Ask the operator for the course folder's path and try again. Do not guess a path,",
+      "Ask the author where the course folder is and try again. Do not guess a path,",
       "and do not proceed into a phase without knowing where the materials are.",
     ].join("\n"),
   );

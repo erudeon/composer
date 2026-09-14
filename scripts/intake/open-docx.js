@@ -294,6 +294,6 @@ if (require.main === module) {
   );
   console.log(`document:  ${inventory.documentXml}`);
   console.log(
-    `\nEvery drawing has disposition: null. Assigning them is Intake's gate and the operator's call.`,
+    `\nEvery drawing has disposition: null. Assigning them is Intake's gate and the author's call.`,
   );
 }

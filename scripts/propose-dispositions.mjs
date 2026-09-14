@@ -125,7 +125,7 @@ for (const [disposition, items] of [...groups].sort(
 
 const uncertain = groups.get("UNCERTAIN")?.length ?? 0;
 console.log(
-  "These are PROPOSALS. Nothing is decided until the operator says so, and any picture becoming",
+  "These are PROPOSALS. Nothing is decided until the author says so, and any picture becoming",
 );
 console.log(
   "an interactive chart must be LOOKED AT and checked against the curve before it is written.",
