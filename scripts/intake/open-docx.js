@@ -113,15 +113,25 @@ function relationships(dir) {
  * was. Those labels are what a person reads to decide what a picture becomes, and what the proposal
  * script matches against to find the function a chart would be drawn from, so the gaps cost twice.
  */
+const ENTITY = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&apos;": "'",
+  "&#39;": "'",
+};
+
 function textOf(fragment) {
   return [...fragment.matchAll(/<(?:w|m):t\b[^>]*>([\s\S]*?)<\/(?:w|m):t>/g)]
     .map((m) => m[1])
     .join("")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    /*
+     * ONE PASS, because `&amp;` must not be decoded before the others. Decoding it first turns the
+     * literal text `&amp;lt;` into `&lt;` and the next pass turns that into `<`, so a summary that
+     * WRITES about markup loses what it wrote. One pass leaves `&lt;`, which is what the author typed.
+     */
+    .replace(/&(?:amp|lt|gt|quot|apos|#39);/g, (e) => ENTITY[e])
     .trim();
 }
 

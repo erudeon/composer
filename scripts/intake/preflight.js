@@ -27,6 +27,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { sniff, entry } = require("./docx-zip.js");
+const { stripTags } = require("./lib.js");
 
 /** Every "Page 7 of 81" / "Pagina 7 van 81" in the text, in both languages and either order. */
 function footerPages(text) {
@@ -69,7 +70,7 @@ function report(file) {
   if (actual === "zip") {
     xml = entry(buf, "word/document.xml");
     if (xml === null) lines.push("  ! could not read word/document.xml — unzip it by hand and census that");
-    else text = xml.replace(/<[^>]+>/g, "");
+    else text = stripTags(xml);
   } else if (actual === "unknown") {
     text = buf.toString("utf8");
   }

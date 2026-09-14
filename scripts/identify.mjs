@@ -32,6 +32,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
+const { stripTags } = require("./intake/lib.js");
 const HERE = dirname(fileURLToPath(import.meta.url));
 const { sniff, entry, names } = require("./intake/docx-zip.js");
 const { headingLevels, authoredStyles } = require("./intake/docx-core.js");
@@ -155,7 +156,7 @@ function factsOf(file) {
   f.comments = entry(buf, "word/comments.xml") ? 1 : 0;
   f.tracked = count(doc, /<w:(ins|del)\b/g);
 
-  const text = doc.replace(/<[^>]+>/g, "");
+  const text = stripTags(doc);
   f.words = text.split(/\s+/).filter(Boolean).length;
   f.currency = count(text, /[$€£]/g);
   f.excelFormulas = count(
