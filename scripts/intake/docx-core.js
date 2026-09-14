@@ -230,7 +230,12 @@ function gfmTable(rows) {
   const clean = (c) =>
     (c ?? "")
       .replace(/\s*\n\s*/g, " ")
-      .replace(/\|/g, "\\|")
+      /*
+       * BACKSLASH AND PIPE TOGETHER, IN ONE PASS. Escaping the pipe alone turns a cell holding `a\|b`
+       * into `a\\|b`, which Markdown reads as an escaped BACKSLASH followed by a bare pipe: the cell
+       * splits and every column after it shifts by one, silently, on a table that looked fine in Word.
+       */
+      .replace(/[\\|]/g, (c) => `\\${c}`)
       .replace(/\s{2,}/g, " ")
       .trim();
   const line = (cells) =>

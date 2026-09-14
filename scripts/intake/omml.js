@@ -37,12 +37,19 @@ const { unesc } = require("./docx-core.js");
  *
  * The math-mode spellings below render the same characters and are what KaTeX accepts.
  */
+const MATH_MODE = {
+  "\\": "\\backslash ",
+  "^": "\\wedge ",
+  "~": "\\sim ",
+};
+
+/*
+ * ONE PASS over every character that needs it. Done as a chain, each replacement can see what the one
+ * before it wrote, and the reader has to prove that none of them does. One pass makes that unnecessary:
+ * a character is looked at once and its replacement is never looked at again.
+ */
 function escapeLatex(s) {
-  return s
-    .replace(/\\/g, "\\backslash ")
-    .replace(/([&%$#_{}])/g, "\\$1")
-    .replace(/\^/g, "\\wedge ")
-    .replace(/~/g, "\\sim ");
+  return s.replace(/[\\^~&%$#_{}]/g, (c) => MATH_MODE[c] ?? `\\${c}`);
 }
 
 /**

@@ -93,4 +93,22 @@ function tidy(s) {
     .trim();
 }
 
-module.exports = { stripEmDashes, stripHeadingNumber, tidy };
+/**
+ * THE TEXT OF AN XML DOCUMENT, FOR COUNTING. Not a sanitiser and never HTML: the callers census a
+ * `.docx`'s `document.xml` for words, currency signs and formula-looking strings.
+ *
+ * It loops to a fixpoint because one pass over a MALFORMED document leaves tags behind. `<w:t a="<b>">`
+ * is one match to a single pass, which consumes to the FIRST `>` and leaves `">` as text; worse, a
+ * truncated or hand-edited part can leave a whole `<script` sitting in what the caller believes is
+ * plain text. The loop costs nothing on a well-formed file, where it runs twice and stops.
+ */
+function stripTags(xml) {
+  let out = xml;
+  for (;;) {
+    const next = out.replace(/<[^>]*>/g, "");
+    if (next === out) return out;
+    out = next;
+  }
+}
+
+module.exports = { stripEmDashes, stripHeadingNumber, tidy, stripTags };
