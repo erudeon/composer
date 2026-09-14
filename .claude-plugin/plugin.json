@@ -1,8 +1,8 @@
 {
   "name": "composer",
   "displayName": "Composer",
-  "version": "0.24.0",
-  "description": "Eight phases from a course's materials to a published course on pass the year. Guides an author through intake, layout, audit and publish over MCP.",
+  "version": "0.25.0",
+  "description": "Turn a course summary you have written into a course on pass the year, without rewriting a word of it. Reads your Word document with its equations, tables and figures intact, checks what it finds, builds the lectures, questions and glossary, and walks you through every decision that is yours.",
   "author": {
     "name": "erudeon"
   },

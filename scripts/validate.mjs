@@ -155,6 +155,46 @@ for (const dir of skillNames) {
 }
 
 /*
+ * ── THE TWO MANIFESTS, WHICH ARE THE SHOP WINDOW ─────────────────────────────────────────────────────
+ *
+ * `plugin.json` and `marketplace.json` are what somebody reads BEFORE installing, and nothing checked
+ * them. The marketplace entry described this as internal tooling long after it went public and became
+ * the thing a student installs, which is both wrong and the kind of wrong nobody notices from inside.
+ */
+for (const file of [
+  ".claude-plugin/plugin.json",
+  ".claude-plugin/marketplace.json",
+]) {
+  const full = join(ROOT, file);
+  if (!existsSync(full)) {
+    errors.push(`${file}: missing`);
+    continue;
+  }
+  let json;
+  try {
+    json = JSON.parse(readFileSync(full, "utf8"));
+  } catch (err) {
+    errors.push(`${file}: is not valid JSON (${err.message})`);
+    continue;
+  }
+  const described = [json, ...(json.plugins ?? [])];
+  for (const entry of described) {
+    const text = entry.description;
+    if (!text) continue;
+    if (text.includes("—")) errors.push(`${file}: description contains an em dash`);
+    /*
+     * Words that mean nothing to somebody choosing whether to install this, or that say something about
+     * us rather than about them.
+     */
+    for (const word of ["MCP", "internal", "manifest", "pipeline"])
+      if (new RegExp(`\\b${word}\\b`, "i").test(text))
+        errors.push(
+          `${file}: description says "${word}", which is our word and not theirs`,
+        );
+  }
+}
+
+/*
  * ── A COUNT WRITTEN IN PROSE, AGAINST THE LIST IT COUNTS ─────────────────────────────────────────────
  *
  * "the six structure questions", "the seven families". These drift the moment one is added, and they
