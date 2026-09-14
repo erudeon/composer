@@ -673,7 +673,13 @@ function buildUnit(unitLines, number, title) {
     );
 
   return {
-    slug: slug(title),
+    /*
+     * THE ADDRESS IS PINNED WHERE A COURSE SAYS SO. A lecture's address is derived from its title, so
+     * correcting a typo in a PUBLISHED title would move it: the old lecture is left on the course as an
+     * orphan that no import ever deletes, and every link anybody already has breaks. SLUGS in
+     * `course-data.mjs` keeps the address while the words change.
+     */
+    slug: forUnit("SLUGS", number, null) ?? slug(title),
     title,
     number,
     series: course.structure?.containerWord ?? "Lecture",
@@ -724,6 +730,19 @@ const glossary = topics.flatMap((t) =>
   })),
 );
 
+/*
+ * A MOCK EXAM PAPER IS NOT A PRACTICE BANK. The bank belongs to a lecture and is drawn from as a
+ * student reads; a paper is a fixed sitting, and it PINS its questions by key from the banks. So the
+ * questions themselves live with the unit that teaches them, and `EXAMS` names which ones make a paper.
+ */
+const exams = DATA.EXAMS ?? [];
+
+/* A paper's questions are its own, keyed like every other, and never also in a lecture's bank. */
+const inBanks = new Set(topics.flatMap((t) => t.questions.map((q) => q.key)));
+const both = exams.flatMap((e) => e.questions.map((q) => q.key)).filter((k) => inBanks.has(k));
+if (both.length)
+  fail(`A question is in a paper AND a lecture bank, so it would be written twice: ${[...new Set(both)].join(", ")}`);
+
 const manifest = {
   version: 1,
   course: {
@@ -737,6 +756,7 @@ const manifest = {
     style: { requireSource: true },
   },
   topics,
+  ...(exams.length ? { exams } : {}),
   ...(glossary.length ? { glossary } : {}),
 };
 if (!manifest.course.programCode)

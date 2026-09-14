@@ -284,11 +284,29 @@ updating it. The rule and the recovery for a bank that has none are in
 survives an insert: `t3-sec-003`, not `block-7`. A positional id moves the moment a block is added
 above it, and takes every student's place in the lecture and every shared link with it.
 
+## A published lecture's address does not move
+
+A lecture's address is derived from its title, so correcting a typo in a PUBLISHED title MOVES it: the
+old lecture is left on the course as an orphan no import ever deletes, and every link anybody already
+holds breaks. Pin it in `SLUGS` in `course-data.mjs` before changing the words, and the plan will say
+`update-topic` rather than `create-topic`. Check that it does.
+
 ## Practice questions and mock exams are different things
 
 A lecture's `questions` fill its practice bank. A mock exam PAPER lives in the manifest's `exams` and
 has a bank of its own. **A paper is always MCQ and carries no bytes**; a DOCUMENT paper's PDF is
 attached in the Hub.
+
+**A PAPER CARRIES ITS OWN QUESTIONS.** They are not pinned by key out of a lecture's bank: a question
+that sat in both would be written twice, once by the lecture and once by the paper. `build-manifest.mjs`
+refuses that outright rather than letting it through.
+
+**A paper's questions are OPEN_ENDED where the real sitting is.** A bank of multiple choice is right for
+practice and wrong for a mock: a student who has only ever picked from four options has not practised
+the thing being examined. Give each one the marking scheme the paper itself would publish, so they can
+mark their own answer the way the grader will. Every positive criterion is worth 1 or 2 points and they
+must sum to the question's points; a repeatable negative one deducts for a minor mistake and sits
+outside that sum.
 
 "Upload everything except the mock exams" means the standalone PAPERS. The questions embedded in each
 unit are PRACTICE QUESTIONS and always get built. Reading it the other way skips every bank in the
