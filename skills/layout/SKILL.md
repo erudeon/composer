@@ -173,6 +173,16 @@ carries are the author saying what a paragraph is for, and that is better eviden
 infer from the sentences. Ask `content_guide` what each one may become on the page; the marker gives you
 the intent, not the element name.
 
+**The NAME may say nothing, so the course says it instead.** A Hungarian Word calls its styles
+`Stilus1`..`Stilus4`, and one real summary used `Stilus1` above all 60 of its worked examples. Map the
+name to what the author meant in `STYLES` in `course-data.mjs`, per course, because nothing else can
+know. Today one meaning is acted on, `example`, which makes the paragraph under it an example where the
+author put it.
+
+**A style nobody claims is DROPPED, never drawn.** A marker is metadata and a reader must never see one:
+left in the text it does not vanish for being a comment, it lands inside a prose block and is printed.
+211 of them across one course's sixteen lectures.
+
 A paragraph marked `not-prose` is not the author's prose and must not go into a prose block.
 
 ### A lesson starts at heading 2

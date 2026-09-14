@@ -60,6 +60,9 @@ const DATA = existsSync(dataPath)
 /** What a unit supplies under `name`, or the empty shape the caller expects when it supplies nothing. */
 const forUnit = (name, n, fallback = {}) => DATA[name]?.[n] ?? fallback;
 
+/** What the author meant by a style they named themselves. Course knowledge, not unit knowledge. */
+const STYLES = DATA.STYLES ?? {};
+
 /* ── the transformations, over a whole unit, before anything is sliced ───────────────────────────── */
 
 /*
@@ -72,6 +75,9 @@ const forUnit = (name, n, fallback = {}) => DATA[name]?.[n] ?? fallback;
  * a question for the author rather than something to guess at.
  */
 const HEADING_IS_AN_EQUATION = /^(#{2,6})\s+(\$\$.*\$\$)\s*$/;
+
+/** A style `docx.js` wrote out for a later phase to read. Not content, and never drawn. */
+const AUTHORED_STYLE = /^\s*<!--\s*style:\s*(.+?)\s*-->\s*$/;
 
 /*
  * The author's emoji flags become a callout's variant, and the emoji never survives.
@@ -145,6 +151,7 @@ function walk(unitLines, HEADINGS, equationHeadings) {
   let section = null;
   let promoting = false;
   let lead = null;
+  let pendingExample = false;
   let leadWasAHeading = false;
   let headingForNextFlag = null;
 
@@ -165,6 +172,39 @@ function walk(unitLines, HEADINGS, equationHeadings) {
 
   for (let i = 0; i < unitLines.length; i += 1) {
     let line = unitLines[i];
+
+    /*
+     * THE AUTHOR'S STYLE MARKERS ARE METADATA AND A READER MUST NEVER SEE ONE. `docx.js` writes the
+     * styles the author named in Word as `<!-- style: In Short -->` above the paragraph they mark, so
+     * a phase that understands one can read it. Nothing here understands any of them, and a marker
+     * left in the text does not vanish for being a comment: it lands inside a prose block and is drawn.
+     *
+     * 211 of them, across every lecture of one real course, in three styles that author had made up.
+     * Whatever DOES act on a marker consumes it before this point; anything still here is unread, and
+     * unread metadata is dropped rather than published.
+     */
+    const styled = AUTHORED_STYLE.exec(line);
+    if (styled) {
+      /*
+       * A COURSE MAY CLAIM ONE. The style NAME carries no meaning on its own: a template might call it
+       * `In Short`, and a Hungarian Word calls the same thing `Stilus1`, so only the course can say
+       * what its author meant by it. `STYLES` in `course-data.mjs` is where that is said, and a style
+       * nobody claims is dropped rather than drawn.
+       */
+      if (STYLES[styled[1]] === "example") pendingExample = true;
+      continue;
+    }
+
+    /*
+     * The paragraph under a claimed example style IS an example, and saying so in the text the example
+     * machinery already reads puts it where the author put it. Anchoring it to the section instead
+     * would move it to the end, away from the thing it illustrates.
+     */
+    if (pendingExample && line.trim()) {
+      line = `**Example**: ${line.trim().replace(/^\**Examples?\**\s*:\s*/i, "")}`;
+      pendingExample = false;
+    }
+
     const asEquation = HEADING_IS_AN_EQUATION.exec(line);
     if (asEquation) {
       const supplied = HEADINGS[asEquation[2]];
@@ -273,8 +313,13 @@ function walk(unitLines, HEADINGS, equationHeadings) {
        * A FLAG ENDING IN A COLON INTRODUCES THE LINE UNDER IT, so the callout takes that line too.
        * Lifting the sentence alone leaves the formula it announces standing with nothing above it.
        */
+      /*
+       * The next line that is CONTENT. A style marker is the author naming what the paragraph under it
+       * is for, so it sits between the flag and the thing the flag announces: taking the first
+       * non-empty line gives the callout a comment for a body and leaves the equation behind.
+       */
       const follows = clean.trim().endsWith(":")
-        ? unitLines.slice(i + 1).find((l) => l.trim())
+        ? unitLines.slice(i + 1).find((l) => l.trim() && !AUTHORED_STYLE.test(l))
         : null;
       flags.push({
         title: headingForNextFlag,
