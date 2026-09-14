@@ -135,13 +135,25 @@ function paraText(p, ommlToLatex, forceInline = false) {
       );
       // An equation that renders to nothing is one Word left empty. An empty pair of delimiters is a
       // parse error downstream and says less than saying nothing at all.
-      if (latex)
+      if (latex) {
+        /*
+         * TWO EQUATIONS WITH NOTHING BETWEEN THEM MEET AS `$$`, WHICH IS A DIFFERENT DELIMITER.
+         *
+         * Word lets one cell or one paragraph hold several `<m:oMath>` elements back to back, and a
+         * statistics cheat sheet does exactly that: `P(X=1)=p,` and `P(X=0)=1-p` are two objects in one
+         * cell. Emitted as inline maths they close and open against each other, the scanner reads the
+         * doubled dollar as display, and the whole row is refused. One space is enough, and it is what
+         * the reader would draw between them anyway.
+         */
+        const previous = pieces[pieces.length - 1];
+        if (previous && previous.text.endsWith(INLINE)) push("", " ");
         push(
           "",
           display
             ? DISPLAY_OPEN + latex + DISPLAY_OPEN
             : INLINE + latex + INLINE,
         );
+      }
       continue;
     }
     if (/^<w:br/.test(rs)) {
