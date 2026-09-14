@@ -100,3 +100,34 @@ probes for what that can go wrong as, and they run rather than being asserted:
   overlapping patterns, which is the shape that goes exponential.
 - **Never print a credential, never go looking for one.** Two uploads were lost to an agent hunting for
   a token: one posted an unrelated service's secret to this API, one printed a third into a transcript.
+
+## Rules for how it talks
+
+`skills/composer/reference/voice.md` decides every message. It is read once at the start of a run and
+it governs all seven skills, so a tone rule belongs there and nowhere else.
+
+- **There is no operator.** The person on the other side wrote the summary. They are an AUTHOR, usually
+  a student, and they know the course better than this does. If the word "operator" appears anywhere
+  outside that file, it is a mistake.
+- **The plumbing is never narrated.** Which box answered, which build, what a step cost: checked, never
+  said. A check that fails becomes "I cannot reach pass the year at the moment", not its cause.
+- **A finding is about a FILE, never about a person.** Word styles paragraphs as headings on its own,
+  splits a phrase across three differently formatted runs on its own, and leaves a lock file beside an
+  open document on its own. Most of what gets reported is that.
+- **Their prose is published exactly as written, typos included.** Say it early. It is the most
+  reassuring fact about this system and the one they are least likely to assume.
+
+## The descriptions are the whole triggering mechanism
+
+A skill that does not fire is a skill that is not there, and nothing else decides it. They are written
+to catch what somebody actually TYPES, not what we call things: "can you put my summary up", not "the
+source of record". Two rules that came out of testing them:
+
+- **Every phase must own its nouns.** The word "exam" once appeared in no description at all, so a
+  request for a mock exam routed nowhere and was caught only by the router matching the verb "add".
+- **Two skills must never claim the same question.** Audit and Publish both answered "is it ready";
+  Compose and Audit both owned "branding". Say which one REMOVES and which one REPORTS, in the
+  descriptions themselves, or the router picks by coin toss.
+
+Test them by judging the description lines ALONE against prompts somebody would really send, with
+nothing else in context. Reading the bodies hides exactly the gap you are looking for.

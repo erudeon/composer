@@ -1,6 +1,6 @@
 ---
 name: convert
-description: Pull the text out of a Word document as Markdown with every equation intact, and list every picture, text box and drawn shape so none is lost. Use this whenever a .docx has to become something a course can be built from, and whenever somebody asks about equations, formulas, maths or images surviving an upload, says their document has graphs in it, asks why a converted file looks wrong or is missing formulas, or when the Composer's state says the text has not been pulled out yet.
+description: Part of Phase 0. Pull the text out of a Word document as Markdown with every equation intact, and list every picture, text box and drawn shape so none is lost. Use this whenever a .docx has to become something a course can be built from, and whenever somebody asks whether their equations, formulas, maths, tables or images will SURVIVE being read out of their document, asks why a converted file looks wrong or is missing formulas, or when the Composer's state says the text has not been pulled out yet. Questions about how a thing will LOOK or behave once it is on the page are Layout's, not this.
 ---
 
 # Convert
