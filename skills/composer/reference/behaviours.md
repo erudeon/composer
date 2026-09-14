@@ -22,11 +22,11 @@ removes what the first wrote.
 
 ## The three keys on a plan
 
-- **`blocksRemoved`** — what applying will delete. **Absent when nothing is lost**, so its absence is the
+- **`blocksRemoved`**: what applying will delete. **Absent when nothing is lost**, so its absence is the
   good news, and its presence is a stop.
-- **`blocksUnknown`** — a stored body that could not be parsed, so what the write destroys is unknown.
+- **`blocksUnknown`**: a stored body that could not be parsed, so what the write destroys is unknown.
   **It is not a report of zero**, and the write is planned anyway.
-- **`orderNotApplied`** — the reading order was declined because the file does not name every lecture.
+- **`orderNotApplied`**: the reading order was declined because the file does not name every lecture.
 
 **Reading order is a statement about the whole course.** A manifest naming fewer lectures than the course
 holds does not reorder it. Before this was true, a one-lecture apply lifted that lecture to position

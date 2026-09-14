@@ -248,8 +248,14 @@ for (const dir of skillNames) {
   if (!existsSync(refDir)) continue;
   for (const file of readdirSync(refDir).filter((f) => f.endsWith(".md"))) {
     const text = readFileSync(join(refDir, file), "utf8");
-    if (!text.includes("## What is in here")) continue;
     const where = `skills/${dir}/reference/${file}`;
+    /*
+     * A REFERENCE IS READ BY THE SAME SESSION THAT WRITES TO THE AUTHOR, so an em dash in one is an em
+     * dash one sentence away from a message. This checked SKILL.md bodies and never the files beside
+     * them, and three were sitting in `behaviours.md` the whole time.
+     */
+    if (text.includes("—")) errors.push(`${where}: contains an em dash`);
+    if (!text.includes("## What is in here")) continue;
     for (const m of text.matchAll(/^#{2,3} (.+)$/gm)) {
       const title = m[1].trim();
       if (title === "What is in here") continue;

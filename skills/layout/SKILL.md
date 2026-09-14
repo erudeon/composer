@@ -1,6 +1,6 @@
 ---
 name: layout
-description: Phase 3. Set the course itself up correctly, then turn the text into lectures, sections, tables, worked examples and charts, and send it, one lecture first so it can be looked at before the rest follow. Use when the Composer's state says Phase 3 Layout, and whenever somebody asks how their course will look, wants it built or sent or pushed, asks about charts, graphs, tables, callouts, worked examples or the glossary, asks where a picture will go, or asks what a course is named and which teaching period it sits in.
+description: Phase 3. Set the course itself up correctly, then turn the text into lectures, sections, tables, worked examples, charts, practice questions, the glossary and MOCK EXAM PAPERS, and send it, one lecture first so it can be looked at before the rest follow. Use when the Composer's state says Phase 3 Layout, and whenever somebody asks how their course will look or how something will render, wants it built or sent or pushed, asks about charts, graphs, tables, callouts, worked examples, the glossary, practice questions, a question bank, a mock exam or a past paper, asks where a picture will go, or asks what a course is named and which teaching period it sits in.
 ---
 
 # Phase 3 · Layout

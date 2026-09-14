@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Phase 6. Make a finished course visible to students, once every open finding is closed or accepted in writing by a person. Use when the Composer's state says Phase 6 Publish, and whenever somebody says publish, go live, make it visible, release it, ship it, or asks whether a course is ready for students to see or what is still standing in the way.
+description: Phase 6. Make a finished course visible to students, once every open finding is closed or accepted in writing by a person. This is the LAST step and it only runs after Audit. Use when the Composer's state says Phase 6 Publish, and whenever somebody says publish, go live, make it visible, release it, ship it, or asks what is still standing in the way of students seeing it.
 ---
 
 # Phase 6 · Publish

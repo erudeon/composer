@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Phase 4. Run every check on a built course that needs no person: what the write path itself refuses, whether the text still matches the source, leftover branding, whether the equations came through right, and whether the glossary and practice questions hold up. Use when the Composer's state says Phase 4 Audit, once a course has just been sent, and whenever somebody asks if a course is correct, wants it checked or reviewed or proofed, or asks what could still be wrong before students see it.
+description: Phase 4. Check a course that has already been BUILT, before anybody publishes it: what the write path itself refuses, whether the text still matches what the author wrote, leftover branding, whether the equations came through right, and whether the glossary and practice questions hold up. It REPORTS rather than removes. Use when the Composer's state says Phase 4 Audit, once a course has just been sent, and whenever somebody asks if a course is correct, wants it checked or reviewed or proofed, asks whether the glossary or the questions are any good, or asks what could still be wrong.
 ---
 
 # Phase 4 · Audit

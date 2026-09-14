@@ -1,6 +1,6 @@
 ---
 name: compose
-description: Phase 2. Make the short list of mechanical corrections a converted document needs and nothing more, leaving the author's own words exactly as they wrote them, and asking before any change of meaning. Use when the Composer's state says Phase 2 Compose, and whenever somebody wants something in a summary fixed, cleaned, tidied or corrected, asks about branding or old logos still in the text, asks whether their writing will be edited, or asks what happens to a mistake in the source.
+description: Phase 2. Make the short list of mechanical corrections a converted document needs and nothing more, leaving the author's own words exactly as they wrote them, and asking before any change of meaning. It REMOVES things, which is what separates it from the Audit that only reports them. Use when the Composer's state says Phase 2 Compose, and whenever somebody wants something in a summary fixed, cleaned, tidied, corrected or TAKEN OUT, wants old branding or logos removed, asks about headings that are really paragraphs, asks whether their writing will be edited, or asks what happens to a mistake in the source.
 ---
 
 # Phase 2 · Compose
@@ -24,13 +24,26 @@ with its reason, so the course still says which phases it went through.
 5. **Fold every shape drawn over the text** into the block it annotated, and delete the shape.
 6. **Collapse a duplicated picture** to one reference.
 
+7. **A heading that is really a paragraph.** An author applies a heading style to a body paragraph and
+   Word records it as one, so four hundred words arrive behind a `###`. The write path then refuses the
+   lecture twice, for a heading at a depth the outline does not have and for a section that opens onto
+   nothing, and neither message names the cause. Drop the marker, keep every word. `normalise.js`
+   counts them: a heading over 120 characters is one. **Eleven of 134 real summaries carry one.**
+8. **A heading deeper than `###`.** The reader's outline is a section and a subsection and nothing else.
+   Fold it into the section above, or make it a bold lead-in on the paragraph it introduces, which keeps
+   the author's own emphasis without inventing a section. `normalise.js` counts these too. **Twenty-five
+   of 134 carry one**, and one summary carries 38.
+9. **A heading that is an equation.** A display formula standing where a title should be. Keep the
+   formula as the formula it is and give the section a short title the source supports. If the source
+   gives no words for it, that is a line to ask about rather than one to invent.
+
 **Split or merge nothing.** The unit boundaries are the file's own until the course manual says
 otherwise. A structure the professor did not use means students cannot find their materials, and that
 costs trust which is not cheap to rebuild.
 
-### Three of those six are not a script, and must never be reported as one
+### Three of those nine are not a script, and must never be reported as one
 
-Retyping an equation that was a picture needs somebody to **read the picture**. Folding a shape needs the
+Three of them need eyes rather than a pass. Retyping an equation that was a picture needs somebody to **read the picture**. Folding a shape needs the
 shape, which the text extract never contained. Collapsing a duplicate needs the media inventory. All
 three depend on Intake's inventory, and a script reporting them clean would be hiding exactly the two
 defects no text diff can see: a symbol that was a picture, and one that lived in a floating text box.
