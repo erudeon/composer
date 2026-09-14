@@ -301,6 +301,16 @@ attached in the Hub.
 that sat in both would be written twice, once by the lecture and once by the paper. `build-manifest.mjs`
 refuses that outright rather than letting it through.
 
+**A MANIFEST CANNOT NAME A MULTI-PART GROUP.** It can OPEN one, by sending `group.stem` on a question,
+but a `group.id` of your own is refused at APPLY with "Question group not found" and the PLAN does not
+catch it, because the plan never resolves ids. Attaching the later parts needs a second pass through
+`exercises_questions`, which is a different door.
+
+So in a file-loaded course, write a run the way the real papers write one: repeat the shared setup in
+each part, opening the later ones with "Recall that...". Every question then stands on its own, which a
+drawn sitting needs anyway, since it takes questions independently and a part that only made sense
+beside its siblings arrives alone and unreadable.
+
 **A paper's questions are OPEN_ENDED where the real sitting is.** A bank of multiple choice is right for
 practice and wrong for a mock: a student who has only ever picked from four options has not practised
 the thing being examined. Give each one the marking scheme the paper itself would publish, so they can
