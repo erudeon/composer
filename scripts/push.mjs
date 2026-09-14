@@ -337,6 +337,7 @@ if (op === "verify") {
       e?.exists === false ||
       e?.missing?.length > 0 ||
       e?.unkeyed > 0 ||
+      e?.unverifiable === true ||
       Object.keys(e?.settingsAdrift ?? {}).length > 0,
   );
   if (exams.length > 0) {
@@ -350,6 +351,13 @@ if (op === "verify") {
           console.log(`  ${e.slug}: declared ${e.declared}, stored ${e.stored}, missing ${e.missing.join(", ")}`);
         if (e.unkeyed > 0)
           console.log(`  ${e.slug}: ${e.unkeyed} declared question(s) carry no key, so nothing compared them`);
+        /*
+         * NOT A FAILURE, AN UNANSWERABLE QUESTION. The bank holds more keyed questions than one read
+         * returns, so a question past that bound cannot be told apart from one never written, and
+         * `missing` above is not to be trusted for this paper.
+         */
+        if (e.unverifiable === true)
+          console.log(`  ${e.slug}: too many stored questions to read in one go, so this paper could NOT be checked`);
         for (const [field, stored] of Object.entries(e.settingsAdrift ?? {}))
           console.log(`  ${e.slug}: the file names ${field}, the bank holds ${JSON.stringify(stored)}`);
       }
