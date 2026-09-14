@@ -26,6 +26,7 @@
  * cannot handle, so it can gate an intake.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { inflateSync } from "node:zlib";
 import { join, extname, resolve, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -42,6 +43,37 @@ const REGISTRY = JSON.parse(
 const PASTE_STYLES = /^(msonormal|katex|strut|vlist|msupsub|mspace|mtight)/i;
 
 const count = (s, re) => (s.match(re) ?? []).length;
+
+/*
+ * A TEXT LAYER IS DRAWN TEXT, AND THE DRAWING IS COMPRESSED. `BT` and `Tj` live in the page content
+ * stream, which every modern writer Flate-compresses, so looking for them in the raw bytes finds
+ * nothing and calls a readable exam paper a scan. It did: 14 past papers with real text layers, one of
+ * them 54 KB, were reported as scans needing OCR we do not have.
+ *
+ * So inflate what inflates and look in there. Bounded: it stops at the first evidence and reads at most
+ * a few MB, because this runs over a whole folder and the answer is usually in the first stream.
+ */
+function hasTextLayer(buf, latin1) {
+  if (/\bBT\b/.test(latin1) && /\/Type\s*\/Font/.test(latin1)) return true;
+  let budget = 8 * 1024 * 1024;
+  const re = /stream\r?\n/g;
+  for (let m; (m = re.exec(latin1)) && budget > 0; ) {
+    const end = latin1.indexOf("endstream", m.index);
+    if (end < 0) break;
+    const chunk = buf.subarray(m.index + m[0].length, end);
+    budget -= chunk.length;
+    let out;
+    try {
+      out = inflateSync(chunk).toString("latin1");
+    } catch {
+      continue; // not Flate, or not a stream we can read: no evidence either way
+    }
+    // Text BEGUN and text SHOWN. A form XObject can open BT and draw nothing.
+    if (/\bBT\b/.test(out) && /\b(?:Tj|TJ|'|")\s/.test(out)) return true;
+  }
+  return false;
+}
+
 
 /** Everything the registry is allowed to key on, measured from the bytes. */
 function factsOf(file) {
@@ -90,8 +122,7 @@ function factsOf(file) {
   if (kind === "pdf") {
     const s = buf.toString("latin1");
     f.pdfProducer = /\/Producer\s*\(([^)]{0,60})\)/.exec(s)?.[1] ?? "";
-    // A text layer means a font is embedded AND something is drawn with it. A scan has images only.
-    f.textLayer = /\/Type\s*\/Font/.test(s) && /\bBT\b/.test(s);
+    f.textLayer = hasTextLayer(buf, s);
     f.pdfPages = count(s, /\/Type\s*\/Page[^s]/g);
   }
 
