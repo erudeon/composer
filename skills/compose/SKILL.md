@@ -33,6 +33,17 @@ with its reason, so the course still says which phases it went through.
    Fold it into the section above, or make it a bold lead-in on the paragraph it introduces, which keeps
    the author's own emphasis without inventing a section. `normalise.js` counts these too. **Twenty-five
    of 134 carry one**, and one summary carries 38.
+
+   **ON the paragraph, not above it.** A folded heading left standing as its own bold line reads as a
+   heading with nothing under it, and the paragraph gap beneath it looks like a mistake on the page.
+   Join it to the sentence it introduces. Three things cannot take a lead-in and keep their own line: a
+   list, a table row, and a display equation. Neither can a line that is itself emphasised, and that one
+   bites: joining a bold aside to the `**Step 2:**` under it swallowed three steps of a worked example
+   into the note of the step before, and the block still rendered, three moves short.
+
+   **Do the merge where every other transformation happens: over the WHOLE unit, before it is sliced.**
+   Merging when the blocks are cut produces prose that is a perfect copy of text the source does not
+   contain, and the verbatim check refuses it, correctly.
 9. **A heading that is an equation.** A display formula standing where a title should be. Keep the
    formula as the formula it is and give the section a short title the source supports. If the source
    gives no words for it, that is a line to ask about rather than one to invent.

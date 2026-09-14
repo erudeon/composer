@@ -178,6 +178,36 @@ callout          the closer, last
 
 Which callout kind, what a chart takes, and what the closer is called all come from `content_guide`.
 
+### Anything the reader has a block FOR leaves the prose
+
+**This is the check that decides whether a lecture looks built or dumped**, and every line of it was
+written after a real course went up and came back. A prose block is for the author's PARAGRAPHS. When a
+passage is one of the shapes below, it becomes that block and stops being prose:
+
+| In the source | Becomes | What it looks like left in prose |
+| --- | --- | --- |
+| `**Example**: ...`, whether a paragraph or a bullet | an `example` callout | a sentence no different from the ones around it, and the reader never sees an example on the page |
+| an example with `**Step 1:** ...` in it | a `worked-example` | a wall of bold numbers and boxed equations, with no reveal and no answer |
+| a markdown table | a `table` block | a markdown grid whose every cell draws its own boxed equation |
+| three or more `- **Name**: <formula>` | a `definitions` table | a column of bold words each trailing a display line |
+
+**A step's label NAMES THE MOVE, and the author usually wrote it.** `**Step 4 (Step 1 again):** Divide
+the leading term by...` carries both: the number, which the reader forbids in a label, and the move,
+which is exactly what a label is. Strip the number and keep their sentence.
+
+**A table cell takes INLINE maths.** A `$$...$$` that came out of a Word table renders as a boxed
+equation inside the cell, one per cell, and the table becomes unreadable. Convert to `$...$` on the way
+in.
+
+**Two callouts of the same kind may not touch.** Where the author wrote two examples as two bullets of
+one list, that is ONE callout holding both, and every lead-in inside it is stripped, not just the first.
+
+**An example runs until the next example or the next folded heading.** Not until the next paragraph
+that does not look like maths: this document opens its longest worked example with a fraction and a
+sentence of intent before its first step, and a run that stopped there turned the most important example
+in the lecture into a callout holding one fraction. Look AHEAD for a step before deciding.
+
+
 **A graph is drawn from the source's expression, never from points read off a picture.** Where the text
 gives no expression, say so in the chart's title and make it schematic.
 
