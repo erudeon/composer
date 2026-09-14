@@ -45,6 +45,14 @@ checking the text proves nothing about them.
 standing alone. Questions technically clean, every one with an explanation, answerable from the unit,
 answers right and grammatical, safe under shuffling.
 
+**Safe under shuffling is the one that bites.** The reader reorders the options on every attempt, so an
+explanation naming "option A" points at whatever is first that time. It reads perfectly in a review and
+is wrong for most students who meet it.
+
+**And check the wrong options carry their own explanations.** They are optional, so a bank that never
+filled them in passes every other check while teaching nothing at the moment a student is most ready to
+learn: the second they pick the wrong one. A bank with none is a finding worth raising, not a refusal.
+
 **7. Read it as a student, `ai`.** Open each unit and read it the way somebody revising would, then
 check it against the SOURCE. Take the unit's own summary box, which names the concepts that unit
 teaches, and confirm the body actually contains them.

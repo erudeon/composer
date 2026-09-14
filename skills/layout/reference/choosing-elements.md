@@ -12,6 +12,21 @@ the shape it arrives in.
 
 ---
 
+## What is in here
+
+- [A picture of a graph](#a-picture-of-a-graph)
+  - [Every chart built from a picture is checked against that picture](#every-chart-built-from-a-picture-is-checked-against-that-picture)
+- [A passage of prose](#a-passage-of-prose)
+- [A callout, and which one](#a-callout-and-which-one)
+- [A worked computation](#a-worked-computation)
+- [When the source does not decide it](#when-the-source-does-not-decide-it)
+- [An accounting course has four elements nobody would guess](#an-accounting-course-has-four-elements-nobody-would-guess)
+- [The glossary, and which door to use](#the-glossary-and-which-door-to-use)
+  - [What qualifies as a term](#what-qualifies-as-a-term)
+- [A question lives in a bank, not in a lesson](#a-question-lives-in-a-bank-not-in-a-lesson)
+- [Where a block sits on the page, which is a choice you are making anyway](#where-a-block-sits-on-the-page-which-is-a-choice-you-are-making-anyway)
+- [Practice questions, and the field most people never fill in](#practice-questions-and-the-field-most-people-never-fill-in)
+
 ## A picture of a graph
 
 **The text states a function of x.** A `chart` with `fn` and a `domain`. This is the whole point: a plot
@@ -152,17 +167,29 @@ are subtotals and which is the total. The subtotals are the lesson, and an ordin
 renders perfectly, and it is the one error an accounting student will not forgive. If the source is
 ambiguous about which account takes which side, that is a finding, not a judgement call.
 
-## The glossary, which is the one that has gone wrong twice
+## The glossary, and which door to use
 
-**A definition reaches a reader from the BODY.** The `:::definitions` fence inside a prose block files
-the row AND prints the word where the lecture teaches it, so it feeds the Glossary tab, the flashcard
-deck and the term count at once. Write a word once, in the lecture where it belongs.
+**Both doors reach the reader.** Every term of a course is matched against the lecture text and marked
+where it appears, whichever way it was filed. A glossary loaded as an array is not invisible, and any
+advice saying otherwise is out of date: check `content_guide` `glossary` rather than trusting a memory
+of this, including this paragraph.
 
-**`content_glossary` and the manifest's `glossary` array write the row and NOTHING ELSE.** A term
-written that way appears on the Glossary tab and in flashcards, and a student reading the lecture never
-meets it, because nothing in the body points at it. **Two courses wrote 482 terms that way and their
-readers show none of them.** Use that door for reference terms the prose does not define. Never as the
-main one.
+**The array is the door for LOADING a course.** One list, applied a term at a time so a bad row refuses
+only itself, with each term anchored to the lecture that introduces it. That anchor is what ranks a
+term ahead of the others when its own lecture is marked up.
+
+**The `:::definitions` fence inside a prose block is for where the lecture TEACHES the word** and the
+reader should meet the definition in the flow of the text rather than by hovering. It files the same
+row and prints the definition at that point. Use it for the handful a unit is built around, and the
+array for the rest.
+
+**A term is matched on its text, within the course.** Sending it twice updates it rather than adding a
+second row, so a re-run converges. Re-anchoring a term to a different lecture moves it without losing
+the row a student's flashcard progress is keyed on.
+
+**A save never deletes.** Committing a lecture writes definitions and removes none, because another
+lecture may define the same word and a student may hold flashcards against it. A row written the wrong
+way round is removed deliberately, and that is permanent.
 
 ### What qualifies as a term
 
@@ -197,8 +224,14 @@ starts with "This", it ends mid-citation, or it only makes sense after the parag
 harvested sentence cannot be read cold, rewrite it as a definition or leave the term out. One upload
 dropped eight terms for exactly this and was right to.
 
-**How many.** Eight to fifteen a unit. **Twenty is the ceiling and the lint warns above it, naming the
-count.** If a unit seems to need thirty, the harvest caught emphasis rather than vocabulary.
+**How many.** Eight to fifteen a unit: the words a student would be expected to define from memory.
+**Twenty is the ceiling and the lint warns above it.**
+
+The reason is not tidiness. **A page shows at most six marked words**, the lecture's own first, then the
+ones it introduces, then the rest. So a glossary far past the ceiling does not show a student more: it
+shows the same six and buries the words that mattered under the ones that did not. Every term is also a
+flashcard somebody has to work through, and the glossary is the only input to the recall the engine
+measures. A glossary that defines everything defines nothing.
 
 ## A question lives in a bank, not in a lesson
 
@@ -241,4 +274,36 @@ publishes while one is still empty, which is the point: it is a placeholder that
 **Ask `content_guide` `blocks` for the exact spelling of any of this** before writing it. The names and
 the ranges are generated from the schema the write path validates against, so they are right there and
 nowhere else, including here.
+
+## Practice questions, and the field most people never fill in
+
+**Every wrong option can carry its own explanation**, shown the moment a student picks that option. It
+is the single most useful thing in a question bank and it is optional, so it is usually empty.
+
+Write one for every plausible wrong answer, and **name the confusion it rests on** rather than the fact
+that it is wrong. "That is the balance sheet definition, not the income statement one" teaches. "That is
+incorrect" tells somebody what they already worked out when the screen went red.
+
+The question's own explanation is for why the RIGHT answer is right. The per-option ones are for why
+each wrong one was tempting. They do different jobs and a bank with only the first is doing half of it.
+
+**The reader shuffles the options on every attempt.** So an explanation that says "option A" points at
+whichever option happens to be first that time. Name the option's WORDS instead. This is the single
+most common defect in an imported bank and it is invisible until a student meets it.
+
+**An accounting course can ask for the entry itself.** There is a question type where a student posts
+the debits and credits against a chart of accounts, with more accounts offered than the answer uses,
+and the decoys are the question. It beats a multiple choice about a transaction, because recording one
+is the skill being examined. Amounts are whole minor units, so a cent is 1 and ten thousand is
+1,000,000: a rounding mistake here is a wrong answer that renders perfectly.
+
+**Say what thinking each question asks for.** The labels feed the draw that decides what a student sees
+next, so a bank with none of them still works and adapts worse. There is a fixed vocabulary; ask
+`content_guide` `questions` for it rather than inventing a word.
+
+**A bank comes back in the registry's order, not the order you sent.** A read-back listing questions
+differently is not a failed write, and treating it as one is how a clean bank gets rewritten.
+
+**Ask `content_guide` `questions` before writing a bank.** Every type, every field and the label
+vocabulary are generated from the schema the write path validates against.
 
