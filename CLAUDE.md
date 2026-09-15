@@ -35,8 +35,10 @@ findings list, and the platform behaviours no schema describes.
   three separate corruption bugs in one upload and was its largest single time sink. `lib.js` is the
   version that survived them, and `t_dash.js`, `t_emph.js` and `t_pair.js` are why. Run them after
   touching it.
-- The `t_*.js` files are the unit checks, one per thing that has broken. Run all of them:
-  `for t in scripts/intake/t_*.js; do node "$t" >/dev/null || echo "FAILED $t"; done`.
+- The `t_*.js` files are the unit checks, one per thing that has broken. **Both folders**, because
+  `scripts/` holds as many of them as `scripts/intake/` does and a sweep over one of them reports
+  success for a suite it never ran:
+  `for t in scripts/t_*.js scripts/intake/t_*.js; do node "$t" >/dev/null || echo "FAILED $t"; done`.
   `t_omml.js` covers the equation reader, `t_spans.js` where the maths is in a piece of text, and
   `t_docx.js` heading resolution and Markdown tables.
 
@@ -60,6 +62,20 @@ course went up.
 - **It reads nothing until it knows the call is ours.** It runs before every Skill and every Bash call in
   the session, so the first thing it does is decide whether this one belongs to this plugin, and only
   then does it touch the disk.
+- **A Bash call is ours by this checkout's own path, never by the bare variable.** Every plugin writes
+  `${CLAUDE_PLUGIN_ROOT}`, so matching that alone refused another plugin's telemetry command and refused
+  somebody grepping for the variable. The placeholder only counts when the command also names a script
+  that exists in this plugin.
+- **It is a front door, and the other doors are open.** A course STARTS at a skill, which is what this
+  really guards. A script reached by some other spelling (copied elsewhere, or run with a relative path
+  from inside its own folder) is invisible to it, and so is the MCP door, which writes the same course
+  without a shell at all. Both are ceilings rather than oversights: matching a command string cannot be
+  made complete, and claiming every MCP call would block work that has nothing to do with this plugin.
+  `t_modelgate.js` pins the MCP ceiling, so widening it is a decision somebody makes on purpose.
+- **Its check is `scripts/t_modelgate.js`**, which drives the hook with a payload on stdin exactly as
+  Claude Code does. Every shape in it was observed in a real transcript or stated in the hook
+  documentation: an earlier version invented `effort` as a string and injected `CLAUDE_PLUGIN_ROOT` into
+  the child's environment, and was green over a gate that could not work.
 
 ## Rules for the field guide
 
@@ -82,7 +98,7 @@ and `docs/FIELD-GUIDE.md` is generated from it.
 ```
 node scripts/validate.mjs
 node scripts/security-check.mjs
-for t in scripts/intake/t_*.js; do node "$t" || echo "FAILED $t"; done
+for t in scripts/t_*.js scripts/intake/t_*.js; do node "$t" || echo "FAILED $t"; done
 node scripts/e2e-check.mjs <a-real-summary-with-no-drawings.docx>
 node scripts/corpus-check.mjs <folder-of-real-summaries>
 ```

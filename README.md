@@ -2,9 +2,10 @@
 
 How a course gets from the materials you have to something a student opens on pass the year.
 
-You need two things and only two: **this plugin**, and **Opus**. Composer refuses to run on the smaller
-models, because on those it cannot finish a course and uses up an enormous amount of your usage trying.
-If you are on the wrong one it will say so and tell you how to switch.
+You need two things and only two: **this plugin**, and **Opus**. Composer will not run on Haiku or
+Fable, because on those it cannot finish a course and uses up an enormous amount of your usage trying.
+Sonnet is allowed and will say that Opus is the better choice. If you are on the wrong one, Composer
+says so and tells you how to switch.
 
 Access to pass the year is not a third thing to arrange: the first time Composer needs it, a window
 opens in your browser and you press Approve. That is all of it, and you are not asked again. Everything
