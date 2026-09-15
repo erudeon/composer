@@ -2,10 +2,14 @@
 
 How a course gets from the materials you have to something a student opens on pass the year.
 
-You need two things and only two: **this plugin**, and **access to pass the year's course tools**, which
-is the connection that lets it read and write your course. Whoever asked you to write the summary can
-set that up for you; if it is missing, everything here still runs on your own machine and only the last
-step, sending the course, is blocked.
+You need two things and only two: **this plugin**, and **Opus**. Composer will not run on Haiku or
+Fable, because on those it cannot finish a course and uses up an enormous amount of your usage trying.
+Sonnet is allowed and will say that Opus is the better choice. If you are on the wrong one, Composer
+says so and tells you how to switch.
+
+Access to pass the year is not a third thing to arrange: the first time Composer needs it, a window
+opens in your browser and you press Approve. That is all of it, and you are not asked again. Everything
+before that step runs on your own machine regardless.
 
 You do not need the platform's code, a package manager, or anything from a developer.
 

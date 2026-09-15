@@ -160,6 +160,7 @@ const work = mkdtempSync(join(tmpdir(), "seccheck-"));
     }
   };
   walk(join(ROOT, "scripts"));
+  walk(join(ROOT, "hooks")); /** a hook is a script and the same two rules bind it */
   const offenders = [];
   for (const f of files) {
     if (f.endsWith("security-check.mjs")) continue;
@@ -232,6 +233,7 @@ const work = mkdtempSync(join(tmpdir(), "seccheck-"));
     }
   };
   walk(join(ROOT, "scripts"));
+  walk(join(ROOT, "hooks")); /** a hook is a script and the same two rules bind it */
   const printing = [];
   for (const f of files) {
     for (const [i, line] of readFileSync(f, "utf8").split("\n").entries()) {
