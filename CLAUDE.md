@@ -35,10 +35,12 @@ findings list, and the platform behaviours no schema describes.
   three separate corruption bugs in one upload and was its largest single time sink. `lib.js` is the
   version that survived them, and `t_dash.js`, `t_emph.js` and `t_pair.js` are why. Run them after
   touching it.
-- The `t_*.js` files are the unit checks, one per thing that has broken. **Both folders**, because
+- The `t_*.js` and `t_*.mjs` files are the unit checks, one per thing that has broken. **BOTH
+  EXTENSIONS**, or the five `.mjs` checks are written, committed, and never run again: a glob of `t_*.js`
+  matches none of them, and nothing else does either. **Both folders**, because
   `scripts/` holds as many of them as `scripts/intake/` does and a sweep over one of them reports
   success for a suite it never ran:
-  `for t in scripts/t_*.js scripts/intake/t_*.js; do node "$t" >/dev/null || echo "FAILED $t"; done`.
+  `for t in scripts/t_*.js scripts/t_*.mjs scripts/intake/t_*.js; do node "$t" >/dev/null || echo "FAILED $t"; done`.
   `t_omml.js` covers the equation reader, `t_spans.js` where the maths is in a piece of text, and
   `t_docx.js` heading resolution and Markdown tables.
 
@@ -98,7 +100,7 @@ and `docs/FIELD-GUIDE.md` is generated from it.
 ```
 node scripts/validate.mjs
 node scripts/security-check.mjs
-for t in scripts/t_*.js scripts/intake/t_*.js; do node "$t" || echo "FAILED $t"; done
+for t in scripts/t_*.js scripts/t_*.mjs scripts/intake/t_*.js; do node "$t" || echo "FAILED $t"; done
 node scripts/e2e-check.mjs <a-real-summary-with-no-drawings.docx>
 node scripts/corpus-check.mjs <folder-of-real-summaries>
 ```

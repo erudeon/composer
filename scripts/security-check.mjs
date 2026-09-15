@@ -273,6 +273,8 @@ const work = mkdtempSync(join(tmpdir(), "seccheck-"));
     ["scripts/t_credential.js", "proves the owner"],
     /* This file has to spell the patterns out in order to look for them. */
     ["scripts/security-check.mjs", "states the rules"],
+    /* Drives the uploader against a throwaway hub, which needs a credential filed under that hub. */
+    ["scripts/t_images.mjs", "signs in to its own test hub"],
   ]);
   const RULES = [
     [/process\.env\s*\.\s*PTY_MCP_TOKEN/, "reads the credential out of the environment"],
@@ -280,6 +282,15 @@ const work = mkdtempSync(join(tmpdir(), "seccheck-"));
     [/\{[^{}]*\bPTY_MCP_TOKEN\b[^{}]*\}\s*=\s*process\.env/, "reads the credential out of the environment"],
     [/hub\.passtheyear\.com/, "types the Hub address instead of importing it"],
     [/credentials\.json/, "opens the credential store itself"],
+    /*
+     * THE SEAM COUNTS AS A DOOR. `rememberSignIn` puts a bearer on disk for an arbitrary hub, and
+     * `bearerFor` will then hand that bearer to that hub. Before it, only the browser round trip could
+     * do so. The doc on it says it is the only way anything outside `credential.mjs` may write one, and
+     * a rule stated in a comment with nothing running behind it is what the note above records as this
+     * check's own earlier failure. So the rule runs: a third caller is a stray, exactly like a second
+     * store would be.
+     */
+    [/\brememberSignIn\b/, "writes a credential itself"],
   ];
   /* The WHOLE repository, because the natural home for a second door is a new folder. */
   const SKIP = new Set(["node_modules", ".git"]);

@@ -27,11 +27,7 @@ import path from "node:path";
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, so this script cannot reach it.
  */
-import {
-  bearerFor,
-  noCredentialMessage,
-  PRODUCTION_HUB,
-} from "./credential.mjs";
+import { bearerFor, noCredentialMessage, PRODUCTION_HUB } from "./credential.mjs";
 
 const USAGE = `
 Usage: node scripts/images.mjs <figures.json> --course <courseId> [--hub <url>] [--show-request]
@@ -54,15 +50,12 @@ function fail(message, code = 1) {
 }
 
 const args = process.argv.slice(2);
-if (args.length === 0 || args.includes("--help") || args.includes("-h"))
-  fail(USAGE, args.length === 0 ? 1 : 0);
+if (args.length === 0 || args.includes("--help") || args.includes("-h")) fail(USAGE, args.length === 0 ? 1 : 0);
 
 const file = args.find((a) => !a.startsWith("--") && !isFlagValue(a));
 function isFlagValue(candidate) {
   const index = args.indexOf(candidate);
-  return (
-    index > 0 && (args[index - 1] === "--course" || args[index - 1] === "--hub")
-  );
+  return index > 0 && (args[index - 1] === "--course" || args[index - 1] === "--hub");
 }
 if (!file) fail(`No figures file given.\n\n${USAGE}`);
 if (!fs.existsSync(file)) fail(`No such file: ${file}`);
@@ -84,9 +77,7 @@ let figures;
 try {
   figures = JSON.parse(fs.readFileSync(file, "utf8"));
 } catch (cause) {
-  fail(
-    `${file} is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}`,
-  );
+  fail(`${file} is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}`);
 }
 if (!Array.isArray(figures) || figures.length === 0) {
   fail(`${file} must be a non-empty JSON array of { file, alt, topicId? }.`);
@@ -94,41 +85,38 @@ if (!Array.isArray(figures) || figures.length === 0) {
 
 const base = path.dirname(path.resolve(file));
 const entries = figures.map((figure, index) => {
-  if (!figure || typeof figure !== "object")
-    fail(`Item ${index} is not an object.`);
+  if (!figure || typeof figure !== "object") fail(`Item ${index} is not an object.`);
   const { file: name, alt, topicId } = figure;
-  if (typeof name !== "string" || name.length === 0)
-    fail(`Item ${index} has no "file".`);
+  if (typeof name !== "string" || name.length === 0) fail(`Item ${index} has no "file".`);
   /*
    * ALT TEXT IS REQUIRED, and refused here rather than by the server, because this is where the person
    * who can write it is standing. A figure a screen reader cannot describe is one some students cannot
    * use, and a bulk uploader is exactly where that gets skipped for speed.
    */
-  if (typeof alt !== "string" || alt.trim().length === 0)
-    fail(`Item ${index} (${name}) has no "alt" text.`);
+  if (typeof alt !== "string" || alt.trim().length === 0) fail(`Item ${index} (${name}) has no "alt" text.`);
   const full = path.resolve(base, name);
   if (!fs.existsSync(full)) fail(`Item ${index}: no such file: ${full}`);
   const bytes = fs.statSync(full).size;
   return { name: path.basename(name), alt, topicId, full, bytes };
 });
 
-const duplicates = entries
-  .map((e) => e.name)
-  .filter((name, index, all) => all.indexOf(name) !== index);
+const duplicates = entries.map((e) => e.name).filter((name, index, all) => all.indexOf(name) !== index);
 if (duplicates.length > 0) {
   // Parts are matched to manifest entries BY NAME, so two files sharing a basename would upload one twice.
-  fail(
-    `Two figures share the file name "${duplicates[0]}". Names must be unique within one push.`,
-  );
+  fail(`Two figures share the file name "${duplicates[0]}". Names must be unique within one push.`);
 }
 
 /* The route's own ceilings. Past them it refuses the whole request, so the packing happens here. */
 /*
- * EIGHT, NOT TWENTY. The route's own ceiling is 20 MB, and production refuses long before it: measured
- * on a real course, 7.6 MB was accepted and 11.1 MB and 12.8 MB were both refused. So a batch packed to
- * the documented limit fails on the first request of any course worth batching, and the refusal is
- * `422 "The request body must be multipart/form-data."`, which names neither the size nor the cause.
- * Eight is under the lowest refusal seen with room to spare: 174 pictures across two courses, no refusal.
+ * EIGHT, NOT TWENTY, AND THE REASON IS NOT THE ROUTE'S.
+ *
+ * The route's own ceiling is 20 MB (`IMAGE_BATCH_MAX_BYTES`) and packing to it fails on the first
+ * request of any real course: measured, 7.6 MB accepted, 11.1 MB and 12.8 MB both refused. The refusal
+ * is `422 "The request body must be multipart/form-data."` — and that is the multipart PARSE failing,
+ * not the route's own oversize answer, which is a 413. So the real limit is a body cap in front of the
+ * app that NOBODY HAS LOCATED YET, and eight is under the lowest refusal SEEN rather than under a limit
+ * KNOWN. It carried 174 pictures across two courses without one refusal. Find the proxy's cap and this
+ * number can be chosen rather than guessed.
  */
 const MAX_BATCH_BYTES = 8 * 1024 * 1024;
 const MAX_BATCH_FILES = 50;
@@ -147,11 +135,7 @@ const batches = [];
 let current = [];
 let currentBytes = 0;
 for (const entry of entries) {
-  if (
-    current.length > 0 &&
-    (currentBytes + entry.bytes > MAX_BATCH_BYTES ||
-      current.length >= MAX_BATCH_FILES)
-  ) {
+  if (current.length > 0 && (currentBytes + entry.bytes > MAX_BATCH_BYTES || current.length >= MAX_BATCH_FILES)) {
     batches.push(current);
     current = [];
     currentBytes = 0;
@@ -166,9 +150,7 @@ const totalBytes = entries.reduce((sum, e) => sum + e.bytes, 0);
 
 if (args.includes("--show-request")) {
   const headers = [`-H "Authorization: Bearer $PTY_MCP_TOKEN"`];
-  const parts = batches[0]
-    .map((e) => `-F "files=@${e.full}"`)
-    .join(" \\\n    ");
+  const parts = batches[0].map((e) => `-F "files=@${e.full}"`).join(" \\\n    ");
   /* The variable is normally unset now: this is the hand-run form, for a machine with no browser. */
   console.log(
     `curl -X POST "${url}" \\\n    ${headers.join(" \\\n    ")} \\\n` +
@@ -194,13 +176,7 @@ for (const [index, batch] of batches.entries()) {
   const form = new FormData();
   form.append(
     "manifest",
-    JSON.stringify(
-      batch.map(({ name, alt, topicId }) => ({
-        name,
-        alt,
-        ...(topicId ? { topicId } : {}),
-      })),
-    ),
+    JSON.stringify(batch.map(({ name, alt, topicId }) => ({ name, alt, ...(topicId ? { topicId } : {}) }))),
   );
   for (const entry of batch) {
     form.append("files", new Blob([fs.readFileSync(entry.full)]), entry.name);
@@ -210,16 +186,11 @@ for (const [index, batch] of batches.entries()) {
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${await bearerFor(hub)}`,
-        ...accessHeaders,
-      },
+      headers: { Authorization: `Bearer ${await bearerFor(hub)}`, ...accessHeaders },
       body: form,
     });
   } catch (cause) {
-    fail(
-      `Request ${index + 1} failed: ${cause instanceof Error ? cause.message : String(cause)}`,
-    );
+    fail(`Request ${index + 1} failed: ${cause instanceof Error ? cause.message : String(cause)}`);
   }
 
   const text = await response.text();
@@ -228,7 +199,7 @@ for (const [index, batch] of batches.entries()) {
     body = JSON.parse(text);
   } catch {
     /*
-     * An HTML body here means something other than the API answered: a login page, a proxy, or a gateway.
+ * An HTML body here means something other than the API answered: a login page, a proxy, or a gateway.
      * not something a script can complete.
      */
     fail(
@@ -239,65 +210,76 @@ for (const [index, batch] of batches.entries()) {
     );
   }
 
+  /*
+   * WHAT THIS REQUEST SAID ABOUT EACH FILE IT WAS GIVEN.
+   *
+   * The route answers 200, 207 and 422 with `uploaded` and `failed` per file, and the first version of
+   * this tested `!response.ok` FIRST and replaced both with the status code, so a refused batch printed
+   * identical lines naming no picture. Anything else — a 500, a 413, a 400, an auth refusal — carries
+   * neither array, and pushing them would append nothing: the run would report fewer figures than it was
+   * given WITHOUT reporting a single failure, and the map below would be substituted into a manifest
+   * with markers pointing at nothing.
+   *
+   * DRIVEN BY THE BATCH, NOT BY THE ANSWER. Every file this request carried gets exactly one verdict,
+   * looked up by name. Pushing the server's rows wholesale and THEN adding the unmentioned ones counts a
+   * file twice whenever the answer spells its name differently — `./pic1.png` for `pic1.png` — which
+   * makes `failed` longer than the batch and the reconciliation line report a NEGATIVE number, the one
+   * line whose whole job is to prove the run added up.
+   */
   const perFile = Array.isArray(body.uploaded) || Array.isArray(body.failed);
   if (perFile) {
-    /*
-     * A REFUSAL THAT NAMES EACH FILE IS THE MOST USEFUL ANSWER THIS SCRIPT EVER GETS, and testing
-     * `!response.ok` first threw it away: a 422 means NOTHING in that batch landed and a 207 means some
-     * of it did, and BOTH carry `uploaded` and `failed` per file. Overwriting them with the status code
-     * left the operator a wall of identical "answered 422" lines and no way to tell which picture was
-     * too large, wrongly typed, or named twice.
-     */
-    uploaded.push(...(body.uploaded ?? []));
-    failed.push(...(body.failed ?? []));
-    const named = new Set(
-      [...(body.uploaded ?? []), ...(body.failed ?? [])].map(
-        (item) => item.name,
-      ),
-    );
+    const landed = new Map((body.uploaded ?? []).map((item) => [item.name, item]));
+    const refused = new Map((body.failed ?? []).map((item) => [item.name, item]));
     for (const entry of batch) {
-      // Declared, sent, and mentioned in neither array. Silence about a file is a loss of that file.
-      if (!named.has(entry.name)) {
-        failed.push({
+      const ok = landed.get(entry.name);
+      if (ok) {
+        uploaded.push(ok);
+        continue;
+      }
+      failed.push(
+        refused.get(entry.name) ?? {
           name: entry.name,
           error: `request ${index + 1} answered ${response.status} without naming this file`,
-        });
+        },
+      );
+    }
+    /* A name the answer volunteered that this request never sent. Not a lost file; a route to look at. */
+    for (const name of [...landed.keys(), ...refused.keys()]) {
+      if (!batch.some((entry) => entry.name === name)) {
+        console.error(`  request ${index + 1} answered about "${name}", which it was not sent`);
       }
     }
   } else {
-    /*
-     * A REQUEST THAT DID NOT ANSWER PER FILE HAS TO BE TREATED AS A LOSS OF EVERY FILE IN IT.
-     *
-     * A 500, a 413, a 400 or an auth refusal carries neither array, so pushing them appends nothing and
-     * the run reports fewer figures than it was given WITHOUT reporting a single failure. On a course
-     * big enough to need two requests that is the whole of the second batch going missing under a
-     * success message, and the map file below would then be substituted into a manifest with those
-     * markers pointing at nothing.
-     */
     for (const entry of batch) {
-      failed.push({
-        name: entry.name,
-        error: `request ${index + 1} answered ${response.status}`,
-      });
+      failed.push({ name: entry.name, error: `request ${index + 1} answered ${response.status}` });
     }
   }
 
-  if (!response.ok) {
-    console.error(
-      `  request ${index + 1} of ${batches.length} failed: ${response.status} ${body.error ?? ""}`,
-    );
-    // An auth or budget refusal will refuse every remaining batch the same way; stop rather than repeat it.
+  /*
+   * SAID OUT LOUD WHENEVER THE REQUEST DID NOT GO WELL, which includes a 200 that answered about nothing:
+   * that marks every file failed, and hiding the line behind `!response.ok` alone would leave the
+   * operator a batch of failures with no request to attribute them to.
+   */
+  if (!response.ok || !perFile) {
+    console.error(`  request ${index + 1} of ${batches.length} failed: ${response.status} ${body.error ?? ""}`);
     if ([401, 403, 429].includes(response.status)) {
-      console.error(
-        "  stopping: the remaining requests would be refused identically.",
-      );
+      /*
+       * A DELIBERATE STOP IS NOT AN UNACCOUNTED FILE. Every remaining batch would be refused the same
+       * way, so the run stops — and the batches it never sent are named here, or the count below reports
+       * them as figures that vanished and prints "BUG" at somebody who did nothing wrong.
+       */
+      for (const remaining of batches.slice(index + 1)) {
+        for (const entry of remaining) {
+          failed.push({ name: entry.name, error: `not attempted: the run stopped after request ${index + 1}` });
+        }
+      }
+      console.error("  stopping: the remaining requests would be refused identically.");
       break;
     }
   }
 }
 
-for (const item of uploaded)
-  console.log(`  ok      ${item.name}  ${(item.bytes / 1024).toFixed(0)} KB`);
+for (const item of uploaded) console.log(`  ok      ${item.name}  ${(item.bytes / 1024).toFixed(0)} KB`);
 for (const item of failed) console.log(`  FAILED  ${item.name}  ${item.error}`);
 
 /*
@@ -307,18 +289,12 @@ for (const item of failed) console.log(`  FAILED  ${item.name}  ${item.error}`);
  */
 if (uploaded.length > 0) {
   const mapFile = `${file}.uploaded.json`;
-  const map = Object.fromEntries(
-    uploaded.map((item) => [item.name, item.markdown]),
-  );
+  const map = Object.fromEntries(uploaded.map((item) => [item.name, item.markdown]));
   fs.writeFileSync(mapFile, `${JSON.stringify(map, null, 2)}\n`, "utf8");
-  console.log(
-    `\nMarkdown written to ${mapFile}. Substitute it into the manifest; do not rebuild it from the key.`,
-  );
+  console.log(`\nMarkdown written to ${mapFile}. Substitute it into the manifest; do not rebuild it from the key.`);
 }
 
-console.log(
-  `\n${uploaded.length} uploaded, ${failed.length} failed, of ${entries.length} declared.`,
-);
+console.log(`\n${uploaded.length} uploaded, ${failed.length} failed, of ${entries.length} declared.`);
 if (failed.length > 0) {
   console.error(
     `\nTHIS RUN IS INCOMPLETE. ${failed.length} figure${failed.length === 1 ? "" : "s"} did not upload, so ` +
@@ -328,10 +304,7 @@ if (failed.length > 0) {
 }
 /* A count that does not add up is its own failure: something was neither uploaded nor reported. */
 const accounted = uploaded.length + failed.length === entries.length;
-if (!accounted)
-  console.error(
-    `\nBUG: ${entries.length - uploaded.length - failed.length} figures unaccounted for.`,
-  );
+if (!accounted) console.error(`\nBUG: ${entries.length - uploaded.length - failed.length} figures unaccounted for.`);
 /*
  * `process.exitCode`, NEVER `process.exit()`. This script has made real HTTP requests, and undici's
  * keep-alive sockets are still open when the last one resolves: calling `process.exit()` here aborts the
