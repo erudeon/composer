@@ -80,7 +80,6 @@ The two glossary doors name the definition field differently, and both schemas a
 one door's spelling to the other is refused rather than silently wrong. Read the shape from
 `content_guide` for whichever door you are using.
 
-
 ## Publishing cascades
 
 It carries every lecture, bank and paper with it, **which silently reverses a deliberate withdrawal**. If
@@ -190,4 +189,3 @@ they have. Where a lecture is long enough to need several calls, ask whether it 
 course with one run of lectures that is a repair. On a course with two named runs it is destruction:
 Problem 1 and Lecture 1 both exist on purpose, numbers are per series, and the reading order is the
 array rather than the numbers. Running it collapses both runs into one sequence and there is no undo.
-

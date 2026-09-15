@@ -49,13 +49,13 @@ row if there is none. **Nothing later creates it for you**, and nothing later ch
 
 Five things have to be right, and they were all settled in Intake:
 
-| | Why it is not cosmetic |
-| --- | --- |
-| **Title** | What a student reads in the catalogue, and the source of the slug in every link |
-| **Programme** | A course belongs to exactly one, and moving it later is refused while it is placed |
-| **Period** | The block or term it is taught in. The manifest carries it, so a load sets it without a second call; `course_schedule` is the repair path and lists what a programme actually has. A period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
-| **Container word** | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets" |
-| **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows |
+|                            | Why it is not cosmetic                                                                                                                                                                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Title**                  | What a student reads in the catalogue, and the source of the slug in every link                                                                                                                                                                                                             |
+| **Programme**              | A course belongs to exactly one, and moving it later is refused while it is placed                                                                                                                                                                                                          |
+| **Period**                 | The block or term it is taught in. The manifest carries it, so a load sets it without a second call; `course_schedule` is the repair path and lists what a programme actually has. A period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
+| **Container word**         | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets"                                                                                                                                                                                              |
+| **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows                                                                                                                                                                            |
 
 **Then READ THE ROW BACK and show the author what it says**, in one line each: title, programme,
 period, container word, address. Not what you sent. What is stored.
@@ -78,7 +78,14 @@ images, then:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/images.mjs" figures.json --course <courseId>
 ```
 
-It answers a file-name-to-markdown map. Substitute that into the manifest verbatim.
+It answers a file-name-to-markdown map. **Substitute it for the `[FIGURE:word/media/imageN.png]` markers
+the source of record carries**, verbatim, and never rebuild that markdown from the key: a key is minted
+per environment and per course, and one typed by hand paints nothing.
+
+The map is keyed on the file's BASENAME (`image1.png`) and the marker names it from the work directory
+(`word/media/image1.png`), so match on the basename. `build-manifest.mjs` REFUSES a manifest still
+holding a marker, naming every one: left in, it is drawn on the page as literal text, and the verbatim
+check agrees with it because the marker is in the source of record too.
 
 **2. Build the course file with `build-manifest.mjs`.** Not by emitting it into a tool call: that costs
 its whole length in tokens twice, and every re-emission can corrupt text this upload exists to
@@ -257,13 +264,13 @@ Which callout kind, what a chart takes, and what the closer is called all come f
 written after a real course went up and came back. A prose block is for the author's PARAGRAPHS. When a
 passage is one of the shapes below, it becomes that block and stops being prose:
 
-| In the source | Becomes | What it looks like left in prose |
-| --- | --- | --- |
-| `**Example**: ...`, whether a paragraph or a bullet | an `example` callout | a sentence no different from the ones around it, and the reader never sees an example on the page |
-| an example with `**Step 1:** ...` in it | a `worked-example` | a wall of bold numbers and boxed equations, with no reveal and no answer |
-| a markdown table | a `table` block | a markdown grid whose every cell draws its own boxed equation |
-| three or more `- **Name**: <formula>` | a `definitions` table | a column of bold words each trailing a display line |
-| a display equation a student must KNOW | a `formula` block | a bare equation, with the symbols explained in a sentence somewhere below it |
+| In the source                                             | Becomes               | What it looks like left in prose                                                                                                           |
+| --------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `**Example**: ...`, whether a paragraph or a bullet       | an `example` callout  | a sentence no different from the ones around it, and the reader never sees an example on the page                                          |
+| an example with `**Step 1:** ...` in it                   | a `worked-example`    | a wall of bold numbers and boxed equations, with no reveal and no answer                                                                   |
+| a markdown table                                          | a `table` block       | a markdown grid whose every cell draws its own boxed equation                                                                              |
+| three or more `- **Name**: <formula>`                     | a `definitions` table | a column of bold words each trailing a display line                                                                                        |
+| a display equation a student must KNOW                    | a `formula` block     | a bare equation, with the symbols explained in a sentence somewhere below it                                                               |
 | a closing section headed `In Short`, `Summary` or `Recap` | an `in-short` callout | one more section of the lecture, reading exactly like the teaching before it, when its whole job is to look different to somebody revising |
 
 **A step's label NAMES THE MOVE, and the author usually wrote it.** `**Step 4 (Step 1 again):** Divide
@@ -298,7 +305,6 @@ Put it in the caption and take it out of the prose. No prose block should ever E
 that does not look like maths: this document opens its longest worked example with a fraction and a
 sentence of intent before its first step, and a run that stopped there turned the most important example
 in the lecture into a callout holding one fraction. Look AHEAD for a step before deciding.
-
 
 **A graph is drawn from the source's expression, never from points read off a picture.** Where the text
 gives no expression, say so in the chart's title and make it schematic.

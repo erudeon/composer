@@ -116,7 +116,11 @@ const LIST_ITEM = /^\s*(?:[-*]\s|\d+[.)]\s)/;
  */
 function followingContent(unitLines, at) {
   let j = at + 1;
-  while (j < unitLines.length && (!unitLines[j].trim() || AUTHORED_STYLE.test(unitLines[j]))) j += 1;
+  while (
+    j < unitLines.length &&
+    (!unitLines[j].trim() || AUTHORED_STYLE.test(unitLines[j]))
+  )
+    j += 1;
   const first = unitLines[j];
   if (first === undefined) return null;
   if (!LIST_ITEM.test(first)) return first;
@@ -142,7 +146,10 @@ function followingContent(unitLines, at) {
  * to be a heading says so in `headings.json`, which is a decision rather than a guess.
  */
 function isALabel(line) {
-  const text = line.trim().replace(/\*\*/g, "").replace(/^\s*(?:🎯|💡|📌|⚠️|❗|❕|👉|➡️)\uFE0F?\s*/u, "");
+  const text = line
+    .trim()
+    .replace(/\*\*/g, "")
+    .replace(/^\s*(?:🎯|💡|📌|⚠️|❗|❕|👉|➡️)\uFE0F?\s*/u, "");
   return text.split(/\s+/).filter(Boolean).length <= 6 && !/[.!?]$/.test(text);
 }
 
@@ -229,7 +236,9 @@ function nestLists(lines) {
     const [, indent, marker, rest] = m;
     const at = indent.length;
     while (stack.length && stack[stack.length - 1].at >= at) stack.pop();
-    const out = stack.length ? stack[stack.length - 1].out + stack[stack.length - 1].width : 0;
+    const out = stack.length
+      ? stack[stack.length - 1].out + stack[stack.length - 1].width
+      : 0;
     stack.push({ at, out, width: marker.length });
     return " ".repeat(out) + marker + rest;
   });
@@ -425,7 +434,8 @@ function walk(rawUnitLines, HEADINGS, equationHeadings) {
         }
         return false;
       };
-      if (!near(i - 1, -1) && !near(i + 1, 1)) clean = clean.replace(/^(\s*)\d+\.\s+/, "$1");
+      if (!near(i - 1, -1) && !near(i + 1, 1))
+        clean = clean.replace(/^(\s*)\d+\.\s+/, "$1");
     }
 
     /* The author's own bold-only line leads its paragraph for the same reason a folded heading does. */
@@ -480,7 +490,9 @@ function walk(rawUnitLines, HEADINGS, equationHeadings) {
        * of ten and the other nine are left in the prose behind it, which is how a recap of the whole
        * accounting cycle came out as "the process with 10 steps: 1. Identify and Analyze Transactions".
        */
-      const follows = clean.trim().endsWith(":") ? followingContent(unitLines, i) : null;
+      const follows = clean.trim().endsWith(":")
+        ? followingContent(unitLines, i)
+        : null;
       flags.push({
         title: headingForNextFlag,
         section,
@@ -508,7 +520,8 @@ const isBoldOnly = (p) => /^\*\*[^*]+\*\*:?\s*$/.test(p.trim());
  * paragraph. A prefix is allowed, but only where a colon follows the word, so "**For example**, take
  * y = 2x + 1" stays the sentence it is rather than becoming a box.
  */
-const EXAMPLE = /^\s*(?:[-*]\s+)?\*\*((?:[^*]{1,24}?\bExamples?\s*:|Examples?)[^*]*)\*\*\s*:?\s*/;
+const EXAMPLE =
+  /^\s*(?:[-*]\s+)?\*\*((?:[^*]{1,24}?\bExamples?\s*:|Examples?)[^*]*)\*\*\s*:?\s*/;
 /* The words a step is labelled with sit INSIDE the bold, so they are CAPTURED rather than eaten.
    An author who writes "**Step 2: Solve for** $Q$**.**" puts half of them outside it instead,
    which is why `workedBlock` joins the capture to what follows on the same line. */
@@ -581,7 +594,12 @@ const plainNote = (para) =>
   para
     .trim()
     .split("\n")
-    .map((line) => line.replace(/^\s*[-*]\s+/, "").replace(/\*\*/g, "").trim())
+    .map((line) =>
+      line
+        .replace(/^\s*[-*]\s+/, "")
+        .replace(/\*\*/g, "")
+        .trim(),
+    )
     .filter(Boolean)
     .join("\n");
 
@@ -618,7 +636,10 @@ function workedBlock(paras, title) {
         .replace(/[:.,\s]+$/, "")
         .trim();
       if (said.length <= 120) {
-        steps.push({ label: said || "Continue", ...(carried ? { note: carried } : {}) });
+        steps.push({
+          label: said || "Continue",
+          ...(carried ? { note: carried } : {}),
+        });
         continue;
       }
       const at = said.lastIndexOf(" ", 118);
@@ -661,7 +682,11 @@ function workedBlock(paras, title) {
 
 function buildUnit(unitLines, number, title, series) {
   const equationHeadings = [];
-  const { kept, flags, folded } = walk(unitLines, forUnit("HEADINGS", number), equationHeadings);
+  const { kept, flags, folded } = walk(
+    unitLines,
+    forUnit("HEADINGS", number),
+    equationHeadings,
+  );
 
   /*
    * THE SOURCE IS THE WHOLE UNIT, and the prose is what is left once the blocks that carry a passage
@@ -725,12 +750,17 @@ function buildUnit(unitLines, number, title, series) {
     forUnit("CHECKS", number),
     forUnit("REPAIRS", number).worked ?? {},
   ];
-  const supplies = (anchor) => SUPPLY_MAPS.some((m) => (m[anchor] ?? []).length > 0);
+  const supplies = (anchor) =>
+    SUPPLY_MAPS.some((m) => (m[anchor] ?? []).length > 0);
 
   const closeSection = (nextLevel) => {
     if (!cur) return;
     const hasProse = cur.body.join("\n").trim();
-    if (hasProse || supplies(cur.anchor) || (nextLevel !== undefined && nextLevel > cur.level))
+    if (
+      hasProse ||
+      supplies(cur.anchor) ||
+      (nextLevel !== undefined && nextLevel > cur.level)
+    )
       sections.push(cur);
     cur = null;
   };
@@ -743,14 +773,26 @@ function buildUnit(unitLines, number, title, series) {
    */
   /* `anchor` is what a course keys its supplied blocks on; `heading` is what prints. An opening
      run has the first and not the second, so it can still carry a chart or a callout. */
-  cur = { level: 2, heading: null, anchor: "(opening)", key: keyFor("(opening)"), body: [] };
+  cur = {
+    level: 2,
+    heading: null,
+    anchor: "(opening)",
+    key: keyFor("(opening)"),
+    body: [],
+  };
 
   for (const line of proseText.split("\n").slice(1)) {
     const h = /^(##|###) (.+)$/.exec(line);
     if (h) {
       closeSection(h[1].length);
       const heading = h[2].trim();
-      cur = { level: h[1].length, heading, anchor: heading, key: keyFor(heading), body: [] };
+      cur = {
+        level: h[1].length,
+        heading,
+        anchor: heading,
+        key: keyFor(heading),
+        body: [],
+      };
       continue;
     }
     if (cur) cur.body.push(line);
@@ -783,7 +825,9 @@ function buildUnit(unitLines, number, title, series) {
    */
   const titlesUsed = new Set();
   const titleFor = (lead) => {
-    const key = Object.keys(TITLES).find((k) => lead === k || lead.startsWith(k));
+    const key = Object.keys(TITLES).find(
+      (k) => lead === k || lead.startsWith(k),
+    );
     if (key) titlesUsed.add(key);
     return key ? TITLES[key] : undefined;
   };
@@ -950,7 +994,8 @@ function buildUnit(unitLines, number, title, series) {
         const reachesWorking = () => {
           for (let k = i + 1; k < paras.length && k <= i + 4; k += 1) {
             const p = paras[k];
-            if (EXAMPLE.test(p) || folded.has(p.trim().split("\n")[0].trim())) return false;
+            if (EXAMPLE.test(p) || folded.has(p.trim().split("\n")[0].trim()))
+              return false;
             if (isWorking(p)) return true;
           }
           return false;
@@ -1001,7 +1046,11 @@ function buildUnit(unitLines, number, title, series) {
        * heading. A sibling is a list item; anything else starts a new example.
        */
       const siblings = [];
-      while (i + 1 < paras.length && EXAMPLE.test(paras[i + 1]) && LIST_ITEM.test(paras[i + 1]))
+      while (
+        i + 1 < paras.length &&
+        EXAMPLE.test(paras[i + 1]) &&
+        LIST_ITEM.test(paras[i + 1])
+      )
         siblings.push(paras[(i += 1)].replace(EXAMPLE, "").trim());
 
       flushProse();
@@ -1049,7 +1098,11 @@ function buildUnit(unitLines, number, title, series) {
      * Only where the section is ALL prose. A recap holding a table or a worked example is not a recap,
      * and folding one into a callout would bury it.
      */
-    if (s.heading !== null && IS_A_RECAP.test(s.heading) && out.every((b) => b.type === "prose")) {
+    if (
+      s.heading !== null &&
+      IS_A_RECAP.test(s.heading) &&
+      out.every((b) => b.type === "prose")
+    ) {
       const body = out
         .map((b) => b.body.trim())
         .filter(Boolean)
@@ -1079,8 +1132,12 @@ function buildUnit(unitLines, number, title, series) {
       const before = out[k - 1];
       if (here.type !== "callout" || before.type !== "callout") continue;
       if (here.variant !== before.variant) continue;
-      const lead = (b, body) => (b.title && !/^Examples?$/i.test(b.title) ? `**${b.title}**\n\n${body}` : body);
-      before.body = `${lead(before, before.body)}\n\n${lead(here, here.body)}`.trim();
+      const lead = (b, body) =>
+        b.title && !/^Examples?$/i.test(b.title)
+          ? `**${b.title}**\n\n${body}`
+          : body;
+      before.body =
+        `${lead(before, before.body)}\n\n${lead(here, here.body)}`.trim();
       before.title = before.variant === "example" ? "Examples" : before.title;
       out.splice(k, 1);
     }
@@ -1102,7 +1159,11 @@ function buildUnit(unitLines, number, title, series) {
         continue;
       }
       for (const part of split(b.body))
-        blocks.push({ id: idFor(s.anchor ?? s.heading), type: "prose", body: part });
+        blocks.push({
+          id: idFor(s.anchor ?? s.heading),
+          type: "prose",
+          body: part,
+        });
     }
 
     /* Then everything anchored to this section: the author's flags first, in their own words. */
@@ -1171,7 +1232,9 @@ function buildUnit(unitLines, number, title, series) {
     const at = paras.findIndex((x) => RECAP_LEAD.exec(x.trim()));
     if (at < 0) break;
     const m = RECAP_LEAD.exec(paras[at].trim());
-    const body = [m[2].trim(), ...paras.slice(at + 1)].filter(Boolean).join("\n\n");
+    const body = [m[2].trim(), ...paras.slice(at + 1)]
+      .filter(Boolean)
+      .join("\n\n");
     if (!body) break;
     const kept = paras.slice(0, at).join("\n\n").trim();
     if (kept) b.body = kept;
@@ -1271,9 +1334,13 @@ const exams = DATA.EXAMS ?? [];
 
 /* A paper's questions are its own, keyed like every other, and never also in a lecture's bank. */
 const inBanks = new Set(topics.flatMap((t) => t.questions.map((q) => q.key)));
-const both = exams.flatMap((e) => e.questions.map((q) => q.key)).filter((k) => inBanks.has(k));
+const both = exams
+  .flatMap((e) => e.questions.map((q) => q.key))
+  .filter((k) => inBanks.has(k));
 if (both.length)
-  fail(`A question is in a paper AND a lecture bank, so it would be written twice: ${[...new Set(both)].join(", ")}`);
+  fail(
+    `A question is in a paper AND a lecture bank, so it would be written twice: ${[...new Set(both)].join(", ")}`,
+  );
 
 const manifest = {
   version: 1,
@@ -1295,6 +1362,35 @@ if (!manifest.course.programCode)
   fail(
     "No programme code. Put it in composer.json under courseShell, or export PROGRAM_CODE from course-data.mjs.",
   );
+
+/*
+ * A POSITION MARKER IS SCAFFOLDING, AND IT MUST NOT REACH A STUDENT.
+ *
+ * `docx.js` writes `[FIGURE:word/media/imageN.png]` where each picture sat, and the source of record is
+ * what every fidelity rule diffs against — so a marker left in a body is agreed with by the verbatim
+ * check, drawn as literal text on the page, and reported by nothing. The substitution is the operator's
+ * step (`images.mjs` answers the markdown, Layout pastes it); this is the refusal that makes forgetting
+ * it loud instead of silent.
+ */
+const withMarkers = [];
+for (const t of topics) {
+  for (const b of t.blocks) {
+    for (const m of String(b.body ?? "").matchAll(/\[FIGURE:([^\]]+)\]/g)) {
+      withMarkers.push(`${t.slug ?? t.title} / ${b.id}: ${m[1]}`);
+    }
+  }
+}
+if (withMarkers.length > 0) {
+  fail(
+    `${withMarkers.length} picture marker(s) are still in the text, and they would be drawn as literal ` +
+      `text on the page:\n  ${withMarkers.slice(0, 8).join("\n  ")}` +
+      (withMarkers.length > 8
+        ? `\n  ... and ${withMarkers.length - 8} more`
+        : "") +
+      `\n\nUpload the pictures (scripts/images.mjs), then replace each marker with the markdown the ` +
+      `upload answered in <figures>.json.uploaded.json.`,
+  );
+}
 
 const out = join(folder, "04-manifest", "manifest.json");
 writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -1355,5 +1451,3 @@ for (const t of topics) {
 console.log(
   `\n${out} (${(JSON.stringify(manifest).length / 1024).toFixed(0)} KB)`,
 );
-
-

@@ -39,6 +39,7 @@ const {
   emitter,
   listFormats,
   paraProps,
+  pictureOffsets,
   BLOCK_RE,
 } = require("./docx-core.js");
 
@@ -67,14 +68,52 @@ const rels = relationships(path.dirname(wordDir));
 const body = xml.slice(xml.indexOf("<w:body>"));
 const out = emitter();
 const text = (p) => flatten(paraText(p, ommlToLatex));
-const counts = { paragraphs: 0, headings: 0, lists: 0, tables: 0, authored: 0, figures: 0 };
+const counts = {
+  paragraphs: 0,
+  headings: 0,
+  lists: 0,
+  tables: 0,
+  authored: 0,
+  figures: 0,
+};
 const authoredSeen = new Map();
+
+/*
+ * EVERY PICTURE'S POSITION, taken from the whole body ONCE and drained as the blocks go past.
+ *
+ * Scanning per block loses two kinds of picture and neither is rare: one inside a table cell, because
+ * the table branch returns before any paragraph in it is read, and one after a floating text box,
+ * because `BLOCK_RE` is non-greedy and ends that paragraph at the box's own inner `</w:p>`. Both come
+ * out of `media-inventory.json` correctly, so the two halves disagree and nothing says so.
+ */
+const pictures = pictureOffsets(body, rels);
+let nextPicture = 0;
+
+/** Emit every picture that sits before `limit`, in document order. */
+function picturesBefore(limit, indent = "") {
+  while (nextPicture < pictures.length && pictures[nextPicture].at < limit) {
+    counts.figures += 1;
+    out.blank();
+    out.line(`${indent}[FIGURE:${pictures[nextPicture].file}]`);
+    out.blank();
+    nextPicture += 1;
+  }
+}
 
 let m;
 while ((m = BLOCK_RE.exec(body))) {
   const blk = m[0];
+  const blockEnd = m.index + blk.length;
+
+  /*
+   * ANY PICTURE IN A GAP NO BLOCK COVERS, which is the truncated tail of a paragraph holding a text
+   * box. It sat before this block, so it is written before this block.
+   */
+  picturesBefore(m.index);
 
   if (blk.startsWith("<w:tbl")) {
+    // A picture in a cell has nowhere to go inside a Markdown table, so it is named above it.
+    picturesBefore(blockEnd);
     const rows = tableRows(blk, (tc) =>
       (tc.match(/<w:p\b[\s\S]*?<\/w:p>/g) || [])
         // A cell is inline by definition, so its equations take single delimiters.
@@ -91,42 +130,25 @@ while ((m = BLOCK_RE.exec(body))) {
   }
 
   const t = text(blk).trim();
+  const { style, numId, ilvl, outline } = paraProps(blk);
 
   /*
    * WHERE THE PICTURE SAT, as a marker on its own line.
    *
-   * A picture lives in a paragraph of its own carrying no text, so the skip below used to drop it and
-   * the position with it. `media-inventory.json` then said a picture existed and which HEADING it fell
-   * under, and nothing anywhere said which paragraph: placing 58 figures meant guessing a paragraph per
-   * picture inside a section that runs for pages. The marker is the missing half, and `images.mjs`
-   * already documents substituting `[FIGURE:x]` for the markdown an upload answers.
+   * A picture lives in a paragraph of its own carrying no text, so the empty-text skip below used to
+   * drop it and the position with it. `media-inventory.json` then said a picture existed and which
+   * HEADING it fell under, and nothing anywhere said which paragraph: placing 58 figures meant guessing
+   * a paragraph per picture inside a section that runs for pages. The marker is the missing half, and
+   * `images.mjs` already documents substituting `[FIGURE:x]` for the markdown an upload answers.
    *
    * IT NAMES THE FILE, not an index. An index is only meaningful beside the inventory that minted it,
    * and the two are read by different steps at different times.
-   *
-   * A paragraph holding BOTH a picture and text emits the marker first. That is a position rounded to
-   * the paragraph, not a wrong one, and it is the only honest answer: an inline picture has no place in
-   * a line of Markdown prose to be put back into.
    */
-  for (const blip of blk.matchAll(/<a:blip\b[^>]*r:embed="([^"]+)"/g)) {
-    const target = rels[blip[1]];
-    if (!target) continue;
-    /*
-     * A RELATIONSHIP'S TARGET IS RELATIVE TO `word/`, and `media-inventory.json` names the same file
-     * from the work directory. Two spellings of one path is how a marker stops matching the inventory
-     * entry it belongs to, so the marker is written in the inventory's spelling.
-     */
-    const file = target.startsWith("word/") ? target : `word/${target}`;
-    counts.figures += 1;
-    out.blank();
-    out.line(`[FIGURE:${file}]`);
-    out.blank();
+  if (!t) {
+    picturesBefore(blockEnd);
+    continue;
   }
-
-  if (!t) continue;
   counts.paragraphs += 1;
-
-  const { style, numId, ilvl, outline } = paraProps(blk);
   // A paragraph may override its style's outline level, and that override is the document's last word.
   const level =
     outline !== undefined
@@ -139,6 +161,9 @@ while ((m = BLOCK_RE.exec(body))) {
     // A heading holds one line: a newline inside it ends the heading and orphans the rest of it.
     out.line("#".repeat(level) + " " + t.replace(/\s*\n\s*/g, " "));
     out.blank();
+    // AFTER the heading. A picture pasted into a heading belongs to the section it opens, and a marker
+    // written above it would name the section before, which reads as correct and is not.
+    picturesBefore(blockEnd);
     continue;
   }
 
@@ -147,9 +172,14 @@ while ((m = BLOCK_RE.exec(body))) {
     // Every ordered item is written "1." on purpose: Markdown numbers the list itself, and a hand-typed
     // sequence goes wrong the moment an item is inserted.
     const marker = listFormat(numId, ilvl) === "ordered" ? "1." : "-";
-    out.line(
-      "  ".repeat(Number(ilvl)) + marker + " " + t.replace(/\s*\n\s*/g, " "),
-    );
+    const lead = "  ".repeat(Number(ilvl));
+    out.line(lead + marker + " " + t.replace(/\s*\n\s*/g, " "));
+    /*
+     * INDENTED TO THE ITEM'S CONTENT COLUMN, so the marker is a second paragraph OF that item rather
+     * than a block that ends the list. Every ordered item is written "1." and Markdown renumbers, so a
+     * list cut in two restarts at 1 and a procedure with a screenshot on step 3 silently renumbers.
+     */
+    picturesBefore(blockEnd, lead + " ".repeat(marker.length + 1));
     continue;
   }
 
@@ -162,6 +192,8 @@ while ((m = BLOCK_RE.exec(body))) {
    * The blank line is load-bearing. An HTML block in Markdown runs until a blank line, so a comment
    * sitting directly above a paragraph swallows it.
    */
+  picturesBefore(blockEnd);
+
   const styleName = authored.get(style);
   if (styleName) {
     counts.authored += 1;
@@ -172,6 +204,9 @@ while ((m = BLOCK_RE.exec(body))) {
   out.line(t);
   out.blank();
 }
+
+// A picture after the last block this matched still belongs to the document.
+picturesBefore(Infinity);
 
 fs.writeFileSync(outPath, out.text());
 console.log(

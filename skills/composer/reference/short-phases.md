@@ -21,8 +21,8 @@ coverage map already exist. **The skip is a line on the findings list with its r
 status still says which phases it went through.
 
 **Out:** an analysis as an HTML file (HTML because it can carry pictures and be shared with a person),
-and the **coverage map**: every past-exam question mapped to the section that teaches it or to *not
-covered*, and every formula-sheet item mapped to where the material defines it or to *not defined*.
+and the **coverage map**: every past-exam question mapped to the section that teaches it or to _not
+covered_, and every formula-sheet item mapped to where the material defines it or to _not defined_.
 
 **Every gap the map finds goes on the findings list as a gap, marked as a gap and not as a task.**
 

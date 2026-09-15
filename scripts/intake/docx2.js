@@ -25,6 +25,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { ommlToLatex } = require("./omml.js");
+const { relationships } = require("./open-docx.js");
 const {
   runsOf,
   paraText,
@@ -35,6 +36,7 @@ const {
   listFormats,
   paraProps,
   BLOCK_RE,
+  pictureOffsets,
 } = require("./docx-core.js");
 
 const [xmlPath, outPath] = process.argv.slice(2);
@@ -89,13 +91,35 @@ const levelOf = (size) => {
 };
 
 const out = emitter();
-const counts = { paragraphs: 0, headings: 0, lists: 0, tables: 0 };
+const counts = { paragraphs: 0, headings: 0, lists: 0, tables: 0, figures: 0 };
+
+/*
+ * THE SAME PICTURE POSITIONS `docx.js` WRITES, for the same reason. This file exists because a Google
+ * Docs export carries no heading styles; everything else about it is the other extractor's job, and a
+ * picture losing its place here rather than there is the same defect with a different door. The scan is
+ * `docx-core`'s so the two cannot drift.
+ */
+const rels = relationships(path.dirname(path.dirname(xmlPath)));
+const pictures = pictureOffsets(body, rels);
+let nextPicture = 0;
+function picturesBefore(limit, indent = "") {
+  while (nextPicture < pictures.length && pictures[nextPicture].at < limit) {
+    counts.figures += 1;
+    out.blank();
+    out.line(`${indent}[FIGURE:${pictures[nextPicture].file}]`);
+    out.blank();
+    nextPicture += 1;
+  }
+}
 
 BLOCK_RE.lastIndex = 0;
 while ((m = BLOCK_RE.exec(body))) {
   const blk = m[0];
+  const blockEnd = m.index + blk.length;
+  picturesBefore(m.index);
 
   if (blk.startsWith("<w:tbl")) {
+    picturesBefore(blockEnd);
     const rows = tableRows(blk, (tc) =>
       (tc.match(/<w:p\b[\s\S]*?<\/w:p>/g) || [])
         // A cell is inline by definition, so its equations take single delimiters.
@@ -112,10 +136,13 @@ while ((m = BLOCK_RE.exec(body))) {
   }
 
   const t = text(blk).trim();
-  if (!t) continue;
+  const { numId, ilvl } = paraProps(blk);
+  if (!t) {
+    picturesBefore(blockEnd);
+    continue;
+  }
   counts.paragraphs += 1;
 
-  const { numId, ilvl } = paraProps(blk);
   const level = numId === undefined ? levelOf(sizeOf(blk)) : null;
 
   if (level !== null) {
@@ -123,26 +150,33 @@ while ((m = BLOCK_RE.exec(body))) {
     out.blank();
     out.line("#".repeat(level) + " " + t.replace(/\s*\n\s*/g, " "));
     out.blank();
+    // AFTER the heading: a picture in one belongs to the section it opens, not the one before it.
+    picturesBefore(blockEnd);
     continue;
   }
 
   if (numId !== undefined) {
     counts.lists += 1;
     const marker = listFormat(numId, ilvl) === "ordered" ? "1." : "-";
-    out.line(
-      "  ".repeat(Number(ilvl)) + marker + " " + t.replace(/\s*\n\s*/g, " "),
-    );
+    const lead = "  ".repeat(Number(ilvl));
+    out.line(lead + marker + " " + t.replace(/\s*\n\s*/g, " "));
+    // Indented to the item's content column, so a marker does not cut the list and restart its numbers.
+    picturesBefore(blockEnd, lead + " ".repeat(marker.length + 1));
     continue;
   }
 
+  picturesBefore(blockEnd);
   out.blank();
   out.line(t);
   out.blank();
 }
 
+// A picture after the last block this matched still belongs to the document.
+picturesBefore(Infinity);
+
 fs.writeFileSync(outPath, out.text());
 console.log(
-  `paragraphs=${counts.paragraphs} headings=${counts.headings} lists=${counts.lists} tables=${counts.tables}`,
+  `paragraphs=${counts.paragraphs} headings=${counts.headings} lists=${counts.lists} tables=${counts.tables} figures=${counts.figures}`,
 );
 console.log(
   `body set at ${bodySize || "?"}pt; heading sizes ${headingSizes.length ? headingSizes.map((s) => s + "pt").join(" > ") : "none found"}`,

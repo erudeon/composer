@@ -9,9 +9,11 @@
  * that the picture existed. Nothing downstream could tell a document whose pictures were unplaceable
  * from one that had none, and 58 figures were placed by guessing a paragraph from a heading.
  *
- * The four things that must hold are the four ways that has gone or could go wrong: the marker exists
- * at all, it keeps its place in the prose, it is spelled the way the inventory spells it, and a
- * paragraph carrying both a picture and words keeps both.
+ * Each check below is one way this has gone or could go wrong: the marker exists at all; it keeps the
+ * blank lines that make it its own Markdown block; it is spelled the way the inventory spells it; a
+ * paragraph carrying both a picture and words keeps both; a picture after a floating text box is not
+ * lost to a non-greedy block match; one in a table cell is named rather than dropped; one in a heading
+ * belongs to the section it OPENS; and one in a list item does not cut the list in two.
  */
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -60,8 +62,8 @@ function workDir(bodyInner, rels) {
   return dir;
 }
 
-/** The markdown `docx.js` writes for one body, as an array of non-blank lines. */
-function convert(bodyInner, rels) {
+/** The markdown `docx.js` writes for one body, verbatim. */
+function raw(bodyInner, rels) {
   const dir = workDir(bodyInner, rels);
   const out = path.join(dir, "source.md");
   execFileSync(
@@ -73,13 +75,17 @@ function convert(bodyInner, rels) {
     ],
     { stdio: "pipe" },
   );
-  const lines = fs
-    .readFileSync(out, "utf8")
+  const text = fs.readFileSync(out, "utf8");
+  fs.rmSync(dir, { recursive: true, force: true });
+  return text;
+}
+
+/** The same, as an array of non-blank lines, for the cases where only order is in question. */
+function convert(bodyInner, rels) {
+  return raw(bodyInner, rels)
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
-  fs.rmSync(dir, { recursive: true, force: true });
-  return lines;
 }
 
 const IMAGE_RELS = [
@@ -120,6 +126,63 @@ check(
   "A RELATIONSHIP THAT RESOLVES TO NOTHING IS NOT A MARKER NAMING NOTHING. A `[FIGURE:undefined]` would be substituted for a picture that does not exist, which is worse than the picture simply being absent.",
   convert(para(picture("rIdMissing")) + para(words("Only this.")), IMAGE_RELS),
   ["Only this."],
+);
+
+const heading = (text) =>
+  `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:outlineLvl w:val="0"/></w:pPr>${words(text)}</w:p>`;
+const bullet = (text, inner = "") =>
+  `<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>${words(text)}${inner}</w:p>`;
+/** A paragraph whose floating text box carries a `<w:p>` of its own, then a picture AFTER it. */
+const withTextBox = (rid) =>
+  `<w:p>${words("A paragraph.")}<w:r><mc:AlternateContent><mc:Choice><w:drawing><wp:anchor><a:graphic>` +
+  `<a:graphicData><wps:wsp><wps:txbx><w:txbxContent><w:p><w:r><w:t>Boxed.</w:t></w:r></w:p>` +
+  `</w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice>` +
+  `</mc:AlternateContent></w:r>${picture(rid)}</w:p>`;
+/** A heading paragraph with the picture pasted inside it, which Word allows and authors do. */
+const headingWithPicture = (text, rid) =>
+  heading(text).replace("</w:p>", `${picture(rid)}</w:p>`);
+const tableWithPicture = (rid) =>
+  `<w:tbl><w:tr><w:tc><w:p>${words("Cell one")}</w:p></w:tc>` +
+  `<w:tc><w:p>${picture(rid)}</w:p></w:tc></w:tr></w:tbl>`;
+
+check(
+  "THE BLANK LINES AROUND A MARKER ARE LOAD-BEARING. Without them the marker joins the paragraph above into one Markdown block, and substituting the picture's markdown there drops it into the middle of the author's sentence. Asserted on the RAW file, because a check that trims every line cannot see this and passed while it was broken.",
+  raw(
+    para(words("Before.")) + para(picture("rId7")) + para(words("After.")),
+    IMAGE_RELS,
+  ),
+  "Before.\n\n[FIGURE:word/media/image1.png]\n\nAfter.\n",
+);
+
+check(
+  "A PICTURE AFTER A FLOATING TEXT BOX. `BLOCK_RE` is non-greedy, so that paragraph ends at the text box's own inner `</w:p>` and everything after it is matched by no block. A paragraph-based scan found 32 of 53 pictures on one real summary for exactly this reason.",
+  convert(withTextBox("rId7") + para(words("Next.")), IMAGE_RELS).filter((l) =>
+    l.startsWith("[FIGURE:"),
+  ),
+  ["[FIGURE:word/media/image1.png]"],
+);
+
+check(
+  "A PICTURE IN A TABLE CELL, named above the table. The table branch returns before any paragraph inside it is read, so this one had no marker at all while the inventory listed it.",
+  convert(tableWithPicture("rId8"), IMAGE_RELS).filter((l) =>
+    l.startsWith("[FIGURE:"),
+  ),
+  ["[FIGURE:word/media/image2.jpg]"],
+);
+
+check(
+  "A PICTURE PASTED INTO A HEADING BELONGS TO THE SECTION IT OPENS. A marker written above the heading names the section BEFORE it, one section early, which reads as correct and is not.",
+  convert(
+    headingWithPicture("Section Two", "rId7") + para(words("Body.")),
+    IMAGE_RELS,
+  ),
+  ["# Section Two", "[FIGURE:word/media/image1.png]", "Body."],
+);
+
+check(
+  'A PICTURE IN A LIST ITEM KEEPS THE LIST WHOLE. Every ordered item is written "1." and Markdown renumbers, so a list cut in two by a full-width marker restarts at 1 and a procedure with a screenshot on step 3 silently renumbers. The marker is indented to the item\'s content column instead.',
+  raw(bullet("one", picture("rId7")) + bullet("two"), IMAGE_RELS),
+  "- one\n\n  [FIGURE:word/media/image1.png]\n\n- two\n",
 );
 
 console.log(`\n${ran - failed}/${ran} passed`);

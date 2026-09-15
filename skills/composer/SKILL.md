@@ -27,17 +27,17 @@ session reads a folder.**
 three acts are distinct, and running them together is how a course ships with every write returning OK
 and a third of a lecture missing.
 
-| Phase | Skill | What it settles |
-| --- | --- | --- |
-| 0 Intake | `intake` | what we hold, and whether it is what it claims |
-| · | `convert` | a document becomes a source of record and a media inventory |
-| 1 Analyze | not built | what the exams ask. Needs past exams; optional, and skipping is recorded |
-| 2 Compose | `compose` | make the text right |
-| 3 Layout | `layout` | make it a course |
-| 4 Audit | `audit` | prove it, with nobody |
-| 5 Student View | not built | a second person reads it as a student |
-| 6 Publish | `publish` | one press, production, named |
-| 7 Observe | not built | watch it until the exam |
+| Phase          | Skill     | What it settles                                                          |
+| -------------- | --------- | ------------------------------------------------------------------------ |
+| 0 Intake       | `intake`  | what we hold, and whether it is what it claims                           |
+| ·              | `convert` | a document becomes a source of record and a media inventory              |
+| 1 Analyze      | not built | what the exams ask. Needs past exams; optional, and skipping is recorded |
+| 2 Compose      | `compose` | make the text right                                                      |
+| 3 Layout       | `layout`  | make it a course                                                         |
+| 4 Audit        | `audit`   | prove it, with nobody                                                    |
+| 5 Student View | not built | a second person reads it as a student                                    |
+| 6 Publish      | `publish` | one press, production, named                                             |
+| 7 Observe      | not built | watch it until the exam                                                  |
 
 The three unbuilt phases are one page each in `reference/short-phases.md`, with what has to exist before
 they can be. **Do not improvise them.** Say they are not built, say what is missing, and carry on.

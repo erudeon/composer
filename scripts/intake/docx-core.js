@@ -24,7 +24,9 @@
  * Markdown removes the step. A heading is `##`, a bullet is `-`, a table is a table, an equation is
  * already `$…$`, and nothing downstream has to know this file exists.
  */
-"use strict";
+const path = require("node:path");
+
+("use strict");
 
 function unesc(s) {
   return s
@@ -42,6 +44,41 @@ function unesc(s) {
  */
 const INLINE = String.fromCharCode(36);
 const DISPLAY_OPEN = INLINE + INLINE;
+
+/**
+ * THE SPELLING `media-inventory.json` USES for a picture, from a relationship's target.
+ *
+ * ONE HOME, because two spellings of one path is how a marker stops matching the inventory entry it
+ * belongs to, and the two are written by different scripts at different times. `path.posix.join`
+ * normalises `./media/x.png` and `/media/x.png`, which a `startsWith` guard cannot.
+ */
+function mediaPathFor(target) {
+  return path.posix.join("word", target);
+}
+
+/** An embedded picture, wherever it sits. */
+const BLIP_RE = /<a:blip\b[^>]*r:embed="([^"]+)"/g;
+
+/**
+ * EVERY PICTURE IN A BODY, BY BYTE OFFSET, scanned over the WHOLE string rather than per block.
+ *
+ * `BLOCK_RE` is non-greedy, so a paragraph carrying a floating text box ends at the INNER `</w:p>` and
+ * everything after it — a picture included — is matched by no block at all. Measured on one real
+ * summary, a paragraph-based scan found 32 of its 53 pictures, and 30 of 248 corpus documents carry a
+ * text box. A table's cells are the same problem from the other side: the table branch returns before
+ * any paragraph inside it is looked at.
+ *
+ * Offsets are the fix for both. The caller walks blocks and flushes every picture that sits before the
+ * point it has reached, so a picture in a gap no block covers is emitted rather than lost.
+ */
+function pictureOffsets(body, rels) {
+  const out = [];
+  for (const m of body.matchAll(BLIP_RE)) {
+    const target = rels[m[1]];
+    if (target) out.push({ at: m.index, file: mediaPathFor(target) });
+  }
+  return out;
+}
 
 /** Block-level elements of a body, in document order: paragraphs and tables. */
 const BLOCK_RE =
@@ -404,6 +441,8 @@ function paraProps(blk) {
 
 module.exports = {
   unesc,
+  mediaPathFor,
+  pictureOffsets,
   headingLevels,
   authoredStyles,
   runsOf,

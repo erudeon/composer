@@ -27,18 +27,18 @@ running or whether it is their turn.
 These have no meaning to somebody who wrote a summary last night, and using them makes the tool feel
 like it belongs to somebody else:
 
-| Never say | Say |
-| --- | --- |
-| manifest | the course file, or just the course |
-| source of record | the text we pulled out of your document |
-| disposition | what happens to each picture |
-| gate | what has to be true before the next step |
-| MCP, tool call, endpoint | (nothing: it is plumbing, and it is ours) |
-| hub, deployment, commit, environment | (nothing, as above) |
-| token, context, budget | (nothing) |
-| lint, refused, payload, schema | the check, what it would not accept, the file |
-| block | a section, a table, a worked example, whatever it actually is |
-| verbatim lint, prose-verbatim | the check that your words arrive unchanged |
+| Never say                            | Say                                                           |
+| ------------------------------------ | ------------------------------------------------------------- |
+| manifest                             | the course file, or just the course                           |
+| source of record                     | the text we pulled out of your document                       |
+| disposition                          | what happens to each picture                                  |
+| gate                                 | what has to be true before the next step                      |
+| MCP, tool call, endpoint             | (nothing: it is plumbing, and it is ours)                     |
+| hub, deployment, commit, environment | (nothing, as above)                                           |
+| token, context, budget               | (nothing)                                                     |
+| lint, refused, payload, schema       | the check, what it would not accept, the file                 |
+| block                                | a section, a table, a worked example, whatever it actually is |
+| verbatim lint, prose-verbatim        | the check that your words arrive unchanged                    |
 
 A word that names a thing they can SEE is fine: their file, a heading, a picture, a question, a
 lecture, the glossary. A word that names our machinery is not.

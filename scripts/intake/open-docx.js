@@ -41,7 +41,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
-const { headingLevels } = require("./docx-core.js");
+const { headingLevels, mediaPathFor } = require("./docx-core.js");
 const { unsafeToUnpack } = require("./docx-zip.js");
 
 /** Unzip a `.docx` into `dir`, which is created if it is not there. Returns `dir`. */
@@ -224,7 +224,7 @@ function drawings(dir) {
         index: index++,
         kind: "picture",
         under: heading,
-        file: target ? path.posix.join("word", target) : null,
+        file: target ? mediaPathFor(target) : null,
         bytes: abs && fs.existsSync(abs) ? fs.statSync(abs).size : null,
         text: null,
         disposition: null,

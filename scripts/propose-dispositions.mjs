@@ -40,9 +40,23 @@
 import { readFileSync, existsSync } from "node:fs";
 
 const args = process.argv.slice(2);
+/*
+ * AN UNKNOWN FLAG IS A STOP, NOT A SHRUG. `--asis`, `--as_is`, `--as-is=true` and `-as-is` all read as
+ * "as is" to a person and as "no flag given" to `includes`, and the silent fallback is the DANGEROUS
+ * direction: the default proposes tracing a curve, and a plausible wrong curve renders perfectly and
+ * teaches a student something false.
+ */
+const unknown = args.filter((a) => a.startsWith("-") && a !== "--as-is");
+if (unknown.length > 0) {
+  console.error(
+    `Unknown option ${unknown[0]}. The only option is --as-is.\n\n` +
+      "usage: propose-dispositions.mjs <media-inventory.json> <source-of-record.txt> [--as-is]",
+  );
+  process.exit(2);
+}
 /** Stated once by the author: their pictures are published as pictures, and nothing is redrawn. */
 const asIs = args.includes("--as-is");
-const [inventoryPath, sourcePath] = args.filter((a) => !a.startsWith("--"));
+const [inventoryPath, sourcePath] = args.filter((a) => !a.startsWith("-"));
 if (!inventoryPath || !sourcePath) {
   console.error(
     "usage: propose-dispositions.mjs <media-inventory.json> <source-of-record.txt> [--as-is]",
