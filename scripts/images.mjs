@@ -27,9 +27,7 @@ import path from "node:path";
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, so this script cannot reach it.
  */
-import { bearerFor, noCredentialMessage } from "./credential.mjs";
-
-const PRODUCTION_HUB = "https://hub.passtheyear.com";
+import { bearerFor, noCredentialMessage, PRODUCTION_HUB } from "./credential.mjs";
 
 const USAGE = `
 Usage: node scripts/images.mjs <figures.json> --course <courseId> [--hub <url>] [--show-request]
@@ -142,6 +140,7 @@ const totalBytes = entries.reduce((sum, e) => sum + e.bytes, 0);
 if (args.includes("--show-request")) {
   const headers = [`-H "Authorization: Bearer $PTY_MCP_TOKEN"`];
   const parts = batches[0].map((e) => `-F "files=@${e.full}"`).join(" \\\n    ");
+  /* The variable is normally unset now: this is the hand-run form, for a machine with no browser. */
   console.log(
     `curl -X POST "${url}" \\\n    ${headers.join(" \\\n    ")} \\\n` +
       `    -F 'manifest=${JSON.stringify(batches[0].map(({ name, alt, topicId }) => ({ name, alt, ...(topicId ? { topicId } : {}) })))}' \\\n` +
@@ -150,8 +149,7 @@ if (args.includes("--show-request")) {
   process.exit(0);
 }
 
-const token = await bearerFor(hub);
-if (!token) fail(noCredentialMessage(hub), 2);
+if (!(await bearerFor(hub))) fail(noCredentialMessage(hub), 2);
 
 const accessHeaders = {};
 
@@ -177,7 +175,7 @@ for (const [index, batch] of batches.entries()) {
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, ...accessHeaders },
+      headers: { Authorization: `Bearer ${await bearerFor(hub)}`, ...accessHeaders },
       body: form,
     });
   } catch (cause) {

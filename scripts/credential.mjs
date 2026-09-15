@@ -50,7 +50,7 @@
 import { createServer } from "node:http";
 import { createHash, randomBytes } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync, rmSync, existsSync, chmodSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, platform } from "node:os";
 import { pathToFileURL } from "node:url";
@@ -88,11 +88,21 @@ function readStore() {
   }
 }
 
-/** 0700 on the directory and 0600 on the file, set every write: an inherited umask is not a permission. */
+/**
+ * 0700 on the directory and 0600 on the file, set on every write: an inherited umask is not a permission,
+ * and `mode` is ignored for a file that already exists, so the `chmod` is not belt and braces.
+ *
+ * WRITTEN BESIDE AND RENAMED OVER, because a rename is atomic and a truncating write is not. A reader
+ * that catches a half-written file treats it as "never signed in" (`readStore` collapses corrupt into
+ * absent on purpose), so a torn write is a silent sign-out, and two doors running at once can tear one.
+ */
 function writeStore(store) {
   mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  writeFileSync(STORE, JSON.stringify(store, null, 2), { mode: 0o600 });
-  chmodSync(STORE, 0o600);
+  chmodSync(CONFIG_DIR, 0o700);
+  const beside = `${STORE}.${process.pid}.tmp`;
+  writeFileSync(beside, JSON.stringify(store, null, 2), { mode: 0o600 });
+  chmodSync(beside, 0o600);
+  renameSync(beside, STORE);
 }
 
 function recordFor(hub) {
@@ -114,10 +124,18 @@ function saveRecord(hub, record) {
  * with the credential meant every re-approval registered a brand new client, so a run of them would
  * leave a drawer of identical rows on the Hub that nobody can tell apart or clean up.
  */
-function forgetCredential(hub) {
+function forgetCredential(hub, onlyIfRefreshToken = null) {
   const store = readStore();
-  const kept = store[hub]?.clientId;
   if (!(hub in store)) return;
+  /*
+   * COMPARE, THEN DELETE. Two doors can renew at once: the first spends the shared refresh token and
+   * writes the replacement, the second presents the token now spent and is told 400. Deleting on that
+   * 400 would throw away the replacement the FIRST one just earned, and sign the author out a moment
+   * after a renewal that worked. So a caller says which token it was refused for, and the record is only
+   * forgotten while that is still the token on disk.
+   */
+  if (onlyIfRefreshToken && store[hub].refreshToken !== onlyIfRefreshToken) return;
+  const kept = store[hub].clientId;
   delete store[hub];
   if (kept) store[hub] = { clientId: kept };
   writeStore(store);
@@ -147,8 +165,13 @@ async function discover(hub) {
   };
 }
 
+/** Nothing here waits forever. `bearerFor` runs at the top of every upload and promises not to stall, and
+ * a socket that is accepted and never answered (a captive portal, a hung edge) is the shape that breaks
+ * that promise: the platform default is minutes, per request, and a renewal can make three. */
+const REACH_TIMEOUT_MS = 15 * 1000;
+
 async function fetchJson(url, init) {
-  const response = await fetch(url, init);
+  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(REACH_TIMEOUT_MS) });
   const text = await response.text();
   let body = null;
   try {
@@ -175,8 +198,15 @@ async function fetchJson(url, init) {
  * its own deliberate step.
  */
 export async function bearerFor(hub) {
+  /*
+   * THE ENVIRONMENT'S TOKEN IS FOR ONE PLACE. It is a bearer for pass the year and nothing else, and it
+   * is not keyed by anything, so returning it whatever `hub` says would send it to any host somebody puts
+   * on the command line. That somebody is usually an agent, and this repo's history is two credentials
+   * lost to an agent doing something reasonable-looking with one. The stored sign-in never had this
+   * problem: it is filed under its hub and cannot be handed to another.
+   */
   const fromEnv = process.env.PTY_MCP_TOKEN;
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return hub === PRODUCTION_HUB ? fromEnv : null;
 
   const record = recordFor(hub);
   if (!record?.refreshToken) return null; /** a bare clientId is a registration, not a sign-in */
@@ -213,6 +243,13 @@ async function renew(hub, record) {
         grant_type: "refresh_token",
         refresh_token: record.refreshToken,
         client_id: record.clientId,
+        /*
+         * RFC 8707 asks for `resource` on a token request and a refresh IS one. This Hub does not require
+         * it today (renewals verified working without it, and the renewed token is still accepted by the
+         * audience check on the import door), so this is here for the day it does: without it a tightened
+         * server answers 400, which reads here as "finished" and sends the author to the browser hourly.
+         */
+        ...(record.resource ? { resource: record.resource } : {}),
       }).toString(),
     });
     saveRecord(hub, {
@@ -233,7 +270,7 @@ async function renew(hub, record) {
      * else — offline, a gateway, a 500, a 429 — is temporary, and the credential is left where it is.
      */
     const finished = cause?.status === 400 || cause?.status === 401;
-    if (finished) forgetCredential(hub);
+    if (finished) forgetCredential(hub, record.refreshToken);
     /*
      * SAY WHY, to the agent, on stderr. A renewal that fails silently is indistinguishable from one that
      * was never attempted, and the difference decides what the author is told: "press Approve again" is
@@ -271,7 +308,12 @@ function openBrowser(url) {
       : platform() === "win32"
         ? ["cmd", ["/c", "start", "", url]]
         : ["xdg-open", [url]];
-  return new Promise((resolve) => execFile(command, args, () => resolve()));
+  /*
+   * It REPORTS. A machine with no `xdg-open` is exactly the headless case a hand-minted token exists for,
+   * and swallowing the error there printed "Opening the window now", waited five minutes, and then blamed
+   * the author for not pressing a button nobody had shown them.
+   */
+  return new Promise((resolve) => execFile(command, args, (error) => resolve(!error)));
 }
 
 const CLOSE_TAB_PAGE = `<!doctype html><meta charset="utf-8"><title>Composer</title>
@@ -333,8 +375,24 @@ export async function signIn(hub, { timeoutMs = CONSENT_TIMEOUT_MS, onUrl, open 
      * in that gap.
      */
     const code = awaitCode(server, { state, timeoutMs });
-    if (onUrl) onUrl(authorize.toString());
-    await open(authorize.toString());
+    /*
+     * OBSERVED THE MOMENT IT EXISTS. Between arming it and awaiting it below sits the opener, which can
+     * take its time; a timeout or a stranger's `?error=` landing in that window rejected a promise nobody
+     * held, which in Node is not an exception the caller can catch but a stack trace and a dead process.
+     */
+    code.catch(() => {});
+
+    /*
+     * THE LINK IS PRINTED ONLY IF NO WINDOW OPENED.
+     *
+     * It carries `state` and `code_challenge`, which are the two things protecting this request, and
+     * printing them put both into the agent's transcript on every single sign-in. Anybody who could read
+     * that could open the same page, approve it with THEIR account, and have the reply land here with the
+     * right state and a challenge our verifier matches: the Composer would then be signed in as a stranger
+     * and the author's course would publish under somebody else's name. So it is a fallback, not a habit.
+     */
+    const opened = await open(authorize.toString());
+    if (!opened && onUrl) onUrl(authorize.toString());
 
     const body = await fetchJson(found.tokenUrl, {
       method: "POST",
@@ -354,6 +412,7 @@ export async function signIn(hub, { timeoutMs = CONSENT_TIMEOUT_MS, onUrl, open 
     saveRecord(hub, {
       clientId,
       tokenUrl: found.tokenUrl,
+      resource: found.resource,
       refreshToken: body.refresh_token,
       accessToken: body.access_token,
       accessExpiresAt: Date.now() + Number(body.expires_in ?? 3600) * 1000,
@@ -377,7 +436,12 @@ function listen() {
 function awaitCode(server, { state, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error("Nobody approved it within five minutes."));
+      /*
+       * FOUR CAUSES, ONE MESSAGE, so the message has to name more than one. Nothing reaches this listener
+       * unless the Hub actually redirects, so a refused client, a rejected redirect and an unknown scope
+       * all arrive here as silence, exactly like an author who walked away.
+       */
+      reject(new Error("Nothing came back within five minutes: either it was not approved, or the page never got that far."));
     }, timeoutMs);
     timer.unref?.();
 
@@ -388,16 +452,31 @@ function awaitCode(server, { state, timeoutMs }) {
         return;
       }
       const answer = (status, page) => response.writeHead(status, { "content-type": "text/html; charset=utf-8" }).end(page);
+      /*
+       * THE STATE IS CHECKED BEFORE ANYTHING ELSE, INCLUDING THE FAILURE BRANCH.
+       *
+       * This port is open to everything on the machine, and for the minutes a sign-in is pending a page in
+       * any browser tab can reach it too (an <img> against the loopback range costs the attacker nothing).
+       * Reading `error` first meant one unauthenticated GET, with no state at all, cancelled the sign-in.
+       * Checking state first makes every one of those a stranger's reply: answered, ignored, and the real
+       * one still welcome.
+       */
+      if (url.searchParams.get("state") !== state) {
+        answer(400, `<!doctype html><meta charset="utf-8"><p>That reply did not belong to this sign-in.</p>`);
+        return;
+      }
+      /*
+       * And what comes back is a CODE from a closed list, never the far end's sentence. `error_description`
+       * is free text from whatever answered, and it was being put verbatim into the context of an agent
+       * that reads its tool output as instruction. In this repo, whose history is two credentials lost to
+       * an agent following something plausible, that is a door, not a diagnostic.
+       */
       const error = url.searchParams.get("error");
       if (error) {
         answer(400, `<!doctype html><meta charset="utf-8"><p>That was not approved. You can close this tab.</p>`);
         clearTimeout(timer);
-        reject(new Error(url.searchParams.get("error_description") || error));
+        reject(new Error(/^[a-z_]{1,64}$/.test(error) ? error : "it was refused"));
         return;
-      }
-      if (url.searchParams.get("state") !== state) {
-        answer(400, `<!doctype html><meta charset="utf-8"><p>That reply did not belong to this sign-in.</p>`);
-        return; /** not ours: answered and ignored, and the real one is still welcome */
       }
       const code = url.searchParams.get("code");
       if (!code) {
@@ -448,9 +527,17 @@ Usage: node scripts/credential.mjs <login | status | forget> [--hub <url>]
 `.trim();
 
 async function main(argv) {
-  const command = argv.find((a) => !a.startsWith("--"));
   const hubFlag = argv.indexOf("--hub");
+  /**
+   * The value after `--hub` is not the command: `--hub <url> login` used to read the URL as one. Guarded
+   * on `hubFlag !== -1`, because with no flag at all `hubFlag + 1` is 0, which is the command itself.
+   */
+  const command = argv.find((a, i) => !a.startsWith("--") && !(hubFlag !== -1 && i === hubFlag + 1));
   const hub = hubFlag !== -1 ? argv[hubFlag + 1] : PRODUCTION_HUB;
+  if (hubFlag !== -1 && !hub) {
+    console.error(`--hub needs a URL.\n\n${HELP}`);
+    return 1;
+  }
   if (!command || argv.includes("--help") || argv.includes("-h")) {
     console.log(HELP);
     return command ? 0 : 1;
