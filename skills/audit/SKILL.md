@@ -53,6 +53,18 @@ is wrong for most students who meet it.
 filled them in passes every other check while teaching nothing at the moment a student is most ready to
 learn: the second they pick the wrong one. A bank with none is a finding worth raising, not a refusal.
 
+**Every case holds its parts.** `list_groups` reports a `partCount` per case: it must equal the parts
+that case was written with. A part stored beside its case rather than inside it is a question about a
+situation the student is never shown, and every other check here reads green on it, because the bank
+holds the right number of questions and each one is individually well formed. This is the only call that
+sees it.
+
+**Every term a reader is meant to meet is defined in a body.** A term written as a row alone reaches the
+glossary tab and the flashcard deck, and a student reading the lecture never meets it: no definition
+where it is taught, and no marked word to tap. Compare the course's terms against the definition lists
+its bodies declare, and raise the difference. Two courses shipped 482 terms that way and their readers
+saw none of them.
+
 **7. Read it as a student, `ai`.** Open each unit and read it the way somebody revising would, then
 check it against the SOURCE. Take the unit's own summary box, which names the concepts that unit
 teaches, and confirm the body actually contains them.
