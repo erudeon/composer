@@ -26,6 +26,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { bearerFor, noCredentialMessage } from "./credential.mjs";
+
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, with no exception, so this script
  * cannot reach it: a door that exists is a door somebody uses at 2am. The rehearsal is `plan`, which
@@ -42,8 +44,9 @@ Usage: node scripts/push.mjs <manifest.json> [--apply | --verify] [--hub <url>] 
   --hub <url>      send somewhere else entirely
   --show-request   print the equivalent curl and exit, sending nothing
 
-Credential: PTY_MCP_TOKEN in the environment. Mint your own in the Hub; it is yours, it is scoped to
-what you can already reach, and it expires.
+Credential: none to arrange. The author approves this once in their browser and it renews itself
+(node scripts/credential.mjs login). PTY_MCP_TOKEN in the environment still wins, for a machine
+that has no browser to open.
 `.trim();
 
 function fail(message, code = 1) {
@@ -171,21 +174,18 @@ if (args.includes("--show-request")) {
   process.exit(0);
 }
 
-const token = process.env.PTY_MCP_TOKEN;
+/*
+ * SILENT WHEN IT CAN BE. A stored approval renews itself here without anybody being asked; only a
+ * machine that has never been approved, or one whose approval is finished, gets the message below, and
+ * that message is the same one `images.mjs` prints because it lives in one place.
+ */
+const token = await bearerFor(hub);
 if (!token) {
   fail(
-    `PTY_MCP_TOKEN is not set, so there is no way to reach ${hub}.\n\n` +
-      `Mint one for yourself in the Hub, under your own account. It is scoped to what you can already\n` +
-      `reach, it expires, and it is yours: do not share it and do not paste it into a chat.\n\n` +
-      `Then, in the same terminal you run this from:\n` +
-      `  export PTY_MCP_TOKEN='<the token>'\n` +
-      `  node scripts/push.mjs <file>            # plans, writes nothing\n` +
-      `  node scripts/push.mjs <file> --apply    # writes\n\n` +
-      `If you cannot mint one, use content_import over the MCP instead. It needs no token and always\n` +
-      `works; it just costs the length of the course in tokens, which is a real cost and a better one\n` +
-      `than a stalled upload.\n\n` +
-      `DO NOT go hunting for a token in stored connections or another tool's config. An attempt at that\n` +
-      `once posted an unrelated service's credential to this API.`,
+    `${noCredentialMessage(hub)}\n\n` +
+      `Or skip the file door entirely: content_import over the MCP needs no credential at all and always\n` +
+      `works. It just costs the length of the course in tokens, which is a real cost and a better one\n` +
+      `than a stalled upload.`,
     2,
   );
 }

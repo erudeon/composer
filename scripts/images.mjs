@@ -27,6 +27,8 @@ import path from "node:path";
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, so this script cannot reach it.
  */
+import { bearerFor, noCredentialMessage } from "./credential.mjs";
+
 const PRODUCTION_HUB = "https://hub.passtheyear.com";
 
 const USAGE = `
@@ -40,7 +42,8 @@ Usage: node scripts/images.mjs <figures.json> --course <courseId> [--hub <url>] 
 
 Writes <figures.json>.uploaded.json: file name -> the markdown to paste into a lesson body.
 
-Credential: PTY_MCP_TOKEN in the environment. Mint your own in the Hub.
+Credential: none to arrange. The author approves this once in their browser and it renews itself
+(node scripts/credential.mjs login). PTY_MCP_TOKEN in the environment still wins.
 `.trim();
 
 function fail(message, code = 1) {
@@ -147,15 +150,8 @@ if (args.includes("--show-request")) {
   process.exit(0);
 }
 
-const token = process.env.PTY_MCP_TOKEN;
-if (!token)
-  fail(
-    "PTY_MCP_TOKEN is not set, so there is no way to send the pictures.\n\n" +
-      "Mint one in the Hub: it is yours, it is scoped to what you can already reach, and it expires.\n" +
-      "Then put it in your shell profile so every session has it, and open a new terminal.\n\n" +
-      "Do not paste it into a chat, a file in a repository, or a command you type out in full: a\n" +
-      "command typed with the token in it is saved to your shell history in plain text.",
-  );
+const token = await bearerFor(hub);
+if (!token) fail(noCredentialMessage(hub), 2);
 
 const accessHeaders = {};
 

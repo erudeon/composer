@@ -248,6 +248,53 @@ const work = mkdtempSync(join(tmpdir(), "seccheck-"));
   );
 }
 
+/*
+ * ── 7. ONE PLACE DECIDES WHAT A CREDENTIAL IS ───────────────────────────────────────────────────────
+ *
+ * `credential.mjs` reads the environment, holds the stored approval, renews it, and words every message
+ * about it. The failure this prevents is the ordinary one: a second door added later that reads the
+ * environment variable directly, and so never learns about the stored approval, sends the author back to
+ * a browser that has already approved it, or keeps working from a credential the others have forgotten.
+ *
+ * The Hub address is in the same rule. It is DERIVED from the place being written to, so a second copy
+ * of it typed into a script or a skill is a copy that rots into a link to somewhere that moved.
+ */
+{
+  const OWNER = "scripts/credential.mjs";
+  /*
+   * The check that PROVES the owner is the one other file allowed to name the environment variable: it
+   * has to clear it to test the stored path at all. It is exempt by NAME rather than by pattern, so a
+   * third file cannot join the exemption by looking like a test.
+   */
+  const VERIFIER = "scripts/t_credential.js";
+  const RULES = [
+    [/process\.env\.PTY_MCP_TOKEN/, "reads the credential out of the environment"],
+    [/account\?tab=mcp/, "spells out where a token is made"],
+  ];
+  const files = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (/\.(js|mjs|md)$/.test(e.name)) files.push(full);
+    }
+  };
+  walk(join(ROOT, "scripts"));
+  walk(join(ROOT, "skills"));
+  const strays = [];
+  for (const f of files) {
+    const relative = f.replace(ROOT + "/", "");
+    if (relative === OWNER || relative === VERIFIER) continue;
+    const text = readFileSync(f, "utf8");
+    for (const [pattern, what] of RULES) if (pattern.test(text)) strays.push(`${relative} ${what}`);
+  }
+  probe(
+    strays.length === 0,
+    `only ${OWNER} decides what a credential is, and where one is made`,
+    strays.length ? strays.join("; ") : "",
+  );
+}
+
 console.log(
   `\n${failed === 0 ? "every probe clean" : `${failed} probe(s) FAILED`}`,
 );

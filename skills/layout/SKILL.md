@@ -69,6 +69,15 @@ about which programme the course belongs to.
 
 ## The order, and the two commands that make it cheap
 
+**0. Check you can reach the Hub before anything long starts.**
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/credential.mjs" status
+```
+
+It asks nobody anything and answers at once. If it says a click is needed, get it NOW, while the author
+is still at the keyboard, rather than forty figures into an upload.
+
 **1. Figures first.** A manifest carries no bytes and a storage key cannot be predicted, so the pictures
 go up before the file that references them. `images.mjs` sends a whole folder in one go, and
 `content_upload_image` is the door for a single picture added later. Write `figures.json` beside the
@@ -158,9 +167,20 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json --apply
 node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json --verify
 ```
 
-If no token is available, `content_import` over the MCP does the same job and needs none. It costs the
-length of the course in tokens, which is a real cost and a better one than a stalled upload. Say which
-door you used.
+**If it says nothing here can reach the Hub, that is one click and it is done for good.** Run it,
+with a five minute timeout because a person has to press a button:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/credential.mjs" login
+```
+
+Their own browser opens on the Hub and asks them to approve the Composer. Tell them to look for the
+window, and that it is once, not once a session. Then run the push again. It renews itself from then
+on, and they are only asked again if a month goes by with no upload or they revoke it themselves.
+
+If they cannot approve it at all, `content_import` over the MCP does the same job and needs no
+credential. It costs the length of the course in tokens, which is a real cost and a better one than a
+stalled upload. Say which door you used.
 
 **Keep what you sent.** After each plan and each apply:
 
@@ -385,12 +405,21 @@ Formula sheets, past papers and handouts reach a student as downloadable materia
 `content_materials`, not as blocks. A manifest carries no bytes, so nothing about a clean apply tells
 you they are missing.
 
-## The credential is yours, and you never go looking for another
+## The credential is theirs, and you never go looking for another
 
-`PTY_MCP_TOKEN` in the environment. Mint your own in the Hub: it is scoped to what you can already
-reach, and it expires.
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/credential.mjs" login` opens the author's own browser and they
+approve it once. It is scoped to what they can already reach, it is kept on their machine and nowhere
+else, and it renews itself without asking again. `status` says whether anything is needed; `forget`
+removes it.
 
-**If it is not there, stop and ask.** Do not search the machine, the repository, a password store or
+**Nothing about this is theirs to type.** They never see a token, never copy one and never open a
+terminal. If you find yourself about to ask an author to paste a secret to you, that is the bug.
+
+A hand-minted token is the exception, for a machine with no browser to open. `credential.mjs` prints
+where to make one, for whichever deployment is being written to. Do not write that address down here:
+it is derived, and a copy of it in a skill is a copy that rots.
+
+**If nothing works, stop and ask.** Do not search the machine, the repository, a password store or
 another service's configuration for something that might work. **Two uploads have been lost to an agent
 chasing this route: one posted an unrelated service's credential to this API, and one printed a third
 into a transcript**, where it stayed. Never echo a token, never paste one into a tool call, and never
