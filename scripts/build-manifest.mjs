@@ -965,8 +965,24 @@ function buildUnit(unitLines, number, title, series) {
              working has been seen this is off, so a closing remark ends the example. */
           (!run.some(isWorking) && reachesWorking());
         if (!continues) break;
+        /*
+         * A TABLE ENDS THE RUN, because a callout is ONE box and a table cannot be inside it.
+         *
+         * Lifting the table out and carrying on past it reorders the lecture: on a published course
+         * the box ran "So, the first journal entry would be:", then "So, the second...", then "So,
+         * the third...", and all three entries appeared after it in a row. A student read the first
+         * colon and got two more paragraphs before any entry arrived.
+         *
+         * Nothing is lost by stopping. The paragraphs after the table stay where the author put
+         * them, as prose, in source order, which is what they were before they were swallowed.
+         */
+        if (isTable(next)) {
+          i += 1;
+          tables.push(next);
+          break;
+        }
         i += 1;
-        (isTable(next) ? tables : run).push(next);
+        run.push(next);
       }
 
       /*
