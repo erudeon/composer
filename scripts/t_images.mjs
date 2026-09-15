@@ -20,6 +20,11 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
+import {
+  FRAMING_ALLOWANCE_BYTES,
+  HUB_BODY_LIMIT_BYTES,
+} from "./figure-batches.mjs";
+
 let failed = 0;
 let ran = 0;
 const check = (what, got, expected) => {
@@ -118,7 +123,7 @@ function run(file, port) {
 
 // ── 1. Packing, which decides whether a course uploads at all.
 {
-  const file = figures(6, 2); // 12 MB in total: more than one request at 8 MB, one at 20 MB.
+  const file = figures(12, 1); // 12 MB in total: more than one request at the derived budget.
   const { server, sizes, port } = await serve(() => ({
     status: 200,
     body: { uploaded: [], failed: [] },
@@ -131,8 +136,19 @@ function run(file, port) {
     true,
   );
   check(
-    "NO REQUEST CARRIES MORE THAN 8 MB OF PICTURES. Production refused 11.1 MB and accepted 7.6 MB, so packing to the route's documented 20 MB failed on the first request of every real course.",
-    sizes.every((n) => n < 9 * 1024 * 1024),
+    `NO REQUEST BODY REACHES THE HUB'S MEASURED LIMIT. A body of ${HUB_BODY_LIMIT_BYTES} bytes arrives whole and one ten bytes larger does not, so this asserts the thing that actually refuses rather than a number somebody picked.`,
+    sizes.every((n) => n < HUB_BODY_LIMIT_BYTES),
+    true,
+  );
+  /*
+   * AND THE ALLOWANCE COVERS WHAT IT IS AN ALLOWANCE FOR. The budget above is the measured limit MINUS
+   * this, so if the framing ever outgrew it, every picture would be inside budget and the body would
+   * still cross the limit -- which is the failure this whole file exists to prevent, arriving silently.
+   */
+  const framing = sizes.reduce((sum, n) => sum + n, 0) - 12 * 1024 * 1024;
+  check(
+    `THE FRAMING ALLOWANCE IS ENOUGH FOR THE FRAMING. Measured here: ${framing} bytes over ${sizes.length} requests, against ${FRAMING_ALLOWANCE_BYTES} allowed EACH.`,
+    framing <= FRAMING_ALLOWANCE_BYTES * sizes.length,
     true,
   );
   check(
