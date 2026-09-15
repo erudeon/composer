@@ -151,25 +151,25 @@ for (const topic of manifest.topics) {
         /* A label is a name, not a sentence, so it does not end on a stop or a colon. */
         const said = plain(pending.join(" ")).replace(/[.:\s]+$/, "");
         pending = [];
+        /*
+         * A LINE TOO LONG FOR A LABEL IS NOT CUT IN HALF. Splitting at the 118th character puts the
+         * break wherever it lands: one real course got a step labelled "...400 units × 100% + 600"
+         * with "Goods Inventory" as its note, and another whose note was "*Process 1*) = €1,200".
+         * A calculation already says what it is on the LEFT of its equals sign, so that becomes the
+         * name and the whole line goes underneath it, entire.
+         */
+        const name = (line) => {
+          const lhs = line.split("=")[0].replace(/[,:\s]+$/, "").trim();
+          return lhs && lhs.length <= 120 ? lhs : "Continue";
+        };
         if (!said) {
           const label = plain(para);
           if (label.length <= 120) steps.push({ label });
-          else {
-            const at2 = label.lastIndexOf(" ", 118);
-            const cut = at2 > 40 ? at2 : 118;
-            steps.push({ label: label.slice(0, cut).replace(/[,:\s]+$/, ""), note: label.slice(cut).trim() });
-          }
+          else steps.push({ label: name(label), note: label });
           continue;
         }
         if (said.length <= 120) steps.push({ label: said, note: plain(para) });
-        else {
-          const at2 = said.lastIndexOf(" ", 118);
-          const cut = at2 > 40 ? at2 : 118;
-          steps.push({
-            label: said.slice(0, cut).replace(/[,:\s]+$/, ""),
-            note: `${said.slice(cut).trim()} ${plain(para)}`.trim(),
-          });
-        }
+        else steps.push({ label: name(plain(para)), note: `${said} ${plain(para)}`.trim() });
       }
       /* A closing sentence with no calculation after it still belongs to the last step. */
       if (pending.length && steps.length) {
