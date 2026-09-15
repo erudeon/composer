@@ -89,6 +89,43 @@ const body = fs.readFileSync(file, "utf8");
  * A plan is allowed through, because a plan writes nothing and seeing the operations is often how
  * somebody works out which element a passage wants.
  */
+/*
+ * AND THE BUILD MUST COME FROM CODE THAT EXISTS IN GIT.
+ *
+ * A course is built by these scripts, so a manifest is only as reproducible as the checkout that made
+ * it. Publishing from a DIRTY one puts behaviour on a live course that exists nowhere anybody else can
+ * see: the next operator rebuilds from `main`, gets something different, and cannot tell which of the
+ * two a student is reading.
+ *
+ * It happened. An in-flight change here was applied to a published lecture and lifted a whole worked
+ * example into one callout, so "So, the first journal entry would be:" sat inside a box and the three
+ * journal entries sat outside it. Nothing said a word.
+ *
+ * A plan is allowed through: it writes nothing, and seeing the operations is how a change gets judged
+ * before it is committed. `--dirty-ok` is the escape hatch, spelled out, for the case where the change
+ * IS the thing being tested.
+ */
+if (apply && !process.argv.includes("--dirty-ok")) {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const status = spawnSync("git", ["-C", here, "status", "--porcelain", "--untracked-files=no"], {
+    encoding: "utf8",
+  });
+  const dirty = (status.stdout ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (status.status === 0 && dirty.length) {
+    console.error(
+      `\nNothing was sent. ${dirty.length} file(s) in this checkout are not committed, so the manifest\n` +
+        "was built from code that exists nowhere but this machine:\n" +
+        dirty.map((l) => `  ${l}`).join("\n") +
+        "\n\nCommit them, rebuild, and re-run. Drop --apply to see the operations without sending,\n" +
+        "or pass --dirty-ok if publishing the uncommitted behaviour is the point.",
+    );
+    process.exit(1);
+  }
+}
+
 if (apply) {
   const handcraft = spawnSync(
     process.execPath,

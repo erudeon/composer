@@ -572,6 +572,19 @@ function tableBlock(para, caption) {
  * step's label NAMES the move and never says "Step 2", and the author already wrote the move after the
  * number. So the number goes and their sentence becomes the label.
  */
+/**
+ * A STEP'S NOTE IS PLAIN TEXT, so every mark in it is drawn as a character. The emphasis goes, and so
+ * does the hyphen of a list: an author who answers a step with two bullets got "- WIP = ..." on the
+ * page, hyphen and all. The lines stay separate; only the markers go.
+ */
+const plainNote = (para) =>
+  para
+    .trim()
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*]\s+/, "").replace(/\*\*/g, "").trim())
+    .filter(Boolean)
+    .join("\n");
+
 function workedBlock(paras, title) {
   const steps = [];
   const problem = [];
@@ -630,7 +643,7 @@ function workedBlock(paras, title) {
        * note did not, so a bulleted answer under a step reached the page as "**EUR 8,000**" with the
        * asterisks drawn. There is nowhere for the author's emphasis to go here, so it goes.
        */
-      else last.note = [last.note, para.trim().replace(/\*\*/g, "")].filter(Boolean).join(" ");
+      else last.note = [last.note, plainNote(para)].filter(Boolean).join(" ");
       continue;
     }
     problem.push(para.trim());

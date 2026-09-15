@@ -143,7 +143,82 @@ const RULES = [
     test: (b) =>
       JSON.stringify(b).includes("<!-- style:") && "metadata a reader must never see",
   },
+  {
+    /*
+     * AN EQUATION WIDER THAN THE PAPER IS CLIPPED, and nothing says so: KaTeX renders it, the write
+     * path stores it, and the reader draws as much of it as fits and hides the rest behind a scroll
+     * shadow a student on paper never scrolls. Ten of them on one real course, two clipped mid-line,
+     * and the widest was on a lecture that was already published.
+     *
+     * A fraction is as wide as its WIDER half, not the sum of both, so the estimate collapses each
+     * one to that before measuring. `\\` is a line break in an aligned block, so the widest LINE is
+     * what counts and stacking an equation is the fix.
+     */
+    name: "a formula is wider than the sheet",
+    becomes: "the same maths, stacked with \\begin{aligned} so it breaks after the equals sign",
+    test: (b) => {
+      if (b.type !== "formula" || !b.latex) return null;
+      const w = latexWidth(b.latex);
+      return w > FORMULA_WIDTH && `about ${w} characters drawn on one line, and a sheet fits about ${FORMULA_WIDTH}`;
+    },
+  },
+  {
+    /*
+     * A PLAIN-TEXT FIELD DRAWS ITS MARKDOWN LITERALLY. A worked example's step label and note, a
+     * chart's title and its marker labels, a table's caption: every one is words, not rich text, so
+     * `**Finished Goods**` reaches a student with the asterisks on. Found by an author, on a page,
+     * after every automated check here had passed the block.
+     */
+    name: "markdown in a field that is drawn as plain text",
+    becomes: null,
+    test: (b) => {
+      const hits = [];
+      const look = (label, v) => {
+        if (typeof v === "string" && /\*\*|`|^\s*[-*]\s|\[[^\]]*\]\([^)]*\)/m.test(v))
+          hits.push(label);
+      };
+      look("caption", b.caption);
+      if (b.type === "chart") {
+        look("title", b.title);
+        for (const m of b.markers ?? []) look("marker label", m.label);
+        for (const x of b.series ?? []) look("series label", x.label);
+      }
+      if (b.type === "worked-example")
+        for (const [i, st] of (b.steps ?? []).entries()) {
+          look(`step ${i + 1} label`, st.label);
+          look(`step ${i + 1} note`, st.note);
+        }
+      return hits.length ? `${[...new Set(hits)].join(", ")} carries markdown that is drawn as characters` : null;
+    },
+  },
 ];
+
+/** A sheet of body text fits roughly this many characters of drawn maths on one line. */
+const FORMULA_WIDTH = 62;
+
+/** What a latex expression reads as once its commands are gone: a rough proxy for drawn width. */
+const asText = (x) =>
+  x
+    .replace(/\\text\{([^}]*)\}/g, "$1")
+    .replace(/\\(begin|end)\{[a-z*]+\}/g, "")
+    .replace(/\\[a-zA-Z]+/g, " ")
+    .replace(/[{}&]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** The widest line, with every fraction collapsed to its wider half and `\\` treated as a break. */
+function latexWidth(latex) {
+  let out = latex;
+  for (let guard = 0; guard < 40 && /\\frac\{/.test(out); guard += 1) {
+    const before = out;
+    out = out.replace(
+      /\\frac\{((?:[^{}]|\{[^{}]*\})*)\}\{((?:[^{}]|\{[^{}]*\})*)\}/,
+      (_, a, b) => "#".repeat(Math.max(asText(a).length, asText(b).length)),
+    );
+    if (out === before) break;
+  }
+  return Math.max(...out.split(/\\\\/).map((line) => asText(line).length));
+}
 
 let found = 0;
 for (const topic of manifest.topics) {
