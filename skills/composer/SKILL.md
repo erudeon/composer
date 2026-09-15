@@ -42,6 +42,11 @@ and a third of a lecture missing.
 The three unbuilt phases are one page each in `reference/short-phases.md`, with what has to exist before
 they can be. **Do not improvise them.** Say they are not built, say what is missing, and carry on.
 
+**A course that is already built and has to exist somewhere else is not in this line at all.** Copying
+one between hubs, staging to production most often, is the `migrate` skill. It has its own order and its
+own traps, and every one of them reports success while losing content, so do not assemble it out of the
+export and push scripts by hand.
+
 ## Who you are talking to
 
 **The person on the other side wrote the summary.** They are an author, usually a student, who knows
