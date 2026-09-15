@@ -111,16 +111,16 @@ and not one of them is a guess.
 
 Exactly one disposition each, and the class decides it.
 
-| The drawing is                                                           | Disposition                                                                           |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| A graph of a function the text states                                    | `chart`, drawn from the expression the text gives                                     |
-| A graph with pen annotation on it                                        | `chart`: what the pen pointed at becomes part of the chart, nothing is kept as pixels |
-| A 3D surface                                                             | `figure`, regenerated with alt text naming the function                               |
-| An equation pasted as a picture                                          | `retype` as LaTeX                                                                     |
-| A shape drawn over the text: a circle, an arrow, a floating equation box | `fold`: dropped, and what it said goes into the block it annotated                    |
-| A duplicate of an earlier picture                                        | one chart, referenced twice                                                           |
-| Old branding: a cover, marketing                                         | `drop`                                                                                |
-| In a unit nobody is building yet                                         | `later`, with the unit named in `why`                                                 |
+| The drawing is | Disposition |
+| --- | --- |
+| A graph of a function the text states | `chart`, drawn from the expression the text gives |
+| A graph with pen annotation on it | `chart`: what the pen pointed at becomes part of the chart, nothing is kept as pixels |
+| A 3D surface | `figure`, regenerated with alt text naming the function |
+| An equation pasted as a picture | `retype` as LaTeX |
+| A shape drawn over the text: a circle, an arrow, a floating equation box | `fold`: dropped, and what it said goes into the block it annotated |
+| A duplicate of an earlier picture | one chart, referenced twice |
+| Old branding: a cover, marketing | `drop` |
+| In a unit nobody is building yet | `later`, with the unit named in `why` |
 
 **`later` is how Intake closes on ONE unit.** A course with five units and seventy-nine drawings does
 not need all seventy-nine settled to build the first lecture, and pretending it does turns the first

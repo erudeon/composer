@@ -30,29 +30,29 @@ be an import rather than a rewrite.
 
 ## The fields
 
-| Field     | What it holds                                                                                                                                                             |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`      | Unique within the run. `f-001` upward. Never reused, even after a line is closed                                                                                          |
-| `class`   | One of the seven below. It is what the phase report counts by                                                                                                             |
-| `what`    | One sentence, stating the defect and not its remedy                                                                                                                       |
-| `where`   | The file, unit, block id or drawing index. A line nobody can locate cannot be worked off                                                                                  |
-| `foundBy` | `intake`, `analyze`, `compose`, `layout`, `audit`, `review`, or a person's name                                                                                           |
-| `foundAt` | ISO timestamp                                                                                                                                                             |
-| `state`   | `open`, `done`, or `accepted`                                                                                                                                             |
-| `did`     | What was done. Required when `state` is `done`                                                                                                                            |
-| `why`     | The reason. **Required when `state` is `accepted`, and required for every substantive edit.** A substantive edit without a reason is a failure of Audit, whatever it says |
+| Field | What it holds |
+| --- | --- |
+| `id` | Unique within the run. `f-001` upward. Never reused, even after a line is closed |
+| `class` | One of the seven below. It is what the phase report counts by |
+| `what` | One sentence, stating the defect and not its remedy |
+| `where` | The file, unit, block id or drawing index. A line nobody can locate cannot be worked off |
+| `foundBy` | `intake`, `analyze`, `compose`, `layout`, `audit`, `review`, or a person's name |
+| `foundAt` | ISO timestamp |
+| `state` | `open`, `done`, or `accepted` |
+| `did` | What was done. Required when `state` is `done` |
+| `why` | The reason. **Required when `state` is `accepted`, and required for every substantive edit.** A substantive edit without a reason is a failure of Audit, whatever it says |
 
 ## The classes
 
-| Class         | It means                                                                                                                |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `file`        | Something wrong with the document as a document: branding, an empty heading, a manual page break, an emoji in a heading |
-| `drawing`     | A drawing and its disposition, including a crop that may never be uploaded                                              |
-| `maths`       | An equation that was a picture, one that lives in a floating text box, one KaTeX refuses                                |
-| `gap`         | A topic the exams test and the material does not cover. **Published as a gap or left. Never written in**                |
-| `substantive` | A change to what the summary says. Certain, small, and never without `why`                                              |
-| `missing`     | A checklist item we do not hold. Does not block the phases that follow; blocks Publish until accepted                   |
-| `skip`        | A phase that did not run, and the reason. The course status still says which phases it went through                     |
+| Class | It means |
+| --- | --- |
+| `file` | Something wrong with the document as a document: branding, an empty heading, a manual page break, an emoji in a heading |
+| `drawing` | A drawing and its disposition, including a crop that may never be uploaded |
+| `maths` | An equation that was a picture, one that lives in a floating text box, one KaTeX refuses |
+| `gap` | A topic the exams test and the material does not cover. **Published as a gap or left. Never written in** |
+| `substantive` | A change to what the summary says. Certain, small, and never without `why` |
+| `missing` | A checklist item we do not hold. Does not block the phases that follow; blocks Publish until accepted |
+| `skip` | A phase that did not run, and the reason. The course status still says which phases it went through |
 
 ## The rules
 

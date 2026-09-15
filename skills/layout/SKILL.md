@@ -49,13 +49,13 @@ row if there is none. **Nothing later creates it for you**, and nothing later ch
 
 Five things have to be right, and they were all settled in Intake:
 
-|                            | Why it is not cosmetic                                                                                                                                                                                                                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Title**                  | What a student reads in the catalogue, and the source of the slug in every link                                                                                                                                                                                                             |
-| **Programme**              | A course belongs to exactly one, and moving it later is refused while it is placed                                                                                                                                                                                                          |
-| **Period**                 | The block or term it is taught in. The manifest carries it, so a load sets it without a second call; `course_schedule` is the repair path and lists what a programme actually has. A period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
-| **Container word**         | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets"                                                                                                                                                                                              |
-| **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows                                                                                                                                                                            |
+| | Why it is not cosmetic |
+| --- | --- |
+| **Title** | What a student reads in the catalogue, and the source of the slug in every link |
+| **Programme** | A course belongs to exactly one, and moving it later is refused while it is placed |
+| **Period** | The block or term it is taught in. The manifest carries it, so a load sets it without a second call; `course_schedule` is the repair path and lists what a programme actually has. A period from another programme is refused outright, so a wrong one is a wrong course, not a wrong label |
+| **Container word** | `topicTerm`, one word for the course. It is what every count says: "5 weeks", "5 problem sets" |
+| **Unit order and numbers** | Reading order is a statement about the whole course. Changing it later renames, renumbers and reorders live rows |
 
 **Then READ THE ROW BACK and show the author what it says**, in one line each: title, programme,
 period, container word, address. Not what you sent. What is stored.
@@ -68,6 +68,15 @@ ever catches it: every later check compares a lecture against its source, and th
 about which programme the course belongs to.
 
 ## The order, and the two commands that make it cheap
+
+**0. Check you can reach the Hub before anything long starts.**
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/credential.mjs" status
+```
+
+It asks nobody anything and answers at once. If it says a click is needed, get it NOW, while the author
+is still at the keyboard, rather than forty figures into an upload.
 
 **1. Figures first.** A manifest carries no bytes and a storage key cannot be predicted, so the pictures
 go up before the file that references them. `images.mjs` sends a whole folder in one go, and
@@ -165,9 +174,20 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json --apply
 node "${CLAUDE_PLUGIN_ROOT}/scripts/push.mjs" manifest.json --verify
 ```
 
-If no token is available, `content_import` over the MCP does the same job and needs none. It costs the
-length of the course in tokens, which is a real cost and a better one than a stalled upload. Say which
-door you used.
+**If it says nothing here can reach the Hub, that is one click and it is done for good.** Run it,
+with a five minute timeout because a person has to press a button:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/credential.mjs" login
+```
+
+Their own browser opens on the Hub and asks them to approve the Composer. Tell them to look for the
+window, and that it is once, not once a session. Then run the push again. It renews itself from then
+on, and they are only asked again if a month goes by with no upload or they revoke it themselves.
+
+If they cannot approve it at all, `content_import` over the MCP does the same job and needs no
+credential. It costs the length of the course in tokens, which is a real cost and a better one than a
+stalled upload. Say which door you used.
 
 **Keep what you sent.** After each plan and each apply:
 
@@ -264,13 +284,13 @@ Which callout kind, what a chart takes, and what the closer is called all come f
 written after a real course went up and came back. A prose block is for the author's PARAGRAPHS. When a
 passage is one of the shapes below, it becomes that block and stops being prose:
 
-| In the source                                             | Becomes               | What it looks like left in prose                                                                                                           |
-| --------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `**Example**: ...`, whether a paragraph or a bullet       | an `example` callout  | a sentence no different from the ones around it, and the reader never sees an example on the page                                          |
-| an example with `**Step 1:** ...` in it                   | a `worked-example`    | a wall of bold numbers and boxed equations, with no reveal and no answer                                                                   |
-| a markdown table                                          | a `table` block       | a markdown grid whose every cell draws its own boxed equation                                                                              |
-| three or more `- **Name**: <formula>`                     | a `definitions` table | a column of bold words each trailing a display line                                                                                        |
-| a display equation a student must KNOW                    | a `formula` block     | a bare equation, with the symbols explained in a sentence somewhere below it                                                               |
+| In the source | Becomes | What it looks like left in prose |
+| --- | --- | --- |
+| `**Example**: ...`, whether a paragraph or a bullet | an `example` callout | a sentence no different from the ones around it, and the reader never sees an example on the page |
+| an example with `**Step 1:** ...` in it | a `worked-example` | a wall of bold numbers and boxed equations, with no reveal and no answer |
+| a markdown table | a `table` block | a markdown grid whose every cell draws its own boxed equation |
+| three or more `- **Name**: <formula>` | a `definitions` table | a column of bold words each trailing a display line |
+| a display equation a student must KNOW | a `formula` block | a bare equation, with the symbols explained in a sentence somewhere below it |
 | a closing section headed `In Short`, `Summary` or `Recap` | an `in-short` callout | one more section of the lecture, reading exactly like the teaching before it, when its whole job is to look different to somebody revising |
 
 **A step's label NAMES THE MOVE, and the author usually wrote it.** `**Step 4 (Step 1 again):** Divide
@@ -305,6 +325,7 @@ Put it in the caption and take it out of the prose. No prose block should ever E
 that does not look like maths: this document opens its longest worked example with a fraction and a
 sentence of intent before its first step, and a run that stopped there turned the most important example
 in the lecture into a callout holding one fraction. Look AHEAD for a step before deciding.
+
 
 **A graph is drawn from the source's expression, never from points read off a picture.** Where the text
 gives no expression, say so in the chart's title and make it schematic.
@@ -391,12 +412,21 @@ Formula sheets, past papers and handouts reach a student as downloadable materia
 `content_materials`, not as blocks. A manifest carries no bytes, so nothing about a clean apply tells
 you they are missing.
 
-## The credential is yours, and you never go looking for another
+## The credential is theirs, and you never go looking for another
 
-`PTY_MCP_TOKEN` in the environment. Mint your own in the Hub: it is scoped to what you can already
-reach, and it expires.
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/credential.mjs" login` opens the author's own browser and they
+approve it once. It is scoped to what they can already reach, it is kept on their machine and nowhere
+else, and it renews itself without asking again. `status` says whether anything is needed; `forget`
+removes it.
 
-**If it is not there, stop and ask.** Do not search the machine, the repository, a password store or
+**Nothing about this is theirs to type.** They never see a token, never copy one and never open a
+terminal. If you find yourself about to ask an author to paste a secret to you, that is the bug.
+
+A hand-minted token is the exception, for a machine with no browser to open. `credential.mjs` prints
+where to make one, for whichever deployment is being written to. Do not write that address down here:
+it is derived, and a copy of it in a skill is a copy that rots.
+
+**If nothing works, stop and ask.** Do not search the machine, the repository, a password store or
 another service's configuration for something that might work. **Two uploads have been lost to an agent
 chasing this route: one posted an unrelated service's credential to this API, and one printed a third
 into a transcript**, where it stayed. Never echo a token, never paste one into a tool call, and never

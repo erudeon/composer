@@ -37,7 +37,6 @@ with its reason, so the course still says which phases it went through.
    It touches nothing but those spaces: not one inside `\text{}`, where the space is already real, and
    not one that ends a control word, where it is load-bearing. Re-run `katex-check.js` afterwards and
    `welded` must be 0.
-
 5. **Fold every shape drawn over the text** into the block it annotated, and delete the shape.
 6. **Collapse a duplicated picture** to one reference.
 
@@ -61,7 +60,6 @@ with its reason, so the course still says which phases it went through.
    **Do the merge where every other transformation happens: over the WHOLE unit, before it is sliced.**
    Merging when the blocks are cut produces prose that is a perfect copy of text the source does not
    contain, and the verbatim check refuses it, correctly.
-
 9. **A heading that is an equation.** A display formula standing where a title should be. Keep the
    formula as the formula it is and give the section a short title the source supports. If the source
    gives no words for it, that is a line to ask about rather than one to invent.

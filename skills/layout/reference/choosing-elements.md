@@ -27,7 +27,6 @@ the shape it arrives in.
 - [A question lives in a bank, not in a lesson](#a-question-lives-in-a-bank-not-in-a-lesson)
 - [Where a block sits on the page, which is a choice you are making anyway](#where-a-block-sits-on-the-page-which-is-a-choice-you-are-making-anyway)
 - [Practice questions, and the field most people never fill in](#practice-questions-and-the-field-most-people-never-fill-in)
-
 ## A picture of a graph
 
 **The text states a function of x.** A `chart` with `fn` and a `domain`. This is the whole point: a plot
@@ -227,7 +226,7 @@ somebody has to work through and a word underlined in their reading, so a glossa
 everything defines nothing. One course shipped 310 terms across eleven lectures, about 28 a unit, which
 is every bolded phrase in its source.
 
-**The test, and it is one question:** could a student be asked _what is X?_ in an exam, and would the
+**The test, and it is one question:** could a student be asked *what is X?* in an exam, and would the
 answer need more than the sentence X appeared in?
 
 **Include**
@@ -334,3 +333,4 @@ differently is not a failed write, and treating it as one is how a clean bank ge
 
 **Ask `content_guide` `questions` before writing a bank.** Every type, every field and the label
 vocabulary are generated from the schema the write path validates against.
+
