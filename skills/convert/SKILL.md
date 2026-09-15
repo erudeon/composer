@@ -65,6 +65,16 @@ bytes are not a zip, whatever its extension says.
 Word's own equations as `$…$` LaTeX. That last part is the whole reason it exists: the common converters
 drop `<m:oMath>` silently, so a maths document comes out looking clean and missing every formula.
 
+It writes **`[FIGURE:word/media/imageN.png]`** on its own line where each picture sat. A picture lives in
+a paragraph carrying no text, so without this its POSITION exists nowhere: the inventory says a picture
+is in the document and which heading it falls under, and nothing says which paragraph. Layout substitutes
+each marker for the markdown the upload answers. The count is printed as `figures=`, and it must equal
+the inventory's `pictures`; `corpus-check.mjs` compares the two and says so when they disagree.
+
+A marker under a bullet is indented to that item's content column so the list is not cut in two, and one
+in a heading is written after the heading, because a picture pasted into a heading belongs to the section
+it opens.
+
 It also writes out the styles the AUTHOR made, as `<!-- style: In Short -->` above the paragraph they
 mark. Word flags those itself, and they are the author's own statement of what a paragraph is for:
 Layout reads them instead of guessing. One real summary carries 37 of them.

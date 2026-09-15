@@ -152,10 +152,24 @@ for (const file of files) {
   const bad = num(katex.out, "refused");
   const headings = num(extract.out, "headings");
 
+  /*
+   * THE TWO HALVES MUST AGREE. `open-docx.js` counts the pictures in the file and `docx.js` counts the
+   * markers it wrote for them; a picture with no marker is now a DEFECT rather than a non-event, and it
+   * is invisible on its own because the inventory still lists the picture and the markdown still reads
+   * fine. Both numbers were already in this scope and nothing compared them.
+   */
+  const marked = num(extract.out, "figures");
+  if (marked < counts.pictures) {
+    notes.push(
+      `${counts.pictures - marked} picture(s) have no position marker, so they can only be placed by guessing`,
+    );
+  }
+
   totals.eqs += eqs;
   totals.bad += bad;
   totals.headings += headings;
-  if (bad > 0 || extract.code === 3) problems.push([name, notes.join("; ")]);
+  if (bad > 0 || extract.code === 3 || marked < counts.pictures)
+    problems.push([name, notes.join("; ")]);
 
   console.log(
     `${name.padEnd(40)} ${head(counts.pictures, 4)} ${head(counts.textboxes, 3)} ` +

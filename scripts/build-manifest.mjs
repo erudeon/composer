@@ -1296,6 +1296,33 @@ if (!manifest.course.programCode)
     "No programme code. Put it in composer.json under courseShell, or export PROGRAM_CODE from course-data.mjs.",
   );
 
+/*
+ * A POSITION MARKER IS SCAFFOLDING, AND IT MUST NOT REACH A STUDENT.
+ *
+ * `docx.js` writes `[FIGURE:word/media/imageN.png]` where each picture sat, and the source of record is
+ * what every fidelity rule diffs against — so a marker left in a body is agreed with by the verbatim
+ * check, drawn as literal text on the page, and reported by nothing. The substitution is the operator's
+ * step (`images.mjs` answers the markdown, Layout pastes it); this is the refusal that makes forgetting
+ * it loud instead of silent.
+ */
+const withMarkers = [];
+for (const t of topics) {
+  for (const b of t.blocks) {
+    for (const mk of String(b.body ?? "").matchAll(/\[FIGURE:([^\]]+)\]/g)) {
+      withMarkers.push(`${t.slug ?? t.title} / ${b.id}: ${mk[1]}`);
+    }
+  }
+}
+if (withMarkers.length > 0) {
+  fail(
+    `${withMarkers.length} picture marker(s) are still in the text, and they would be drawn as literal ` +
+      `text on the page:\n  ${withMarkers.slice(0, 8).join("\n  ")}` +
+      (withMarkers.length > 8 ? `\n  ... and ${withMarkers.length - 8} more` : "") +
+      `\n\nUpload the pictures (scripts/images.mjs), then replace each marker with the markdown the ` +
+      `upload answered in <figures>.json.uploaded.json.`,
+  );
+}
+
 const out = join(folder, "04-manifest", "manifest.json");
 writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`);
 

@@ -90,6 +90,15 @@ Hand off to the `convert` skill. It returns the source of record and the media i
 node "${CLAUDE_PLUGIN_ROOT}/scripts/propose-dispositions.mjs" <media-inventory.json> <source-of-record.txt>
 ```
 
+**When the author wants their own pictures published as pictures, add `--as-is`.** Everything below
+assumes the best answer to a drawn graph is a chart drawn from its function; for a course whose pictures
+are diagrams, screenshots and photographs that is wrong on every one of them, and the run ends with all
+of them UNCERTAIN and the author asked to look at each in turn. `--as-is` states the decision once, with
+its reason on the record: every picture is a figure, nothing is traced or redrawn. **It is the AUTHOR'S
+decision, so ask for it; never reach for it to clear the gate.** A near miss (`--asis`, `--as-is=true`)
+is refused rather than ignored, because the silent fallback is the direction that traces a curve over a
+photograph.
+
 It pairs each drawing with the text around it and PROPOSES, quoting the evidence: a chart where the
 prose states a function of x, a figure for a surface, a fold for a shape or a text box, and UNCERTAIN
 where it found nothing. **It exits non-zero while anything is uncertain**, because that is a thing a

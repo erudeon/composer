@@ -87,7 +87,14 @@ images, then:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/images.mjs" figures.json --course <courseId>
 ```
 
-It answers a file-name-to-markdown map. Substitute that into the manifest verbatim.
+It answers a file-name-to-markdown map. **Substitute it for the `[FIGURE:word/media/imageN.png]` markers
+the source of record carries**, verbatim, and never rebuild that markdown from the key: a key is minted
+per environment and per course, and one typed by hand paints nothing.
+
+The map is keyed on the file's BASENAME (`image1.png`) and the marker names it from the work directory
+(`word/media/image1.png`), so match on the basename. `build-manifest.mjs` REFUSES a manifest still
+holding a marker, naming every one: left in, it is drawn on the page as literal text, and the verbatim
+check agrees with it because the marker is in the source of record too.
 
 **2. Build the course file with `build-manifest.mjs`.** Not by emitting it into a tool call: that costs
 its whole length in tokens twice, and every re-emission can corrupt text this upload exists to
