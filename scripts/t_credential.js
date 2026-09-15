@@ -136,8 +136,18 @@ function listen(server) {
   const dead = fakeHub({ tokenStatus: 400 });
   await new Promise((r) => dead.listen(new URL(origin).port, "127.0.0.1", r));
   assert.strictEqual(await bearerFor(origin), null);
-  assert.ok(!JSON.parse(readFileSync(STORE, "utf8"))[origin], "a finished credential was kept");
+  assert.ok(
+    !JSON.parse(readFileSync(STORE, "utf8"))[origin]?.refreshToken,
+    "a finished credential was kept",
+  );
   dead.close();
+
+  /* Forgetting the credential keeps the registration: a re-approval must not register a second client. */
+  assert.strictEqual(
+    JSON.parse(readFileSync(STORE, "utf8"))[origin]?.clientId,
+    "client-1",
+    "forgetting a finished credential threw the registration away too",
+  );
 
   console.log("t_credential: the author is asked once, and only a failed renewal asks again");
 })().catch((error) => {

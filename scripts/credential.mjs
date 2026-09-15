@@ -106,10 +106,20 @@ function saveRecord(hub, record) {
   writeStore(store);
 }
 
-function dropRecord(hub) {
+/**
+ * Forget the credential, KEEP the registration.
+ *
+ * `clientId` is not a secret and not a credential: it is this machine's name for itself, and a loopback
+ * registration stays valid on tomorrow's port (RFC 8252 matches everything but the port). Deleting it
+ * with the credential meant every re-approval registered a brand new client, so a run of them would
+ * leave a drawer of identical rows on the Hub that nobody can tell apart or clean up.
+ */
+function forgetCredential(hub) {
   const store = readStore();
+  const kept = store[hub]?.clientId;
   if (!(hub in store)) return;
   delete store[hub];
+  if (kept) store[hub] = { clientId: kept };
   writeStore(store);
 }
 
@@ -169,7 +179,7 @@ export async function bearerFor(hub) {
   if (fromEnv) return fromEnv;
 
   const record = recordFor(hub);
-  if (!record?.refreshToken) return null;
+  if (!record?.refreshToken) return null; /** a bare clientId is a registration, not a sign-in */
 
   const stillFresh =
     record.accessToken &&
@@ -183,6 +193,14 @@ export async function bearerFor(hub) {
 /**
  * Rotate-on-use: the answer carries a NEW refresh token and the old one is spent, so a failure to write
  * the new one down locks the author out until they approve again. It is written before it is used.
+ *
+ * A KILLED PROCESS MID-RENEWAL LOOKS LIKE A STOLEN TOKEN, and that is expected rather than broken. If
+ * this process dies between the Hub consuming the old token and the write below, the store keeps a token
+ * the server has already spent; presenting it next time is the signal for a stolen credential, so the
+ * Hub revokes the connection and the author approves once more. It costs one click and a log line, and
+ * it is not worth carrying crash-recovery state to avoid: every alternative either throws away a working
+ * credential whenever the network is slow, or keeps two live tokens to guess between. It has happened
+ * exactly once here, when the whole application was quit mid-run.
  */
 async function renew(hub, record) {
   const tokenUrl = record.tokenUrl ?? (await discover(hub).then((d) => d.tokenUrl).catch(() => null));
@@ -214,7 +232,19 @@ async function renew(hub, record) {
      * the Hub was busy for a second would send the author back to the browser for nothing. Everything
      * else — offline, a gateway, a 500, a 429 — is temporary, and the credential is left where it is.
      */
-    if (cause?.status === 400 || cause?.status === 401) dropRecord(hub);
+    const finished = cause?.status === 400 || cause?.status === 401;
+    if (finished) forgetCredential(hub);
+    /*
+     * SAY WHY, to the agent, on stderr. A renewal that fails silently is indistinguishable from one that
+     * was never attempted, and the difference decides what the author is told: "press Approve again" is
+     * right for a finished credential and wrong for a laptop that is offline. Never the credential
+     * itself, and never on stdout, which some callers parse.
+     */
+    console.error(
+      finished
+        ? `Sign-in refused (${cause?.status}: ${cause?.message ?? "no reason given"}). Asking for a new one.`
+        : `Could not renew the sign-in right now (${cause?.message ?? "no reason given"}). Keeping it.`,
+    );
     return null;
   }
 }
@@ -427,7 +457,7 @@ async function main(argv) {
   }
 
   if (command === "forget") {
-    dropRecord(hub);
+    forgetCredential(hub);
     console.log(`Forgotten. The next upload will ask the author for one click.`);
     return 0;
   }
