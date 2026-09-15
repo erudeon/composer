@@ -205,12 +205,16 @@ async function renew(hub, record) {
     return body.access_token ?? null;
   } catch (cause) {
     /*
-     * A 4xx means this credential is finished: spent, revoked, or expired past renewal. Keeping it would
-     * make every later run pay a doomed request and report a network problem instead of the truth, which
-     * is that the author has to approve once more. Anything else (offline, a gateway, a 500) is
-     * temporary and the credential is left exactly where it is.
+     * 400 and 401 ONLY, which are the two the token endpoint answers when the credential itself is
+     * finished: spent, revoked, or expired past renewal. Keeping one of those would make every later run
+     * pay a doomed request and report a network problem instead of the truth, which is that the author
+     * has to approve once more.
+     *
+     * NOT every 4xx. A 429 is a rate limiter saying "later", and forgetting a working credential because
+     * the Hub was busy for a second would send the author back to the browser for nothing. Everything
+     * else — offline, a gateway, a 500, a 429 — is temporary, and the credential is left where it is.
      */
-    if (cause?.status >= 400 && cause?.status < 500) dropRecord(hub);
+    if (cause?.status === 400 || cause?.status === 401) dropRecord(hub);
     return null;
   }
 }

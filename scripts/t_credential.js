@@ -125,6 +125,13 @@ function listen(server) {
   assert.strictEqual(await bearerFor(origin), null, "an unreachable hub did not fail closed");
   assert.ok(existsSync(STORE) && JSON.parse(readFileSync(STORE, "utf8"))[origin], "an offline machine was signed out");
 
+  /* Stale, and the hub is merely BUSY: a rate limiter is not a sign-out, so the credential is kept. */
+  const busy = fakeHub({ tokenStatus: 429 });
+  await new Promise((r) => busy.listen(new URL(origin).port, "127.0.0.1", r));
+  assert.strictEqual(await bearerFor(origin), null);
+  assert.ok(JSON.parse(readFileSync(STORE, "utf8"))[origin], "a rate-limited renewal threw the credential away");
+  busy.close();
+
   /* Stale, and the hub says the credential is finished: forgotten, so the next run asks for a click. */
   const dead = fakeHub({ tokenStatus: 400 });
   await new Promise((r) => dead.listen(new URL(origin).port, "127.0.0.1", r));
