@@ -26,14 +26,16 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { bearerFor, noCredentialMessage } from "./credential.mjs";
+import { bearerFor, noCredentialMessage, PRODUCTION_HUB } from "./credential.mjs";
 
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, with no exception, so this script
- * cannot reach it: a door that exists is a door somebody uses at 2am. The rehearsal is `plan`, which
- * pre-flights every block and question against production and writes nothing.
+ * does not reach it by default: a door that exists is a door somebody uses at 2am. The rehearsal is
+ * `plan`, which pre-flights every block and question against production and writes nothing.
+ *
+ * The address itself is imported, not typed. It belongs to the file that owns the credential, because a
+ * second copy is the one that rots into a link to somewhere that moved.
  */
-const PRODUCTION_HUB = "https://hub.passtheyear.com";
 
 const USAGE = `
 Usage: node scripts/push.mjs <manifest.json> [--apply | --verify] [--hub <url>] [--show-request]
@@ -168,6 +170,7 @@ if (args.includes("--show-request")) {
     `-H "Authorization: Bearer $PTY_MCP_TOKEN"`,
     `-H "content-type: application/json"`,
   ];
+  /* The variable is normally unset now: this is the hand-run form, for a machine with no browser. */
   console.log(
     `curl -sS -X POST "${url}" \\\n  ${headers.join(" \\\n  ")} \\\n  --data-binary @${path.basename(file)}`,
   );
