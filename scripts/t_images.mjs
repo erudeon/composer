@@ -126,6 +126,11 @@ function run(file, port) {
   await run(file, port);
   server.close();
   check(
+    "A REQUEST WAS ACTUALLY SENT. `[].every(...)` is true, so every size assertion below passes on a run that sent nothing at all: one bad credential and the whole packing check goes quietly green.",
+    sizes.length > 0,
+    true,
+  );
+  check(
     "NO REQUEST CARRIES MORE THAN 8 MB OF PICTURES. Production refused 11.1 MB and accepted 7.6 MB, so packing to the route's documented 20 MB failed on the first request of every real course.",
     sizes.every((n) => n < 9 * 1024 * 1024),
     true,
@@ -161,9 +166,60 @@ function run(file, port) {
     [true, true],
   );
   check(
-    "and it does not report the status code in their place",
-    out.includes("answered 422"),
-    false,
+    "and every file gets exactly one verdict, its own. Asserting the ABSENCE of the status code passes on empty output too, which is the same vacuum as above.",
+    [
+      (out.match(/FAILED\s+pic1\.png/g) ?? []).length,
+      (out.match(/FAILED\s+pic2\.png/g) ?? []).length,
+      out.includes("2 failed"),
+    ],
+    [1, 1, true],
+  );
+}
+
+// ── 2b. A name the answer spells differently.
+{
+  const file = figures(2, 0.01);
+  const { server, port } = await serve(() => ({
+    status: 207,
+    body: { uploaded: [], failed: [{ name: "./pic1.png", error: "not an image" }] },
+  }));
+  const out = await run(file, port);
+  server.close();
+  check(
+    "A FILE THE ANSWER NAMES DIFFERENTLY IS STILL COUNTED ONCE. Pushing the server's rows wholesale and then adding the unmentioned ones counted `pic1.png` twice, made `failed` longer than the batch, and turned the one line whose job is to prove the run added up into `BUG: -1 figures unaccounted for`.",
+    [(out.match(/FAILED/g) ?? []).length, out.includes("2 failed"), out.includes("BUG")],
+    [2, true, false],
+  );
+  check(
+    "and the name it volunteered but was never sent is reported rather than swallowed",
+    out.includes('answered about "./pic1.png", which it was not sent'),
+    true,
+  );
+}
+
+// ── 2c. A 200 that answers about nothing.
+{
+  const file = figures(1, 0.01);
+  const { server, port } = await serve(() => ({ status: 200, body: { ok: true } }));
+  const out = await run(file, port);
+  server.close();
+  check(
+    "A 200 CARRYING NO ARRAYS STILL NAMES THE REQUEST. It marks every file failed, and hiding the line behind `!response.ok` alone left the operator a batch of failures with no request to attribute them to.",
+    [out.includes("request 1 of 1 failed: 200"), out.includes("1 failed")],
+    [true, true],
+  );
+}
+
+// ── 2d. A refusal that stops the run.
+{
+  const file = figures(6, 2); // more than one batch at 8 MB
+  const { server, sizes, port } = await serve(() => ({ status: 401, body: { error: "no" } }));
+  const out = await run(file, port);
+  server.close();
+  check(
+    "A DELIBERATE STOP IS NOT AN UNACCOUNTED FILE. The run stops because every remaining batch would be refused identically, and the batches never sent are named — otherwise the count reports them as figures that vanished and prints BUG at somebody who did nothing wrong.",
+    [sizes.length, out.includes("not attempted: the run stopped after request 1"), out.includes("BUG")],
+    [1, true, false],
   );
 }
 

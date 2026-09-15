@@ -50,13 +50,7 @@
 import { createServer } from "node:http";
 import { createHash, randomBytes } from "node:crypto";
 import { execFile } from "node:child_process";
-import {
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  renameSync,
-  chmodSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, platform } from "node:os";
 import { pathToFileURL } from "node:url";
@@ -67,11 +61,7 @@ export const PRODUCTION_HUB = "https://hub.passtheyear.com";
  * NOT in the Composer workspace. That lives in `~/Documents`, which on most Macs is synced to iCloud,
  * and a credential belongs on ONE machine. `~/.config` is the boring, local, unsynced place for it.
  */
-const CONFIG_DIR = join(
-  process.env.XDG_CONFIG_HOME || join(homedir(), ".config"),
-  "erudeon",
-  "composer",
-);
+const CONFIG_DIR = join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), "erudeon", "composer");
 const STORE = join(CONFIG_DIR, "credentials.json");
 
 /** Renew this long before the access token lapses, so a slow upload cannot start on a dying one. */
@@ -144,8 +134,7 @@ function forgetCredential(hub, onlyIfRefreshToken = null) {
    * after a renewal that worked. So a caller says which token it was refused for, and the record is only
    * forgotten while that is still the token on disk.
    */
-  if (onlyIfRefreshToken && store[hub].refreshToken !== onlyIfRefreshToken)
-    return;
+  if (onlyIfRefreshToken && store[hub].refreshToken !== onlyIfRefreshToken) return;
   const kept = store[hub].clientId;
   delete store[hub];
   if (kept) store[hub] = { clientId: kept };
@@ -164,14 +153,9 @@ async function discover(hub) {
     fetchJson(`${hub}/.well-known/oauth-authorization-server/api/mcp`),
     fetchJson(`${hub}/.well-known/oauth-protected-resource/api/mcp`),
   ]);
-  if (
-    !as?.authorization_endpoint ||
-    !as?.token_endpoint ||
-    !as?.registration_endpoint
-  )
+  if (!as?.authorization_endpoint || !as?.token_endpoint || !as?.registration_endpoint)
     throw new Error(`${hub} did not answer with the sign-in details.`);
-  if (!protectedResource?.resource)
-    throw new Error(`${hub} did not say what it calls itself.`);
+  if (!protectedResource?.resource) throw new Error(`${hub} did not say what it calls itself.`);
   return {
     authorizeUrl: as.authorization_endpoint,
     tokenUrl: as.token_endpoint,
@@ -187,10 +171,7 @@ async function discover(hub) {
 const REACH_TIMEOUT_MS = 15 * 1000;
 
 async function fetchJson(url, init) {
-  const response = await fetch(url, {
-    ...init,
-    signal: AbortSignal.timeout(REACH_TIMEOUT_MS),
-  });
+  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(REACH_TIMEOUT_MS) });
   const text = await response.text();
   let body = null;
   try {
@@ -199,13 +180,36 @@ async function fetchJson(url, init) {
     /* an HTML body is a login page or a proxy, and it is reported by the caller as a failed step */
   }
   if (!response.ok) {
-    const detail =
-      body?.error_description ?? body?.error ?? `HTTP ${response.status}`;
+    const detail = body?.error_description ?? body?.error ?? `HTTP ${response.status}`;
     const error = new Error(String(detail));
     error.status = response.status;
     throw error;
   }
   return body;
+}
+
+/**
+ * PUT A SIGN-IN ON DISK FOR ONE HUB, and the ONLY way anything outside this file may do so.
+ *
+ * `security-check.mjs` refuses a second place that names the store or knows its shape, and it is right
+ * to: a check that hand-rolled both would keep passing after the format changed and would be testing a
+ * store nothing reads. This is the seam it leaves, and the probe that holds the rule names this function
+ * too, so a THIRD writer is refused the same way a second store would be.
+ *
+ * `CONFIG_DIR` is read when this module loads, so a caller redirecting `XDG_CONFIG_HOME` must set it
+ * BEFORE importing this file.
+ */
+export function rememberSignIn(hub, { refreshToken, accessToken, accessExpiresAt }) {
+  if (typeof accessExpiresAt !== "number") {
+    /*
+     * REFUSED RATHER THAN STORED. `bearerFor` tests `typeof accessExpiresAt === "number"`, so an ISO
+     * string here — the shape `approvedAt` uses two fields away — is not a loud failure but a silent
+     * one: the record looks signed in, `stillFresh` is false, and every read falls through to a renew
+     * that cannot work. A caller who got this wrong would see requests quietly stop being sent.
+     */
+    throw new TypeError("rememberSignIn: accessExpiresAt must be epoch milliseconds, not a date string");
+  }
+  saveRecord(hub, { refreshToken, accessToken, accessExpiresAt });
 }
 
 // ── The bearer, with no questions asked ──────────────────────────────────────────────────────────────
@@ -217,21 +221,6 @@ async function fetchJson(url, init) {
  * it in the middle of an upload, where a stall is worse than a refusal. Signing in is `login`, which is
  * its own deliberate step.
  */
-/**
- * PUT A SIGN-IN ON DISK FOR ONE HUB, and the ONLY way anything outside this file may do so.
- *
- * `security-check.mjs` refuses a second place that names the store or knows its shape, and it is right
- * to: a check that hand-rolled both would keep passing after the format changed and would be testing a
- * store nothing reads. This is the seam it leaves. `CONFIG_DIR` is read when this module loads, so a
- * caller redirecting `XDG_CONFIG_HOME` must set it BEFORE importing this file.
- */
-export function rememberSignIn(
-  hub,
-  { refreshToken, accessToken, accessExpiresAt },
-) {
-  saveRecord(hub, { refreshToken, accessToken, accessExpiresAt });
-}
-
 export async function bearerFor(hub) {
   /*
    * THE ENVIRONMENT'S TOKEN IS FOR ONE PLACE. It is a bearer for pass the year and nothing else, and it
@@ -244,8 +233,7 @@ export async function bearerFor(hub) {
   if (fromEnv) return hub === PRODUCTION_HUB ? fromEnv : null;
 
   const record = recordFor(hub);
-  if (!record?.refreshToken)
-    return null; /** a bare clientId is a registration, not a sign-in */
+  if (!record?.refreshToken) return null; /** a bare clientId is a registration, not a sign-in */
 
   const stillFresh =
     record.accessToken &&
@@ -269,11 +257,7 @@ export async function bearerFor(hub) {
  * exactly once here, when the whole application was quit mid-run.
  */
 async function renew(hub, record) {
-  const tokenUrl =
-    record.tokenUrl ??
-    (await discover(hub)
-      .then((d) => d.tokenUrl)
-      .catch(() => null));
+  const tokenUrl = record.tokenUrl ?? (await discover(hub).then((d) => d.tokenUrl).catch(() => null));
   if (!tokenUrl) return null;
   try {
     const body = await fetchJson(tokenUrl, {
@@ -333,10 +317,7 @@ const base64url = (buffer) => buffer.toString("base64url");
 /** RFC 7636 S256: the verifier is the secret, the challenge is what travels. */
 function pkce() {
   const verifier = base64url(randomBytes(32));
-  return {
-    verifier,
-    challenge: base64url(createHash("sha256").update(verifier).digest()),
-  };
+  return { verifier, challenge: base64url(createHash("sha256").update(verifier).digest()) };
 }
 
 /**
@@ -356,9 +337,7 @@ function openBrowser(url) {
    * and swallowing the error there printed "Opening the window now", waited five minutes, and then blamed
    * the author for not pressing a button nobody had shown them.
    */
-  return new Promise((resolve) =>
-    execFile(command, args, (error) => resolve(!error)),
-  );
+  return new Promise((resolve) => execFile(command, args, (error) => resolve(!error)));
 }
 
 const CLOSE_TAB_PAGE = `<!doctype html><meta charset="utf-8"><title>Composer</title>
@@ -373,10 +352,7 @@ const CLOSE_TAB_PAGE = `<!doctype html><meta charset="utf-8"><title>Composer</ti
  * and it is closed on every path out of here including the failures. A redirect that carries the wrong
  * `state` is not the one we started and is refused without being exchanged.
  */
-export async function signIn(
-  hub,
-  { timeoutMs = CONSENT_TIMEOUT_MS, onUrl, open = openBrowser } = {},
-) {
+export async function signIn(hub, { timeoutMs = CONSENT_TIMEOUT_MS, onUrl, open = openBrowser } = {}) {
   const found = await discover(hub);
   const { verifier, challenge } = pkce();
   const state = base64url(randomBytes(16));
@@ -415,8 +391,7 @@ export async function signIn(
     authorize.searchParams.set("code_challenge", challenge);
     authorize.searchParams.set("code_challenge_method", "S256");
     authorize.searchParams.set("resource", found.resource);
-    if (found.scopes.includes(WANTED_SCOPE))
-      authorize.searchParams.set("scope", WANTED_SCOPE);
+    if (found.scopes.includes(WANTED_SCOPE)) authorize.searchParams.set("scope", WANTED_SCOPE);
 
     /*
      * THE LISTENER IS ARMED BEFORE THE BROWSER IS OPENED. A server with no `request` handler drops the
@@ -456,9 +431,7 @@ export async function signIn(
       }).toString(),
     });
     if (!body?.access_token || !body?.refresh_token)
-      throw new Error(
-        `${hub} approved the Composer but sent nothing to sign requests with.`,
-      );
+      throw new Error(`${hub} approved the Composer but sent nothing to sign requests with.`);
 
     saveRecord(hub, {
       clientId,
@@ -480,9 +453,7 @@ function listen() {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.once("error", reject);
-    server.listen(0, "127.0.0.1", () =>
-      resolve({ server, port: server.address().port }),
-    );
+    server.listen(0, "127.0.0.1", () => resolve({ server, port: server.address().port }));
   });
 }
 
@@ -494,11 +465,7 @@ function awaitCode(server, { state, timeoutMs }) {
        * unless the Hub actually redirects, so a refused client, a rejected redirect and an unknown scope
        * all arrive here as silence, exactly like an author who walked away.
        */
-      reject(
-        new Error(
-          "Nothing came back within five minutes: either it was not approved, or the page never got that far.",
-        ),
-      );
+      reject(new Error("Nothing came back within five minutes: either it was not approved, or the page never got that far."));
     }, timeoutMs);
     timer.unref?.();
 
@@ -508,10 +475,7 @@ function awaitCode(server, { state, timeoutMs }) {
         response.writeHead(404).end();
         return;
       }
-      const answer = (status, page) =>
-        response
-          .writeHead(status, { "content-type": "text/html; charset=utf-8" })
-          .end(page);
+      const answer = (status, page) => response.writeHead(status, { "content-type": "text/html; charset=utf-8" }).end(page);
       /*
        * THE STATE IS CHECKED BEFORE ANYTHING ELSE, INCLUDING THE FAILURE BRANCH.
        *
@@ -522,10 +486,7 @@ function awaitCode(server, { state, timeoutMs }) {
        * one still welcome.
        */
       if (url.searchParams.get("state") !== state) {
-        answer(
-          400,
-          `<!doctype html><meta charset="utf-8"><p>That reply did not belong to this sign-in.</p>`,
-        );
+        answer(400, `<!doctype html><meta charset="utf-8"><p>That reply did not belong to this sign-in.</p>`);
         return;
       }
       /*
@@ -536,22 +497,14 @@ function awaitCode(server, { state, timeoutMs }) {
        */
       const error = url.searchParams.get("error");
       if (error) {
-        answer(
-          400,
-          `<!doctype html><meta charset="utf-8"><p>That was not approved. You can close this tab.</p>`,
-        );
+        answer(400, `<!doctype html><meta charset="utf-8"><p>That was not approved. You can close this tab.</p>`);
         clearTimeout(timer);
-        reject(
-          new Error(/^[a-z_]{1,64}$/.test(error) ? error : "it was refused"),
-        );
+        reject(new Error(/^[a-z_]{1,64}$/.test(error) ? error : "it was refused"));
         return;
       }
       const code = url.searchParams.get("code");
       if (!code) {
-        answer(
-          400,
-          `<!doctype html><meta charset="utf-8"><p>That reply was incomplete.</p>`,
-        );
+        answer(400, `<!doctype html><meta charset="utf-8"><p>That reply was incomplete.</p>`);
         return;
       }
       answer(200, CLOSE_TAB_PAGE);
@@ -573,10 +526,7 @@ function awaitCode(server, { state, timeoutMs }) {
  *
  * The address is DERIVED from the place being written to, so it is right on any deployment.
  */
-export function noCredentialMessage(
-  hub,
-  { pluginRoot = "${CLAUDE_PLUGIN_ROOT}" } = {},
-) {
+export function noCredentialMessage(hub, { pluginRoot = "${CLAUDE_PLUGIN_ROOT}" } = {}) {
   return (
     `Not signed in to pass the year yet. The author approves this once, in their browser.\n\n` +
     `1. TELL THEM FIRST what is about to happen and why, in their words: voice.md, "The one-time\n` +
@@ -606,9 +556,7 @@ async function main(argv) {
    * The value after `--hub` is not the command: `--hub <url> login` used to read the URL as one. Guarded
    * on `hubFlag !== -1`, because with no flag at all `hubFlag + 1` is 0, which is the command itself.
    */
-  const command = argv.find(
-    (a, i) => !a.startsWith("--") && !(hubFlag !== -1 && i === hubFlag + 1),
-  );
+  const command = argv.find((a, i) => !a.startsWith("--") && !(hubFlag !== -1 && i === hubFlag + 1));
   const hub = hubFlag !== -1 ? argv[hubFlag + 1] : PRODUCTION_HUB;
   if (hubFlag !== -1 && !hub) {
     console.error(`--hub needs a URL.\n\n${HELP}`);
@@ -621,9 +569,7 @@ async function main(argv) {
 
   if (command === "forget") {
     forgetCredential(hub);
-    console.log(
-      `Forgotten. The next upload will ask the author for one click.`,
-    );
+    console.log(`Forgotten. The next upload will ask the author for one click.`);
     return 0;
   }
 
@@ -634,9 +580,7 @@ async function main(argv) {
     }
     if (await bearerFor(hub)) {
       const approved = recordFor(hub)?.approvedAt;
-      console.log(
-        `Ready. Ask the author for nothing.${approved ? ` (Approved ${approved.slice(0, 10)}.)` : ""}`,
-      );
+      console.log(`Ready. Ask the author for nothing.${approved ? ` (Approved ${approved.slice(0, 10)}.)` : ""}`);
       return 0;
     }
     console.log(noCredentialMessage(hub, { pluginRoot: "." }));
@@ -659,28 +603,20 @@ async function main(argv) {
   );
   try {
     await signIn(hub, {
-      onUrl: (url) =>
-        console.log(
-          `\nIf no window appears, give them this link to open:\n  ${url}\n`,
-        ),
+      onUrl: (url) => console.log(`\nIf no window appears, give them this link to open:\n  ${url}\n`),
     });
   } catch (cause) {
     console.error(
       `\nNot approved: ${cause instanceof Error ? cause.message : String(cause)}\n` +
-        `No harm done and nothing was approved. Say you will open it again, then run this again.`,
+          `No harm done and nothing was approved. Say you will open it again, then run this again.`,
     );
     return 1;
   }
-  console.log(
-    `\nSigned in. Tell them they will not be asked again, then run what you were running.`,
-  );
+  console.log(`\nSigned in. Tell them they will not be asked again, then run what you were running.`);
   return 0;
 }
 
 /** Run only when invoked directly: the doors IMPORT this file and must not trip the command line. */
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exit(await main(process.argv.slice(2)));
 }
