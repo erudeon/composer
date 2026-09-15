@@ -384,21 +384,26 @@ function awaitCode(server, { state, timeoutMs }) {
 // ── What the doors say when there is nothing to send ─────────────────────────────────────────────────
 
 /**
- * ONE wording, in one place, for both file doors. The Hub address is DERIVED from the hub being written
- * to, so it is right on any deployment and cannot rot into a link to somewhere that no longer exists.
+ * WHAT TO DO, IN ORDER. Read by an agent, never by the author.
+ *
+ * It does not carry the sentence the author hears. That lives in `skills/composer/reference/voice.md`
+ * under "The one-time sign-in", which is read at the start of every run and is the one place tone is
+ * decided; a second copy of those words here would be the copy that goes stale. This file owns the
+ * mechanics: what runs, in what order, and where a token is made when there is no browser to open.
+ *
+ * The address is DERIVED from the place being written to, so it is right on any deployment.
  */
 export function noCredentialMessage(hub, { pluginRoot = "${CLAUDE_PLUGIN_ROOT}" } = {}) {
   return (
-    `Nothing here can reach ${hub} yet.\n\n` +
-    `Ask the author for one click and it is done for good:\n` +
-    `  node ${pluginRoot}/scripts/credential.mjs login\n\n` +
-    `That opens their own browser on the Hub, where they press Approve once. Give it five minutes to\n` +
-    `run, tell them to look for the browser window, and then run this command again.\n\n` +
-    `If this is a machine with no browser at all (a server, a build), a hand-minted token still works:\n` +
-    `  ${hub}/account?tab=mcp  ->  MCP tokens  ->  Create token\n` +
-    `  export PTY_MCP_TOKEN='...'\n\n` +
-    `Never go hunting for a credential in another tool's configuration. That has twice ended with an\n` +
-    `unrelated service's secret being sent to this API.`
+    `Not signed in to pass the year yet. The author approves this once, in their browser.\n\n` +
+    `1. TELL THEM FIRST what is about to happen and why, in their words: voice.md, "The one-time\n` +
+    `   sign-in". A browser window nobody warned them about is alarming.\n` +
+    `2. Then run this, and allow five minutes, because a person has to press a button:\n` +
+    `     node ${pluginRoot}/scripts/credential.mjs login\n` +
+    `3. Then run what you were running again.\n\n` +
+    `No browser on this machine? Set PTY_MCP_TOKEN, made at ${hub}/account?tab=mcp under MCP tokens.\n` +
+    `Never look for a credential anywhere else: twice that has ended with an unrelated service's\n` +
+    `secret being sent to this API.`
   );
 }
 
@@ -423,19 +428,18 @@ async function main(argv) {
 
   if (command === "forget") {
     dropRecord(hub);
-    console.log(`Forgotten. The next upload will ask for one click.`);
+    console.log(`Forgotten. The next upload will ask the author for one click.`);
     return 0;
   }
 
   if (command === "status") {
     if (process.env.PTY_MCP_TOKEN) {
-      console.log(`Ready. This terminal carries its own credential for ${hub}.`);
+      console.log(`Ready. Ask the author for nothing.`);
       return 0;
     }
-    const bearer = await bearerFor(hub);
-    if (bearer) {
+    if (await bearerFor(hub)) {
       const approved = recordFor(hub)?.approvedAt;
-      console.log(`Ready to reach ${hub}${approved ? `, approved ${approved.slice(0, 10)}` : ""}.`);
+      console.log(`Ready. Ask the author for nothing.${approved ? ` (Approved ${approved.slice(0, 10)}.)` : ""}`);
       return 0;
     }
     console.log(noCredentialMessage(hub, { pluginRoot: "." }));
@@ -448,24 +452,26 @@ async function main(argv) {
   }
 
   if (process.env.PTY_MCP_TOKEN) {
-    console.log(`This terminal already carries its own credential, so nobody needs to approve anything.`);
+    console.log(`Already set up on this machine. Ask the author for nothing.`);
     return 0;
   }
 
   console.log(
-    `Opening the author's browser at ${hub}.\n` +
-      `They need to press Approve on the page that appears. Nothing else, and only this once.`,
+    `Opening the window now. They press Approve, and that is the whole of it.\n` +
+      `If they ask why, or worry about what it reaches: voice.md, "The one-time sign-in".`,
   );
   try {
     await signIn(hub, {
-      onUrl: (url) =>
-        console.log(`\nIf no window appeared, they can open this link themselves:\n  ${url}\n`),
+      onUrl: (url) => console.log(`\nIf no window appears, give them this link to open:\n  ${url}\n`),
     });
   } catch (cause) {
-    console.error(`\nThat did not go through: ${cause instanceof Error ? cause.message : String(cause)}`);
+    console.error(
+      `\nNot approved: ${cause instanceof Error ? cause.message : String(cause)}\n` +
+          `No harm done and nothing was approved. Say you will open it again, then run this again.`,
+    );
     return 1;
   }
-  console.log(`\nApproved. Uploads will work from now on, in this session and every later one.`);
+  console.log(`\nSigned in. Tell them they will not be asked again, then run what you were running.`);
   return 0;
 }
 

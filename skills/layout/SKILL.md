@@ -415,9 +415,9 @@ removes it.
 **Nothing about this is theirs to type.** They never see a token, never copy one and never open a
 terminal. If you find yourself about to ask an author to paste a secret to you, that is the bug.
 
-A hand-minted token is the exception, for a machine with no browser to open: `PTY_MCP_TOKEN` in the
-environment still wins over everything. It is made at `<hub>/account?tab=mcp`, under MCP tokens, near
-the bottom of the page, with Create token.
+A hand-minted token is the exception, for a machine with no browser to open. `credential.mjs` prints
+where to make one, for whichever deployment is being written to. Do not write that address down here:
+it is derived, and a copy of it in a skill is a copy that rots.
 
 **If nothing works, stop and ask.** Do not search the machine, the repository, a password store or
 another service's configuration for something that might work. **Two uploads have been lost to an agent
