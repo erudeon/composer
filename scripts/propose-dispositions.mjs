@@ -22,16 +22,30 @@
  * interactive element without somebody inventing a curve, and inventing one is the failure that cannot
  * be caught downstream: a plausible wrong curve teaches a student something false and renders perfectly.
  *
- *   node propose-dispositions.mjs <media-inventory.json> <source-of-record.txt>
+ *   node propose-dispositions.mjs <media-inventory.json> <source-of-record.txt> [--as-is]
+ *
+ * ── `--as-is`: THE AUTHOR'S PICTURES, PUBLISHED AS PICTURES ───────────────────────────────────────────
+ *
+ * Everything above assumes the best answer to a drawn graph is a chart drawn from its function. For a
+ * course whose pictures are not graphs at all — a psychology summary's diagrams, screenshots and
+ * photographs — that assumption is wrong on every one of them, and the run ends with every picture
+ * UNCERTAIN and a person told to look at each in turn. `--as-is` states the decision once, at the top:
+ * every picture is a figure, nothing is traced, nothing is redrawn.
+ *
+ * It is a DECISION, not a shortcut. An author who wants their own pictures published is entitled to say
+ * so without being asked 58 times, and saying it here puts it on the record with its reason attached.
  *
  * Exits 1 when anything is UNCERTAIN, because that is a thing a person must look at.
  */
 import { readFileSync, existsSync } from "node:fs";
 
-const [, , inventoryPath, sourcePath] = process.argv;
+const args = process.argv.slice(2);
+/** Stated once by the author: their pictures are published as pictures, and nothing is redrawn. */
+const asIs = args.includes("--as-is");
+const [inventoryPath, sourcePath] = args.filter((a) => !a.startsWith("--"));
 if (!inventoryPath || !sourcePath) {
   console.error(
-    "usage: propose-dispositions.mjs <media-inventory.json> <source-of-record.txt>",
+    "usage: propose-dispositions.mjs <media-inventory.json> <source-of-record.txt> [--as-is]",
   );
   process.exit(2);
 }
@@ -74,6 +88,19 @@ function propose(d) {
       disposition: "fold",
       why: "a shape drawn over the text: what it pointed at belongs in the block",
       evidence: null,
+    };
+  }
+
+  /*
+   * ASKED BEFORE ANY EVIDENCE IS WEIGHED, because the evidence is only interesting if a chart is on the
+   * table at all. A function of x near a photograph is still a function of x, and under `--as-is` it is
+   * not a reason to draw anything.
+   */
+  if (asIs) {
+    return {
+      disposition: "figure",
+      why: "--as-is: the author's picture is published as the picture it is",
+      evidence: d.under,
     };
   }
 
@@ -124,12 +151,18 @@ for (const [disposition, items] of [...groups].sort(
 }
 
 const uncertain = groups.get("UNCERTAIN")?.length ?? 0;
-console.log(
-  "These are PROPOSALS. Nothing is decided until the author says so, and any picture becoming",
-);
-console.log(
-  "an interactive chart must be LOOKED AT and checked against the curve before it is written.",
-);
+if (asIs) {
+  console.log(
+    "--as-is: every picture is a figure. Nothing here is traced, redrawn or turned into a chart.",
+  );
+} else {
+  console.log(
+    "These are PROPOSALS. Nothing is decided until the author says so, and any picture becoming",
+  );
+  console.log(
+    "an interactive chart must be LOOKED AT and checked against the curve before it is written.",
+  );
+}
 
 if (uncertain > 0) {
   console.error(

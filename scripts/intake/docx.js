@@ -28,6 +28,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { ommlToLatex } = require("./omml.js");
+const { relationships } = require("./open-docx.js");
 const {
   headingLevels,
   authoredStyles,
@@ -56,11 +57,17 @@ const stylesXml = read(stylesArg ?? path.join(wordDir, "styles.xml"));
 const levels = headingLevels(stylesXml);
 const authored = authoredStyles(stylesXml);
 const listFormat = listFormats(read(path.join(wordDir, "numbering.xml")));
+/*
+ * rId -> `word/media/imageN.png`, read by `open-docx.js` so the mapping has ONE home. The inventory and
+ * the markers below must name the same file for the same picture, or a figure is placed from one
+ * document into another one's prose.
+ */
+const rels = relationships(path.dirname(wordDir));
 
 const body = xml.slice(xml.indexOf("<w:body>"));
 const out = emitter();
 const text = (p) => flatten(paraText(p, ommlToLatex));
-const counts = { paragraphs: 0, headings: 0, lists: 0, tables: 0, authored: 0 };
+const counts = { paragraphs: 0, headings: 0, lists: 0, tables: 0, authored: 0, figures: 0 };
 const authoredSeen = new Map();
 
 let m;
@@ -84,6 +91,38 @@ while ((m = BLOCK_RE.exec(body))) {
   }
 
   const t = text(blk).trim();
+
+  /*
+   * WHERE THE PICTURE SAT, as a marker on its own line.
+   *
+   * A picture lives in a paragraph of its own carrying no text, so the skip below used to drop it and
+   * the position with it. `media-inventory.json` then said a picture existed and which HEADING it fell
+   * under, and nothing anywhere said which paragraph: placing 58 figures meant guessing a paragraph per
+   * picture inside a section that runs for pages. The marker is the missing half, and `images.mjs`
+   * already documents substituting `[FIGURE:x]` for the markdown an upload answers.
+   *
+   * IT NAMES THE FILE, not an index. An index is only meaningful beside the inventory that minted it,
+   * and the two are read by different steps at different times.
+   *
+   * A paragraph holding BOTH a picture and text emits the marker first. That is a position rounded to
+   * the paragraph, not a wrong one, and it is the only honest answer: an inline picture has no place in
+   * a line of Markdown prose to be put back into.
+   */
+  for (const blip of blk.matchAll(/<a:blip\b[^>]*r:embed="([^"]+)"/g)) {
+    const target = rels[blip[1]];
+    if (!target) continue;
+    /*
+     * A RELATIONSHIP'S TARGET IS RELATIVE TO `word/`, and `media-inventory.json` names the same file
+     * from the work directory. Two spellings of one path is how a marker stops matching the inventory
+     * entry it belongs to, so the marker is written in the inventory's spelling.
+     */
+    const file = target.startsWith("word/") ? target : `word/${target}`;
+    counts.figures += 1;
+    out.blank();
+    out.line(`[FIGURE:${file}]`);
+    out.blank();
+  }
+
   if (!t) continue;
   counts.paragraphs += 1;
 
@@ -137,7 +176,7 @@ while ((m = BLOCK_RE.exec(body))) {
 fs.writeFileSync(outPath, out.text());
 console.log(
   `paragraphs=${counts.paragraphs} headings=${counts.headings} lists=${counts.lists} ` +
-    `tables=${counts.tables} authored=${counts.authored}`,
+    `tables=${counts.tables} authored=${counts.authored} figures=${counts.figures}`,
 );
 if (authoredSeen.size > 0) {
   console.log(
