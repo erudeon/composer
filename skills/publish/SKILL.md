@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Phase 6, the last one. Say whether a course is READY and what is still outstanding, then make it visible to students once every open finding is closed or accepted in writing by a person. Use when the Composer's state says Phase 6 Publish, and whenever somebody asks whether their course is ready, whether it can go to students, or what is still standing in the way, and whenever they say publish, go live, make it visible, release it or ship it. It runs after Audit: if the checks have not been run yet, that is the answer to give.
+description: Phase 6, the last one. Say whether a course is READY and what is still outstanding, then make it visible to students once every open finding is closed or accepted in writing by a person. Use when the Composer's state says Phase 6 Publish, and whenever somebody asks whether their course is ready, whether it can go to students, or what is still standing in the way, and whenever they say publish, go live, make it visible, release it or ship it. It runs after Audit: if the checks have not been run yet, that is the answer to give. This makes a course visible on the hub it is ALREADY on and never moves one between hubs: a course that is still on staging and has to reach production is `migrate` first, and this afterwards.
 ---
 
 # Phase 6 · Publish

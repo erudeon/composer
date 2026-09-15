@@ -53,8 +53,12 @@ the apply and once after:
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/carry-cases.mjs" stems <manifest.json> --course <sourceCourseId> --hub <sourceHub>
-node "${CLAUDE_PLUGIN_ROOT}/scripts/carry-cases.mjs" bind  <manifest.json> --course <targetCourseId>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/carry-cases.mjs" bind  <manifest.json> --course <targetCourseId> --hub <targetHub>
 ```
+
+**Name `--hub` on BOTH lines, every time.** It defaults to production, and `bind` writes, so a command
+copied with the flag missing writes to production whatever direction the course was actually moving.
+Each run prints the hub it is about to touch before it touches it.
 
 **2. A course that is LIVE on the source can be refused by the target.** Content authored directly
 through the Hub never runs the manifest lint; only an import does. So a published staging course can
