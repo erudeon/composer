@@ -21,7 +21,7 @@ const git = (...a) => spawnSync("git", ["-C", repo, ...a], { encoding: "utf8" })
 git("init", "-q");
 git("config", "user.email", "t@t");
 git("config", "user.name", "t");
-for (const f of ["push.mjs", "handcraft-check.mjs"])
+for (const f of ["push.mjs", "handcraft-check.mjs", "credential.mjs"])
   writeFileSync(join(repo, "scripts", f), readFileSync(join(__dirname, f)));
 git("add", "-A");
 git("commit", "-qm", "seed");
