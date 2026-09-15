@@ -5,29 +5,41 @@
  *
  * `figure-batches.mjs` exists in this repo and in `erudeon/passtheyear` at
  * `apps/web/scripts/figure-batches.mjs`. Neither can import from the other: this one ships as a plugin to
- * machines with no platform checkout. So it is one file, copied, and this is what keeps the copies honest.
+ * machines with no platform checkout. So it is one file, copied, and the hash below keeps them honest.
  *
- * COMPARED WITH WHITESPACE REMOVED, not collapsed and not byte for byte. Every code line in the file is
- * kept under 80 columns so this repo's prettier default and the platform's 120 agree today, but nothing
- * ENFORCES that, and the day a line grows past 80 they wrap it differently. Collapsing is not enough
- * either: a collapsed newline becomes a space the other side never had. Removing whitespace ignores
- * every wrapping decision and nothing else: change a word, a number, a name or a comment, and this goes
- * red.
+ * THE HASH IS NOT ENOUGH ON ITS OWN, and believing it was is the mistake this file was reviewed for. When
+ * it goes red its own remedy is "copy the file across and update the hash in BOTH" -- exactly right for a
+ * deliberate edit, and therefore a way to launder ANY deliberate edit past every check that reads its
+ * numbers back out of the module. Measured: six mutations survived the behaviour checks this file first
+ * shipped with, including restoring the guessed 8 MiB budget and raising MAX_BATCH_FILES to 500, which
+ * would make the route answer 400 to every request. So the numbers are pinned to LITERALS here.
  *
- * BOTH CHECKS MUST NORMALISE THE SAME WAY, or the hash cannot be the same number in two repositories.
+ * THE ROUTE'S OWN CONSTANTS ARE COMPARED IN THE PLATFORM'S HALF, `apps/web/scripts/figure-batches.test.ts`
+ * -- it is the repo that has the route. This half cannot see it, which is the honest limit of a check that
+ * ships to a machine with no platform checkout.
  *
- * WHEN THIS FAILS, the fix is never to update the hash alone. Copy the file across, then update the hash
- * in BOTH repos' checks. The hash being identical in two repositories is the only thing making a
- * one-sided edit visible to a reviewer.
+ * COMPARED WITH WHITESPACE REMOVED, not collapsed and not byte for byte. Both repos' checks must normalise
+ * the SAME way, or the hash cannot be one number in two repositories: a collapsed newline becomes a space
+ * the other side never had. Removing it ignores every wrapping decision and nothing else. It IS blind to
+ * spacing inside a string literal, which is why the messages below are spelled out whole.
+ *
+ * WHEN THIS FAILS, never update the hash alone. Copy the file across, then update it in BOTH repos.
+ *
+ * NOTHING RUNS THIS AUTOMATICALLY. This repo has no CI; the platform's half runs on every pull request
+ * there. So a fix made HERE and not carried across is caught only when somebody runs the sweep in
+ * CLAUDE.md, which is why that sweep is in CLAUDE.md.
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
 import {
+  FRAMING_ALLOWANCE_BYTES,
   HUB_BODY_LIMIT_BYTES,
+  MAX_ALT_CHARS,
   MAX_BATCH_BYTES,
   MAX_BATCH_FILES,
+  MAX_FILE_BYTES,
   notAttempted,
   packBatches,
   reconcile,
@@ -38,7 +50,7 @@ import {
  * The normalised hash of `figure-batches.mjs`. IDENTICAL IN BOTH REPOSITORIES.
  * Update it in both, in the same change that copies the file across.
  */
-const SHARED = "9950a91955fb39dd";
+const SHARED = "7ba827e85e1be76a";
 
 let failed = 0;
 let ran = 0;
@@ -68,16 +80,25 @@ check(
   SHARED,
 );
 
-// ── What the two uploaders actually depend on.
+// ── The numbers, pinned to literals rather than read back out of the module.
 
 check(
-  "THE BUDGET IS DERIVED FROM THE MEASURED LIMIT, not chosen. A body of 10,485,760 bytes arrives whole and one ten bytes larger does not, so the pictures in a request must leave room for the multipart framing around them.",
+  "THE MEASURED LIMIT IS THE MEASURED LIMIT. A body of 10,485,760 bytes arrives whole and one ten bytes larger does not. Asserting merely that the budget sits UNDER it passes for the guessed 8 MiB this replaced.",
   [
-    MAX_BATCH_BYTES < HUB_BODY_LIMIT_BYTES,
-    HUB_BODY_LIMIT_BYTES - MAX_BATCH_BYTES >= 256 * 1024,
+    HUB_BODY_LIMIT_BYTES,
+    MAX_BATCH_BYTES,
+    MAX_BATCH_BYTES === HUB_BODY_LIMIT_BYTES - FRAMING_ALLOWANCE_BYTES,
   ],
-  [true, true],
+  [10485760, 9961472, true],
 );
+
+check(
+  "AND THE ROUTE'S OWN CEILINGS ARE WHAT THE ROUTE SAYS. Raising one of these without raising it there makes every request answer 400; the platform's half compares them against the route directly.",
+  [MAX_BATCH_FILES, MAX_FILE_BYTES, MAX_ALT_CHARS],
+  [50, 5242880, 300],
+);
+
+// ── What the two uploaders actually depend on.
 
 const sized = (n, bytes) =>
   Array.from({ length: n }, (_, i) => ({ name: `p${i + 1}.png`, bytes }));
@@ -108,12 +129,23 @@ const batch = [
 ];
 
 check(
-  "AN ANSWER WITH NO ARRAYS IS A LOSS OF THE WHOLE BATCH. Appending nothing would report fewer figures than were given without naming one failure.",
-  (() => {
-    const r = reconcile(batch, 500, { error: "boom" }, 1);
-    return [r.perFile, r.uploaded.length, r.failed.length];
-  })(),
-  [false, 0, 2],
+  "AN ANSWER WITH NO ARRAYS IS A LOSS OF THE WHOLE BATCH, NAMING THE REQUEST. Appending nothing would report fewer figures than were given without naming one failure.",
+  reconcile(batch, 500, { error: "boom" }, 1),
+  {
+    perFile: false,
+    uploaded: [],
+    failed: [
+      { name: "a.png", error: "request 1 answered 500" },
+      { name: "b.png", error: "request 1 answered 500" },
+    ],
+    volunteered: [],
+  },
+);
+
+check(
+  "A NULL BODY IS A LOST BATCH, not a crash. The old inline copy threw at `body.uploaded`.",
+  reconcile(batch, 502, null, 3).failed.length,
+  2,
 );
 
 check(
@@ -131,25 +163,36 @@ check(
 );
 
 check(
-  "EVERY FILE GETS EXACTLY ONE VERDICT, and silence about one is a failure rather than a success",
-  (() => {
-    const r = reconcile(
-      batch,
-      200,
-      { uploaded: [{ name: "a.png", key: "k" }], failed: [] },
-      1,
-    );
-    return [r.uploaded.map((u) => u.name), r.failed.map((f) => f.name)];
-  })(),
-  [["a.png"], ["b.png"]],
+  "A FILE THAT LANDED COMES BACK AS THE ROUTE'S ROW, not the entry that was sent. The caller reads `key` and `markdown` off these, so handing back the entry gives the right name and the right count while stranding every storage key.",
+  reconcile(
+    batch,
+    200,
+    {
+      uploaded: [{ name: "a.png", key: "k", markdown: "![a](k)", bytes: 10 }],
+      failed: [],
+    },
+    1,
+  ),
+  {
+    perFile: true,
+    uploaded: [{ name: "a.png", key: "k", markdown: "![a](k)", bytes: 10 }],
+    failed: [
+      {
+        name: "b.png",
+        error: "request 1 answered 200 without naming this file",
+      },
+    ],
+    volunteered: [],
+  },
 );
 
 check(
   "A STOPPED RUN NAMES WHAT IT NEVER TRIED, or the count reports those files as figures that vanished",
-  notAttempted([[{ name: "c.png" }], [{ name: "d.png" }]], 2).map(
-    (f) => f.name,
-  ),
-  ["c.png", "d.png"],
+  notAttempted([[{ name: "c.png" }], [{ name: "d.png" }]], 2),
+  [
+    { name: "c.png", error: "not attempted: the run stopped after request 2" },
+    { name: "d.png", error: "not attempted: the run stopped after request 2" },
+  ],
 );
 
 check(

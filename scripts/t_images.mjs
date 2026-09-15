@@ -23,6 +23,8 @@ import path from "node:path";
 import {
   FRAMING_ALLOWANCE_BYTES,
   HUB_BODY_LIMIT_BYTES,
+  MAX_ALT_CHARS,
+  MAX_BATCH_FILES,
 } from "./figure-batches.mjs";
 
 let failed = 0;
@@ -63,7 +65,7 @@ const signIn = (hub) =>
     accessExpiresAt: Date.now() + 60 * 60 * 1000,
   });
 
-function figures(n, mb) {
+function figures(n, mb, altChars = 0) {
   const list = [];
   for (let i = 1; i <= n; i += 1) {
     const name = `pic${i}.png`;
@@ -71,7 +73,8 @@ function figures(n, mb) {
       path.join(dir, name),
       Buffer.alloc(Math.round(mb * 1024 * 1024), 7),
     );
-    list.push({ file: name, alt: `Picture ${i}` });
+    const alt = `Picture ${i}`;
+    list.push({ file: name, alt: altChars ? alt.padEnd(altChars, " x") : alt });
   }
   const file = path.join(dir, "figures.json");
   fs.writeFileSync(file, JSON.stringify(list));
@@ -140,20 +143,40 @@ function run(file, port) {
     sizes.every((n) => n < HUB_BODY_LIMIT_BYTES),
     true,
   );
-  /*
-   * AND THE ALLOWANCE COVERS WHAT IT IS AN ALLOWANCE FOR. The budget above is the measured limit MINUS
-   * this, so if the framing ever outgrew it, every picture would be inside budget and the body would
-   * still cross the limit -- which is the failure this whole file exists to prevent, arriving silently.
-   */
-  const framing = sizes.reduce((sum, n) => sum + n, 0) - 12 * 1024 * 1024;
-  check(
-    `THE FRAMING ALLOWANCE IS ENOUGH FOR THE FRAMING. Measured here: ${framing} bytes over ${sizes.length} requests, against ${FRAMING_ALLOWANCE_BYTES} allowed EACH.`,
-    framing <= FRAMING_ALLOWANCE_BYTES * sizes.length,
-    true,
-  );
   check(
     "and 12 MB of pictures is therefore more than one request",
     sizes.length > 1,
+    true,
+  );
+}
+
+/*
+ * ── 1b. THE WORST CASE THE FRAMING ALLOWANCE IS SIZED FOR, which is the half of the budget nothing else
+ * exercises. The budget is the measured limit MINUS that allowance, so if the framing ever outgrew it
+ * every picture would be inside budget and the body would still cross the limit -- the exact failure this
+ * file exists to prevent, arriving silently. A full batch with every alt at the route's cap is as big as
+ * the framing can legally get.
+ *
+ * MEASURED PER REQUEST. Summing and dividing by the count lets one fat request hide behind a thin one.
+ */
+{
+  const perFile = Math.round(0.001 * 1024 * 1024);
+  const file = figures(MAX_BATCH_FILES, 0.001, MAX_ALT_CHARS);
+  const { server, sizes, port } = await serve(() => ({
+    status: 200,
+    body: { uploaded: [], failed: [] },
+  }));
+  await run(file, port);
+  server.close();
+  check(
+    "THE WHOLE BATCH WENT IN ONE REQUEST, or the framing measured below is not the worst case at all",
+    sizes.length,
+    1,
+  );
+  const worst = Math.max(...sizes.map((n) => n - MAX_BATCH_FILES * perFile));
+  check(
+    `THE ALLOWANCE COVERS IT: ${MAX_BATCH_FILES} parts, every alt at the route's ${MAX_ALT_CHARS}-character cap, framing ${worst} bytes against ${FRAMING_ALLOWANCE_BYTES} allowed. Raise the alt cap or add a manifest field past this and it goes red here instead of on the hub.`,
+    worst <= FRAMING_ALLOWANCE_BYTES,
     true,
   );
 }
@@ -197,13 +220,20 @@ function run(file, port) {
   const file = figures(2, 0.01);
   const { server, port } = await serve(() => ({
     status: 207,
-    body: { uploaded: [], failed: [{ name: "./pic1.png", error: "not an image" }] },
+    body: {
+      uploaded: [],
+      failed: [{ name: "./pic1.png", error: "not an image" }],
+    },
   }));
   const out = await run(file, port);
   server.close();
   check(
     "A FILE THE ANSWER NAMES DIFFERENTLY IS STILL COUNTED ONCE. Pushing the server's rows wholesale and then adding the unmentioned ones counted `pic1.png` twice, made `failed` longer than the batch, and turned the one line whose job is to prove the run added up into `BUG: -1 figures unaccounted for`.",
-    [(out.match(/FAILED/g) ?? []).length, out.includes("2 failed"), out.includes("BUG")],
+    [
+      (out.match(/FAILED/g) ?? []).length,
+      out.includes("2 failed"),
+      out.includes("BUG"),
+    ],
     [2, true, false],
   );
   check(
@@ -216,7 +246,10 @@ function run(file, port) {
 // ── 2c. A 200 that answers about nothing.
 {
   const file = figures(1, 0.01);
-  const { server, port } = await serve(() => ({ status: 200, body: { ok: true } }));
+  const { server, port } = await serve(() => ({
+    status: 200,
+    body: { ok: true },
+  }));
   const out = await run(file, port);
   server.close();
   check(
@@ -228,13 +261,20 @@ function run(file, port) {
 
 // ── 2d. A refusal that stops the run.
 {
-  const file = figures(6, 2); // more than one batch at 8 MB
-  const { server, sizes, port } = await serve(() => ({ status: 401, body: { error: "no" } }));
+  const file = figures(6, 2); // 12 MB: more than one batch at the derived budget
+  const { server, sizes, port } = await serve(() => ({
+    status: 401,
+    body: { error: "no" },
+  }));
   const out = await run(file, port);
   server.close();
   check(
     "A DELIBERATE STOP IS NOT AN UNACCOUNTED FILE. The run stops because every remaining batch would be refused identically, and the batches never sent are named — otherwise the count reports them as figures that vanished and prints BUG at somebody who did nothing wrong.",
-    [sizes.length, out.includes("not attempted: the run stopped after request 1"), out.includes("BUG")],
+    [
+      sizes.length,
+      out.includes("not attempted: the run stopped after request 1"),
+      out.includes("BUG"),
+    ],
     [1, true, false],
   );
 }

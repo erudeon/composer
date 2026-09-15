@@ -18,6 +18,13 @@
  * import from the other: this one ships as a Claude Code plugin to machines with no platform checkout,
  * and runs on plain Node with nothing installed.
  *
+ * THE HASH PROVES THE COPIES MATCH. IT PROVES NOTHING ABOUT WHETHER EITHER IS RIGHT, and its own remedy
+ * is "copy across and update the hash in both" -- which a person will do for a DELIBERATE edit. So every
+ * number below is pinned by an assertion that does not read it back from here, and in the platform's
+ * check the route's own constants are compared against these directly. Without that, changing
+ * MAX_BATCH_FILES to 500 passed every check in both repos while making the route answer 400 to
+ * everything.
+ *
  * Nothing here does IO, holds a credential or knows a URL. That is the other half's job.
  */
 
@@ -43,6 +50,14 @@ export const HUB_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
  */
 export const FRAMING_ALLOWANCE_BYTES = 512 * 1024;
 
+/*
+ * THE SERVER ESTIMATES THE SAME OVERHEAD SEPARATELY, at `MULTIPART_FRAMING_SLACK_BYTES` in the
+ * platform's `lib/http/multipart.ts`, and the two are eight times apart on purpose: that one is slack
+ * added ABOVE a route's ceiling so a legal body is not refused for its framing, this one is room
+ * subtracted BELOW the edge's cap so a legal body is not cut. This file cannot import it -- it must run
+ * with nothing installed -- so they stay two numbers, and neither is free to drift into the other.
+ */
+
 /** What one request may carry in PICTURES, derived rather than guessed. */
 export const MAX_BATCH_BYTES = HUB_BODY_LIMIT_BYTES - FRAMING_ALLOWANCE_BYTES;
 
@@ -51,6 +66,14 @@ export const MAX_BATCH_FILES = 50;
 
 /** The writer's per-image ceiling. A file past it is refused by the route, so it is refused here first. */
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * THE ROUTE'S CAP ON ONE FIGURE'S ALT TEXT, and the number the framing allowance above is SIZED ON.
+ * Refused here too, because the manifest rides in the same body as the pictures: fifty figures carrying
+ * multi-kilobyte alt text push the JSON past the allowance and the body past the edge's cap, which comes
+ * back as the truncated-body failure this whole file exists to prevent rather than the route's clean 400.
+ */
+export const MAX_ALT_CHARS = 300;
 
 /**
  * GREEDY PACKING BY WEIGHT, so a course of any size is a handful of requests rather than one refusal.

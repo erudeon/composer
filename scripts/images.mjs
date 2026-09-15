@@ -26,6 +26,7 @@ import path from "node:path";
 
 /* The half of this that is the same in the platform's copy. See that file's header. */
 import {
+  MAX_ALT_CHARS,
   MAX_FILE_BYTES,
   notAttempted,
   packBatches,
@@ -103,6 +104,9 @@ const entries = figures.map((figure, index) => {
    * use, and a bulk uploader is exactly where that gets skipped for speed.
    */
   if (typeof alt !== "string" || alt.trim().length === 0) fail(`Item ${index} (${name}) has no "alt" text.`);
+  /* The route refuses a longer one, and the manifest shares a body with the pictures. */
+  if (alt.length > MAX_ALT_CHARS)
+    fail(`Item ${index} (${name}) has ${alt.length} characters of "alt" text; the limit is ${MAX_ALT_CHARS}.`);
   const full = path.resolve(base, name);
   if (!fs.existsSync(full)) fail(`Item ${index}: no such file: ${full}`);
   const bytes = fs.statSync(full).size;
@@ -116,11 +120,11 @@ if (duplicates.length > 0) {
 }
 
 /* The route's own ceilings, and the body limit the edge really enforces, live in `figure-batches.mjs`. */
-
 const oversized = entries.filter((e) => e.bytes > MAX_FILE_BYTES);
 if (oversized.length > 0) {
   fail(
-    `${oversized[0].name} is ${(oversized[0].bytes / 1024 / 1024).toFixed(1)} MB; the limit is 5 MB per image.\n` +
+    `${oversized[0].name} is ${(oversized[0].bytes / 1024 / 1024).toFixed(1)} MB; the limit is ` +
+      `${MAX_FILE_BYTES / 1024 / 1024} MB per image.\n` +
       `Export it at a sensible size rather than sending a screenshot of a whole screen.`,
   );
 }
@@ -201,7 +205,7 @@ for (const [index, batch] of batches.entries()) {
 
   /* Said out loud whenever the request did not go well, INCLUDING a 200 that answered about nothing. */
   if (!response.ok || !verdict.perFile) {
-    console.error(`  request ${index + 1} of ${batches.length} failed: ${response.status} ${body.error ?? ""}`);
+    console.error(`  request ${index + 1} of ${batches.length} failed: ${response.status} ${body?.error ?? ""}`);
     if (refusesEveryRequest(response.status)) {
       failed.push(...notAttempted(batches.slice(index + 1), index + 1));
       console.error("  stopping: the remaining requests would be refused identically.");
