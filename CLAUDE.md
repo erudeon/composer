@@ -40,6 +40,27 @@ findings list, and the platform behaviours no schema describes.
   `t_omml.js` covers the equation reader, `t_spans.js` where the maths is in a piece of text, and
   `t_docx.js` heading resolution and Markdown tables.
 
+## Rules for the gate
+
+`hooks/model-gate.mjs` refuses to let this plugin run on a small model. It is a hook rather than an
+instruction in a skill because the model doing the deciding would be the one that is not up to the job,
+and because a small model does not fail here quickly and cheaply: it re-emits the course into every
+message instead of sending the file, and retries what it misread, until somebody's usage is gone and no
+course went up.
+
+- **Opus runs, Sonnet runs with a word about Opus, Haiku and Fable are refused.** Sonnet is deliberately
+  not blocked: somebody low on usage may choose it on purpose and taking that choice away helps nobody.
+- **Effort is recommended, never enforced.** It is the author's to set, and a higher one costs them more
+  rather than less, so it can never be a reason to refuse.
+- **It fails OPEN, loudly.** The model is not in the hook's payload and has to be read out of the session
+  transcript, whose shape is undocumented and free to change. A gate that cannot read the model is broken
+  machinery: failing closed would brick the plugin for every author until somebody ships a patch, and
+  failing open silently is a gate that is quietly not there. So it opens and says so in a line nobody can
+  miss.
+- **It reads nothing until it knows the call is ours.** It runs before every Skill and every Bash call in
+  the session, so the first thing it does is decide whether this one belongs to this plugin, and only
+  then does it touch the disk.
+
 ## Rules for the field guide
 
 `formats/registry.json` is the catalogue of every kind of file this pipeline has met. It is DATA, not

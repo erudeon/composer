@@ -1,0 +1,17 @@
+{
+  "description": "Composer runs on Opus. This refuses the small models, which cannot finish a course and burn an author's usage trying.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/model-gate.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
