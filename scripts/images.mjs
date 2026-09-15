@@ -24,6 +24,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
+/* The half of this that is the same in the platform's copy. See that file's header. */
+import {
+  MAX_ALT_CHARS,
+  MAX_FILE_BYTES,
+  notAttempted,
+  packBatches,
+  reconcile,
+  refusesEveryRequest,
+} from "./figure-batches.mjs";
+
 /*
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, so this script cannot reach it.
  */
@@ -94,6 +104,9 @@ const entries = figures.map((figure, index) => {
    * use, and a bulk uploader is exactly where that gets skipped for speed.
    */
   if (typeof alt !== "string" || alt.trim().length === 0) fail(`Item ${index} (${name}) has no "alt" text.`);
+  /* The route refuses a longer one, and the manifest shares a body with the pictures. */
+  if (alt.length > MAX_ALT_CHARS)
+    fail(`Item ${index} (${name}) has ${alt.length} characters of "alt" text; the limit is ${MAX_ALT_CHARS}.`);
   const full = path.resolve(base, name);
   if (!fs.existsSync(full)) fail(`Item ${index}: no such file: ${full}`);
   const bytes = fs.statSync(full).size;
@@ -106,44 +119,17 @@ if (duplicates.length > 0) {
   fail(`Two figures share the file name "${duplicates[0]}". Names must be unique within one push.`);
 }
 
-/* The route's own ceilings. Past them it refuses the whole request, so the packing happens here. */
-/*
- * EIGHT, NOT TWENTY, AND THE REASON IS NOT THE ROUTE'S.
- *
- * The route's own ceiling is 20 MB (`IMAGE_BATCH_MAX_BYTES`) and packing to it fails on the first
- * request of any real course: measured, 7.6 MB accepted, 11.1 MB and 12.8 MB both refused. The refusal
- * is `422 "The request body must be multipart/form-data."` — and that is the multipart PARSE failing,
- * not the route's own oversize answer, which is a 413. So the real limit is a body cap in front of the
- * app that NOBODY HAS LOCATED YET, and eight is under the lowest refusal SEEN rather than under a limit
- * KNOWN. It carried 174 pictures across two courses without one refusal. Find the proxy's cap and this
- * number can be chosen rather than guessed.
- */
-const MAX_BATCH_BYTES = 8 * 1024 * 1024;
-const MAX_BATCH_FILES = 50;
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
+/* The route's own ceilings, and the body limit the edge really enforces, live in `figure-batches.mjs`. */
 const oversized = entries.filter((e) => e.bytes > MAX_FILE_BYTES);
 if (oversized.length > 0) {
   fail(
-    `${oversized[0].name} is ${(oversized[0].bytes / 1024 / 1024).toFixed(1)} MB; the limit is 5 MB per image.\n` +
+    `${oversized[0].name} is ${(oversized[0].bytes / 1024 / 1024).toFixed(1)} MB; the limit is ` +
+      `${MAX_FILE_BYTES / 1024 / 1024} MB per image.\n` +
       `Export it at a sensible size rather than sending a screenshot of a whole screen.`,
   );
 }
 
-/** Greedy packing by weight, so a course of any size is a handful of requests rather than one refusal. */
-const batches = [];
-let current = [];
-let currentBytes = 0;
-for (const entry of entries) {
-  if (current.length > 0 && (currentBytes + entry.bytes > MAX_BATCH_BYTES || current.length >= MAX_BATCH_FILES)) {
-    batches.push(current);
-    current = [];
-    currentBytes = 0;
-  }
-  current.push(entry);
-  currentBytes += entry.bytes;
-}
-if (current.length > 0) batches.push(current);
+const batches = packBatches(entries);
 
 const url = `${hub}/api/mcp/content/images?courseId=${encodeURIComponent(courseId)}`;
 const totalBytes = entries.reduce((sum, e) => sum + e.bytes, 0);
@@ -210,69 +196,18 @@ for (const [index, batch] of batches.entries()) {
     );
   }
 
-  /*
-   * WHAT THIS REQUEST SAID ABOUT EACH FILE IT WAS GIVEN.
-   *
-   * The route answers 200, 207 and 422 with `uploaded` and `failed` per file, and the first version of
-   * this tested `!response.ok` FIRST and replaced both with the status code, so a refused batch printed
-   * identical lines naming no picture. Anything else — a 500, a 413, a 400, an auth refusal — carries
-   * neither array, and pushing them would append nothing: the run would report fewer figures than it was
-   * given WITHOUT reporting a single failure, and the map below would be substituted into a manifest
-   * with markers pointing at nothing.
-   *
-   * DRIVEN BY THE BATCH, NOT BY THE ANSWER. Every file this request carried gets exactly one verdict,
-   * looked up by name. Pushing the server's rows wholesale and THEN adding the unmentioned ones counts a
-   * file twice whenever the answer spells its name differently — `./pic1.png` for `pic1.png` — which
-   * makes `failed` longer than the batch and the reconciliation line report a NEGATIVE number, the one
-   * line whose whole job is to prove the run added up.
-   */
-  const perFile = Array.isArray(body.uploaded) || Array.isArray(body.failed);
-  if (perFile) {
-    const landed = new Map((body.uploaded ?? []).map((item) => [item.name, item]));
-    const refused = new Map((body.failed ?? []).map((item) => [item.name, item]));
-    for (const entry of batch) {
-      const ok = landed.get(entry.name);
-      if (ok) {
-        uploaded.push(ok);
-        continue;
-      }
-      failed.push(
-        refused.get(entry.name) ?? {
-          name: entry.name,
-          error: `request ${index + 1} answered ${response.status} without naming this file`,
-        },
-      );
-    }
-    /* A name the answer volunteered that this request never sent. Not a lost file; a route to look at. */
-    for (const name of [...landed.keys(), ...refused.keys()]) {
-      if (!batch.some((entry) => entry.name === name)) {
-        console.error(`  request ${index + 1} answered about "${name}", which it was not sent`);
-      }
-    }
-  } else {
-    for (const entry of batch) {
-      failed.push({ name: entry.name, error: `request ${index + 1} answered ${response.status}` });
-    }
+  const verdict = reconcile(batch, response.status, body, index + 1);
+  uploaded.push(...verdict.uploaded);
+  failed.push(...verdict.failed);
+  for (const name of verdict.volunteered) {
+    console.error(`  request ${index + 1} answered about "${name}", which it was not sent`);
   }
 
-  /*
-   * SAID OUT LOUD WHENEVER THE REQUEST DID NOT GO WELL, which includes a 200 that answered about nothing:
-   * that marks every file failed, and hiding the line behind `!response.ok` alone would leave the
-   * operator a batch of failures with no request to attribute them to.
-   */
-  if (!response.ok || !perFile) {
-    console.error(`  request ${index + 1} of ${batches.length} failed: ${response.status} ${body.error ?? ""}`);
-    if ([401, 403, 429].includes(response.status)) {
-      /*
-       * A DELIBERATE STOP IS NOT AN UNACCOUNTED FILE. Every remaining batch would be refused the same
-       * way, so the run stops — and the batches it never sent are named here, or the count below reports
-       * them as figures that vanished and prints "BUG" at somebody who did nothing wrong.
-       */
-      for (const remaining of batches.slice(index + 1)) {
-        for (const entry of remaining) {
-          failed.push({ name: entry.name, error: `not attempted: the run stopped after request ${index + 1}` });
-        }
-      }
+  /* Said out loud whenever the request did not go well, INCLUDING a 200 that answered about nothing. */
+  if (!response.ok || !verdict.perFile) {
+    console.error(`  request ${index + 1} of ${batches.length} failed: ${response.status} ${body?.error ?? ""}`);
+    if (refusesEveryRequest(response.status)) {
+      failed.push(...notAttempted(batches.slice(index + 1), index + 1));
       console.error("  stopping: the remaining requests would be refused identically.");
       break;
     }
