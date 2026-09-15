@@ -40,7 +40,10 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/preflight.js" <file> ...
 ```
 
 **Read every `!` before parsing a word.** Each check is a defect that has shipped or nearly shipped a
-course. **Markdown and `.docx` are accepted. PDF is refused as a source.**
+course. **Markdown and `.docx` are accepted. PDF is refused as a source.** Go and find the Word file,
+because that refusal is what stops somebody using a lossy twin of a document that exists. Where the
+original genuinely does not exist, and only then, `convert` has a PDF path; it is off the main road
+and it says what it costs.
 
 Then ask what the files actually are:
 

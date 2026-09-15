@@ -28,6 +28,33 @@ In a workspace, `<file.docx>` is in `01-inputs` and `<work-dir>` is `02-source/w
 go in `02-source` beside it. **Nothing is written back into `01-inputs`**: that folder is what every
 fidelity rule compares against, and a source that can be edited in place makes a clean diff meaningless.
 
+### When the document only exists as a PDF
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/intake/pdf.js" <file.pdf> <work-dir>/source.md
+```
+
+**This is the LAST RESORT and it is off the main path.** `preflight.js` refuses a PDF as a source and
+is right to: a `.docx` renamed to `.pdf` is common, a PDF twin is lossy beside the original, and
+reaching for it is what somebody does instead of going to look for the Word file. **Go and look
+first, every time.**
+
+Use it when there is genuinely nothing else. One course's literature summary was a PHOTOGRAPH saved
+under a `.docx` name, in the working copy and in the live Nextcloud alike, and the only copy of those
+31 pages was the PDF: the choice was this or no literature at all.
+
+It reads the typography, because a PDF printed from Word still draws every level it had: the largest
+coloured face is a unit title, a smaller coloured bold face a section, the body face's bold cut is
+bold, and Symbol, Wingdings, `o` and `N.` are list markers at their own depth. **A scan is refused**,
+because there is nothing to read and a silent empty file is worse than a stop.
+
+**Two things to do after it, which nothing does for you.** The heading test is per DOCUMENT: those
+sizes and colours are one summary's, so read the file's own `fontspec` table before trusting the
+output on a PDF from another template. And compare the result against the PDF word for word, because
+`corpus-check.mjs` runs the docx chain and does not cover this path.
+
+Then `normalise.js` and `katex-check.js` as usual: from here it is an ordinary source of record.
+
 ### What each one is for
 
 **`open-docx.js`** unzips the document and writes `media-inventory.json`: every picture, floating text
