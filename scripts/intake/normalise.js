@@ -168,6 +168,19 @@ function normalise(rawInput) {
   text = text.replace(ESCAPES, "$1");
   notes.push(`backslash escapes removed: ${unescaped}`);
 
+  /*
+   * A NON-BREAKING SPACE IS A SPACE. Word writes U+00A0 after a bold lead-in constantly, and one real
+   * 12-week summary carried 57. It DRAWS as an ordinary space, so nothing on the page ever looks
+   * wrong and every later phase that matches a line by its text silently misses it.
+   *
+   * Prose only, which `protectMaths` above has already guaranteed: KaTeX draws U+00A0 as a real
+   * space, so one inside an equation is the author holding two words of a name apart and replacing it
+   * would change what is drawn.
+   */
+  const nbsp = (text.match(/ /g) ?? []).length;
+  text = text.replace(/ /g, " ");
+  notes.push(`non-breaking spaces: ${nbsp}`);
+
   // What a human still has to look at.
   /*
    * A LITERAL BULLET IS A BULLET THE AUTHOR TYPED, and it arrives orphaned from the item it belongs to.

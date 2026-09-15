@@ -177,13 +177,16 @@ const VARIANT = {
  */
 /* A recap names itself, and a summary usually numbers it: "Week 3 Wrap-Up" is the same block as
    "In Short". Left unmatched it reads as one more section of teaching, which is the one thing a
-   recap must not look like. */
+   recap must not look like.
+   THE NOUN AFTER "Key" IS A CLOSED SET, and deliberately: the same documents carry "Key Theories",
+   "Key Economic Metrics" and "Key Characters in Strategic Context", which are sections that TEACH. A
+   rule taking "Key <anything>" folds five of those into boxes and hides them. */
 const IS_A_RECAP =
-  /^(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(?:wrap[\s-]?up|in\s+short|in\s+summary|summary|recap|key\s+takeaways?|to\s+summari[sz]e)\s*$/i;
+  /^(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(?:wrap[\s-]?up|in\s+short|in\s+summary|summary|recap|conclusion|key\s+(?:takeaways?|insights?|points?)|to\s+summari[sz]e)\s*$/i;
 
 /** The same names, written as a BOLD LEAD-IN with the summary running on after it. */
 const RECAP_LEAD =
-  /^\*\*(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(wrap[\s-]?up|in short|in summary|summary|recap|key takeaways?|to summari[sz]e)\*\*[:.]?\s*([\s\S]*)$/i;
+  /^\*\*(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(wrap[\s-]?up|in short|in summary|summary|recap|conclusion|key (?:takeaways?|insights?|points?)|to summari[sz]e)\*\*[:.]?\s*([\s\S]*)$/i;
 
 const DEFAULT_TITLE = {
   "exam-tip": "In the exam",
@@ -201,7 +204,39 @@ const DEFAULT_TITLE = {
  * Returns the lines, the flagged sentences with the section each belongs to, and the set of lines that
  * WERE headings, so the block walker can tell a new subject from a bold sentence.
  */
-function walk(unitLines, HEADINGS, equationHeadings) {
+/**
+ * NEST EACH LIST CHILD UNDER ITS OWN PARENT'S MARKER.
+ *
+ * Word indents every level by two spaces whatever the parent is, and two is not enough under an
+ * ordered item: `1. ` is three characters wide, so Markdown closes the list at the first child and
+ * the next item opens a NEW one. Every item then renders as "1.", which is why stripping the numbers
+ * used to look like the lesser evil. It is not: the count IS the thing a student has to remember for
+ * Scott's three pillars or Dunning's three advantages.
+ *
+ * So the indent is rewritten from the parent's ACTUAL marker width, tracked on a stack. A bullet's
+ * children go two in, an ordered item's three, and a deeper level goes in by its own parent's width
+ * again. Nothing but leading whitespace changes.
+ */
+function nestLists(lines) {
+  const stack = [];
+  return lines.map((line) => {
+    const m = /^(\s*)([-*]\s|\d+[.)]\s)(.*)$/.exec(line);
+    if (!m) {
+      /* A blank line sits INSIDE a list as often as it ends one, so only real text resets the stack. */
+      if (line.trim()) stack.length = 0;
+      return line;
+    }
+    const [, indent, marker, rest] = m;
+    const at = indent.length;
+    while (stack.length && stack[stack.length - 1].at >= at) stack.pop();
+    const out = stack.length ? stack[stack.length - 1].out + stack[stack.length - 1].width : 0;
+    stack.push({ at, out, width: marker.length });
+    return " ".repeat(out) + marker + rest;
+  });
+}
+
+function walk(rawUnitLines, HEADINGS, equationHeadings) {
+  const unitLines = nestLists(rawUnitLines);
   const kept = [];
   const flags = [];
   const folded = new Set();
@@ -340,12 +375,12 @@ function walk(unitLines, HEADINGS, equationHeadings) {
       continue;
     }
 
-    /* A numbered item that is ONLY a bold lead-in is not a sequence; the words stay, the number goes. */
     /*
-     * A NUMBERED ITEM THAT IS ONLY A BOLD LEAD-IN IS NOT A SEQUENCE. Authors number a set of steps and
-     * then bullet the working under each, which breaks the list in Markdown and leaves an ordered list
-     * of one item apiece. The words and the emphasis stay; only the number goes. The same applies where
-     * the number is followed by a bold lead-in and then more text on the line.
+     * THE NUMBER STAYS. It used to be stripped off any item that was only a bold lead-in, because the
+     * bullets underneath broke the list and every item rendered as "1." anyway. `nestLists` above
+     * fixes that at its cause, so there is nothing left to work around: an ordered list the author
+     * wrote is an ordered list the reader gets. Only a LONE item still loses its number, below,
+     * because one item is not a sequence.
      */
     let clean = line.replace(POINTER, "");
     clean = unflag(clean);
@@ -362,19 +397,35 @@ function walk(unitLines, HEADINGS, equationHeadings) {
      *
      * So the test comes first, on the raw line, and BOTH strips are gated on it.
      */
-    const near = (from, step) => {
-      for (let k = from; k >= 0 && k < unitLines.length; k += step) {
-        const other = unitLines[k];
-        if (!other.trim()) continue;
-        if (/^#{1,6}\s/.test(other)) return false;
-        return /^\d+\.\s/.test(other) && !/^\d+\.\s+\*\*[^*]+\*\*:?\s*$/.test(other);
-      }
-      return false;
-    };
-    if (/^\d+\.\s/.test(clean) && !near(i - 1, -1) && !near(i + 1, 1)) {
-      clean = clean
-        .replace(/^\d+\.\s+(\*\*[^*]+\*\*:?)\s*$/, "$1")
-        .replace(/^\d+\.\s+/, "");
+    if (/^\d+\.\s/.test(clean)) {
+      /*
+       * A SIBLING IS THE NEXT ITEM AT THE SAME DEPTH, not the next line.
+       *
+       * Two faults met here. The bold-only strip used to run BEFORE this test, so a genuine step whose
+       * detail was bulleted underneath lost its number while its siblings kept theirs, publishing a
+       * five-step method with a hole in it. That strip is gone: `nestLists` fixes the broken nesting it
+       * was working around, so an ordered list the author wrote survives as one.
+       *
+       * The test itself was blind in the same direction. An item's own children sit between it and its
+       * sibling, so looking only at the adjacent line finds a bullet, concludes the item stands alone,
+       * and takes the number off EVERY item in the list. Children are stepped over; anything shallower,
+       * any ordinary paragraph and any heading ends the search.
+       */
+      const mine = /^(\s*)/.exec(clean)[1].length;
+      const near = (from, step) => {
+        for (let k = from; k >= 0 && k < unitLines.length; k += step) {
+          const other = unitLines[k];
+          if (!other.trim()) continue;
+          if (/^#{1,6}\s/.test(other)) return false;
+          const item = /^(\s*)(?:[-*]\s|\d+[.)]\s)/.exec(other);
+          if (!item) return false;
+          if (item[1].length > mine) continue;
+          if (item[1].length < mine) return false;
+          return /^\s*\d+\.\s/.test(other);
+        }
+        return false;
+      };
+      if (!near(i - 1, -1) && !near(i + 1, 1)) clean = clean.replace(/^(\s*)\d+\.\s+/, "$1");
     }
 
     /* The author's own bold-only line leads its paragraph for the same reason a folded heading does. */
@@ -478,8 +529,11 @@ const slug = (s) =>
     .toLowerCase()
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 44);
+    .slice(0, 44)
+    /* TRIMMED AFTER THE CUT, not before. The length cut lands anywhere in the string, including on a
+       separator, and a slug ending in a hyphen is refused by the manifest schema. "Chapter 7: Week 7:
+       The Entrepreneur, Executive & Manager" is exactly 44 characters to that hyphen. */
+    .replace(/^-+|-+$/g, "");
 
 const words = (s) => s.split(/\s+/).filter(Boolean).length;
 const tidy = (lines) =>
@@ -592,7 +646,7 @@ function workedBlock(paras, title) {
 
 /* ── one unit becomes blocks ─────────────────────────────────────────────────────────────────────── */
 
-function buildUnit(unitLines, number, title) {
+function buildUnit(unitLines, number, title, series) {
   const equationHeadings = [];
   const { kept, flags, folded } = walk(unitLines, forUnit("HEADINGS", number), equationHeadings);
 
@@ -645,10 +699,26 @@ function buildUnit(unitLines, number, title) {
    *
    * Told apart by what comes next: a deeper heading means it has children, so it is kept.
    */
+  /*
+   * A SECTION WHOSE ONLY CONTENT IS SUPPLIED IS STILL A SECTION. A course that cuts a list and gives
+   * the picture of it in the same place empties that section's prose ON PURPOSE, and measuring
+   * emptiness on the prose alone dropped the section and took the supplied block with it, silently:
+   * declared, built, reported as fine, and missing from the lecture.
+   */
+  const SUPPLY_MAPS = [
+    forUnit("EXTRA", number),
+    forUnit("CHARTS", number),
+    forUnit("TERMS", number),
+    forUnit("CHECKS", number),
+    forUnit("REPAIRS", number).worked ?? {},
+  ];
+  const supplies = (anchor) => SUPPLY_MAPS.some((m) => (m[anchor] ?? []).length > 0);
+
   const closeSection = (nextLevel) => {
     if (!cur) return;
     const hasProse = cur.body.join("\n").trim();
-    if (hasProse || (nextLevel !== undefined && nextLevel > cur.level)) sections.push(cur);
+    if (hasProse || supplies(cur.anchor) || (nextLevel !== undefined && nextLevel > cur.level))
+      sections.push(cur);
     cur = null;
   };
   /*
@@ -1108,7 +1178,13 @@ function buildUnit(unitLines, number, title) {
     slug: forUnit("SLUGS", number, null) ?? slug(title),
     title,
     number,
-    series: course.structure?.containerWord ?? "Lecture",
+    /*
+     * A COURSE MAY RUN TWO NAMED SERIES AT ONCE, a run of lectures beside a run of reading, and the
+     * word each run's own titles lead with is not the course's one unit word. The series is read from
+     * the unit's row in `composer.json`, which is where its NUMBER already comes from: the two have to
+     * agree, because a display number is unique within its series and nowhere else.
+     */
+    series: series ?? course.structure?.containerWord ?? "Lecture",
     source,
     blocks,
     questions: forUnit("QUESTIONS", number, []),
@@ -1136,16 +1212,17 @@ if (!units.length)
 const topics = units
   .map((u, idx) => {
     const next = h1.find((x) => x.at > u.at);
-    const number =
-      course.units?.find((c) => c.title === u.title)?.number ?? idx + 1;
+    const declaredUnit = course.units?.find((c) => c.title === u.title);
+    const number = declaredUnit?.number ?? idx + 1;
     return {
       u,
       number,
+      series: declaredUnit?.series ?? null,
       lines: allLines.slice(u.at, next ? next.at : allLines.length),
     };
   })
   .filter((t) => !wanted.length || wanted.includes(t.number))
-  .map((t) => buildUnit(t.lines, t.number, t.u.title));
+  .map((t) => buildUnit(t.lines, t.number, t.u.title, t.series));
 
 if (!topics.length) fail(`No unit matched --unit ${wanted.join(", ")}.`);
 
