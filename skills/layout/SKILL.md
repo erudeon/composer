@@ -108,6 +108,29 @@ perfectly and teaches something false), `QUESTIONS`, `GLOSSARY`, `FORMULA_TERMS`
 source, a prose block still holding a table or an example, a prose block ending on a bold line, and a
 duplicate block id.
 
+**Three scripts sit either side of it, and every one of them exists because a course needed it.** They
+take the course folder as their argument, the same way, and none of them is optional on a real summary.
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/promote-headings.mjs" <course folder>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs"   <course folder>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/apply-blocks.mjs"     <course folder>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/slice.mjs"            <course folder> 1 2 3
+```
+
+- **`promote-headings.mjs`** turns the author's own bold lines and Word styles into headings, from a
+  `headings.json` in the course folder. A summary whose only heading level is the lecture title derives
+  ZERO sections without it, and one written with the author's styles keeps the number they typed unless
+  this strips it.
+- **`apply-blocks.mjs`** places what no pass can derive, from a `unit-blocks.mjs` in the course folder:
+  a markdown table that is really a journal entry, a display line that is really a formula, a run of
+  calculation lines that is really a worked example. Its ops find their anchor by EXACT STRING and fail
+  loudly rather than guess, which is what saves you when the builder's behaviour moves underneath a
+  half-finished course.
+- **`slice.mjs`** writes `04-manifest/slice.json` holding only the units named. **Send that, not the
+  manifest**: the manifest carries every unit the document has, a body write is a whole-array REPLACE,
+  and sending a unit that was never built publishes the converter's raw tables over nothing.
+
 **Put each unit's slice on the lecture as `source`.** It is the text Intake extracted, and it is what
 every fidelity rule diffs the headings, prose and numbers against.
 
