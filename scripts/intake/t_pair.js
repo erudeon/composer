@@ -81,6 +81,55 @@ const CASES = [
     "The bridge — the Capilano — Vancouver's landmark, was the site of the study.",
     "The bridge (the Capilano), Vancouver's landmark, was the site of the study.",
   ],
+
+  /*
+   * THE OTHER TWO THINGS THAT FOLLOW A CLOSING BRACKET AND NEED THE COMMA: a bare number, and a
+   * formula. Without these the character class is decorative, and narrowing it to `[A-Z]` leaves every
+   * other case in these files green. A review found exactly that.
+   */
+  ["De score — 42 punten — 3 keer gemeten in totaal.", "De score (42 punten), 3 keer gemeten in totaal."],
+  [
+    "$F = MS_A/MS_E$ — de toetsingsgrootheid — $p < .05$ betekent significant.",
+    "$F = MS_A/MS_E$ (de toetsingsgrootheid), $p < .05$ betekent significant.",
+  ],
+
+  /*
+   * THE SENTENCE SPLIT ITSELF, WITH NO EMPHASIS ANYWHERE.
+   *
+   * The two cross-sentence cases at the top of this file were both saved by the span guard rather than
+   * by the split, because each carries an odd number of markers. Deleting the split left every suite in
+   * this repo green. With no markers to fall back on, only the split prevents the bracket running from
+   * one sentence into the next.
+   */
+  [
+    "Eerst dit — dan dat. Daarna — nog iets anders hier.",
+    "Eerst dit: dan dat. Daarna: nog iets anders hier.",
+  ],
+
+  /*
+   * A SPAN OF EVERY OTHER KIND. Only bold was counted before, so italic, code and maths were all split
+   * down the middle. The maths one is the case parity inside the phrase cannot catch: the two `$` there
+   * close one span and open the next, which counts as even.
+   */
+  [
+    "the *first factor — and the second* — were measured.",
+    "the *first factor, and the second*: were measured.",
+  ],
+  ["use `a — b` — the operator — `c` here", "use `a: b`: the operator: `c` here"],
+
+  /*
+   * A BOLD LEAD-IN AFTER THE CLOSING BRACKET STILL COUNTS AS RESUMING. The markers are stepped over
+   * before the capital is looked for, so `**Levene**` reads as `Levene`. Without that step the comma is
+   * never added, because `*` is not a capital.
+   */
+  [
+    "De regel — een uitzondering — **Levene** is de formele toets.",
+    "De regel (een uitzondering), **Levene** is de formele toets.",
+  ],
+  [
+    "De teller is $SS_A — df_A$ en de noemer is $SS_E — df_E$.",
+    "De teller is $SS_A: df_A$ en de noemer is $SS_E: df_E$.",
+  ],
 ];
 
 for (const [input, expected] of CASES) {
@@ -90,12 +139,22 @@ for (const [input, expected] of CASES) {
 for (const [input] of CASES) {
   const out = stripEmDashes(input);
   assert.ok(!out.includes("—"), `an em dash survived: ${input}`);
-  // Emphasis is never moved: the count of markers is what went in.
-  assert.strictEqual(
-    (out.match(/\*\*/g) || []).length,
-    (input.match(/\*\*/g) || []).length,
-    `the rule added or dropped a bold marker:\n  in:  ${input}\n  out: ${out}`,
-  );
+  /*
+   * NO DELIMITER IS EVER MOVED, of any kind. Counting only `**` here is what let the italic, code and
+   * maths cases above ship: their delimiters were moved and this invariant said nothing.
+   */
+  for (const [name, pattern] of [
+    ["bold", /\*\*/g],
+    ["italic or bold", /\*/g],
+    ["code", /`/g],
+    ["maths", /\$/g],
+  ]) {
+    assert.strictEqual(
+      (out.match(pattern) || []).length,
+      (input.match(pattern) || []).length,
+      `the rule added or dropped a ${name} delimiter:\n  in:  ${input}\n  out: ${out}`,
+    );
+  }
 }
 
 /*

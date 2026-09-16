@@ -18,8 +18,11 @@ const COMMA_AFTER = new RegExp(
     // English
     "because|although|though|while|whereas|since|so|as|and|but|or|which|who|that|if|when|unless|also|plus|yet|for" +
     "|" +
-    // Dutch
-    "omdat|hoewel|terwijl|want|maar|zodat|doordat|aangezien|waardoor|waarbij|waarvan|zoals|wat|die|dat|als|wanneer|tenzij|ook|en|of" +
+    // Dutch. "dus" is here because English "so" is, and the whole waar- family is here because
+    // splitting it gave one family two answers.
+    "omdat|hoewel|terwijl|want|maar|dus|zodat|doordat|aangezien|namelijk|bijvoorbeeld|oftewel|ofwel" +
+    "|waardoor|waarbij|waarvan|waarin|waarop|waarmee|waaruit|waarover" +
+    "|zoals|wat|welke|wie|die|dat|als|wanneer|zodra|indien|mits|tenzij|voordat|nadat|totdat|ook|en|of" +
     ")\\b",
   "i",
 );
@@ -43,29 +46,78 @@ function markerDashes(s) {
 }
 
 /*
- * The index of the bracket that is still open at `off`, or -1 when the position is not inside one.
- * Walks back over closed pairs so a bracket earlier in the line that has already closed is not mistaken
- * for the enclosing one.
+ * EVERYTHING THE DASH RULES NEED TO KNOW ABOUT A POSITION, MEASURED IN ONE PASS.
  *
- * THE SCAN IS BOUNDED, AND THE BOUND IS THE POINT. Unbounded, this is quadratic in a line's dashes, and
- * a line is somebody else's document: 4,000 dashes separated by balanced bracket pairs took 10.9
- * seconds, which is an intake that hangs on a file an author emailed. A bracketed aside is a phrase, so
- * anything further back than this is not the aside this dash sits in, and giving up returns the answer
- * the rule had before brackets were considered at all. Cheap, and safe in the direction that matters.
+ * Both rules want context that is expensive to ask for one dash at a time. Asking per dash is quadratic
+ * in a line's dashes, and a line is somebody else's document: a backward scan for the enclosing bracket
+ * took 10.9 seconds on 4,000 dashes, and recomputing a sentence's colon test inside the replacer took
+ * 1,986ms where the whole rule takes 30ms. Neither changed a character of output, so neither was
+ * visible as anything but a hang. Two passes over the sentence, and a lookup per dash, is linear.
+ *
+ * Bounding those scans instead was the first attempt, and it was the wrong shape: a limit silently
+ * changes the ANSWER either side of a boundary nothing tests. This is exact and has no constant in it.
+ *
+ * For each dash it records:
+ *
+ *   open/close  the innermost bracket enclosing it, or -1. Only a bracket that actually CLOSES counts.
+ *               An unmatched `(` is ordinary in somebody's file (a half-open interval `(0,1]` is one)
+ *               and treating it as an aside hands the dash the wrong colon test.
+ *   balanced    whether every emphasis, code and maths delimiter before it is closed. A pair of dashes
+ *               may only become brackets when BOTH ends sit outside every span, or bracketing moves a
+ *               delimiter and welds the span across the parenthesis. `$SS_A — df_A$ ... $SS_E — df_E$`
+ *               became `$SS_A (df_A$ ... ) df_E$` when only bold was counted, which is live corruption
+ *               in a statistics course. Counting `$` parity inside the phrase does not catch that one:
+ *               the two `$` there close one span and open the next.
  */
-const SCOPE_LIMIT = 400;
+function scanSentence(t) {
+  const closeOf = new Map();
+  const pending = [];
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === "(") pending.push(i);
+    else if (t[i] === ")" && pending.length) closeOf.set(pending.pop(), i);
+  }
 
-function openBracketBefore(s, off) {
-  let depth = 0;
-  const stop = Math.max(0, off - SCOPE_LIMIT);
-  for (let i = off - 1; i >= stop; i--) {
-    if (s[i] === ")") depth++;
-    else if (s[i] === "(") {
-      if (depth === 0) return i;
-      depth--;
+  const at = new Map();
+  const open = [];
+  let dollar = 0;
+  let tick = 0;
+  let star = 0;
+  let bold = 0;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (c === "(") {
+      if (closeOf.has(i)) open.push(i);
+    } else if (c === ")") {
+      if (open.length && closeOf.get(open[open.length - 1]) === i) open.pop();
+    } else if (c === "$") dollar++;
+    else if (c === "`") tick++;
+    else if (c === "*") {
+      // `**` is one bold marker, `*` one italic, and `***` is one of each.
+      if (t[i + 1] === "*") {
+        bold++;
+        i++;
+      } else star++;
+    } else if (c === "—") {
+      const o = open.length ? open[open.length - 1] : -1;
+      at.set(i, {
+        open: o,
+        close: o === -1 ? -1 : closeOf.get(o),
+        balanced: dollar % 2 === 0 && tick % 2 === 0 && star % 2 === 0 && bold % 2 === 0,
+      });
     }
   }
-  return -1;
+  return at;
+}
+
+/*
+ * Closing up a space before punctuation, EXCEPT before a leading decimal point.
+ *
+ * "p < .05" is how APA writes a p-value and it is everywhere in a statistics course; collapsing that
+ * space gives "p <.05", which changes what the author wrote rather than how it is spaced. A full stop
+ * followed by a digit is a number, not the end of a sentence.
+ */
+function keepDecimal(match, punct, off, str) {
+  return punct === "." && /[0-9]/.test(str[off + match.length] || "") ? match : punct;
 }
 
 // --- 1. remove em dashes -------------------------------------------------
@@ -77,11 +129,17 @@ function stripEmDashes(s) {
   // row is not one, and the rules below would read its cells as clauses.
   s = markerDashes(s);
   if (!s.includes("—")) return s;
+  /*
+   * SENTENCE BY SENTENCE, because a pair of dashes is only a pair inside one sentence. Without this
+   * split, "Eerst dit — dan dat. Daarna — nog iets anders" brackets from the first sentence into the
+   * second and emits "Eerst dit (dan dat. Daarna) nog iets anders".
+   */
   const sentences = s.split(/(?<=[.!?])\s+/);
   const done = sentences.map((sentence) => {
     let t = sentence;
-    // paired -> parentheses, but never across an emphasis marker: bracketing half
-    // of a bold span would move the marker and mangle the sentence.
+    let marks = scanSentence(t);
+    // paired -> parentheses, but never across a span of any kind: bracketing half of a bold, italic,
+    // code or maths span moves its delimiter and welds the span across the parenthesis.
     //
     // THE CLOSING DASH IS SOMETIMES DOING TWO JOBS. In a list it ends the aside AND separates the item
     // from the next one, so bracketing alone leaves them welded: "DFAB = $(I-1)(J-1)$ — het product,
@@ -90,11 +148,15 @@ function stripEmDashes(s) {
     // an enormous impulse", "en dat is"); a new item starts with a capital, a digit or a formula
     // ("DFE ="), and that one needs the comma the dash was providing.
     t = t.replace(/\s—\s([^—]{1,160}?)\s—\s/g, (m, inner, off, str) => {
-      if ((inner.match(/\*\*/g) || []).length % 2 !== 0) return m;
+      const opener = marks.get(off + m.indexOf("—"));
+      const closer = marks.get(off + m.lastIndexOf("—"));
+      if (!opener?.balanced || !closer?.balanced) return m;
       const after = str.slice(off + m.length).replace(/^\*+/, "");
       return " (" + inner + ")" + (/^[A-Z0-9$\\]/.test(after) ? ", " : " ");
     });
     if (!t.includes("—")) return t;
+    // The pass above rewrote `t`, so every offset in the old scan has moved. Measure the new one.
+    marks = scanSentence(t);
     // Computed once for the sentence, never per dash: this copies the line, and doing it inside the
     // replacer below is quadratic in the line's dashes.
     const sentenceHasColon = /:/.test(t.replace(/—/g, ""));
@@ -111,15 +173,18 @@ function stripEmDashes(s) {
        *
        * Only the text from the bracket to the dash is examined, which SCOPE_LIMIT already caps.
        */
-      const open = openBracketBefore(t, off);
-      const hasColon = open === -1 ? sentenceHasColon : /:/.test(t.slice(open, off).replace(/—/g, ""));
+      const mark = marks.get(off + m.indexOf("—"));
+      const inBracket = mark && mark.open !== -1;
+      const hasColon = inBracket
+        ? /:/.test(t.slice(mark.open, mark.close + 1).replace(/—/g, ""))
+        : sentenceHasColon;
       return hasColon || COMMA_AFTER.test(after) ? ", " : ": ";
     });
     return t;
   });
   return done
     .join(" ")
-    .replace(/\s+([,.;:)])/g, "$1")
+    .replace(/\s+([,.;:)])/g, keepDecimal)
     .replace(/([(])\s+/g, "$1")
     .replace(/,\s*,/g, ",")
     .replace(/:\s*:/g, ":")
@@ -174,7 +239,7 @@ function fixEmphasis(s) {
 // tidy stray emphasis spacing left by the source's own formatting
 function tidy(s) {
   return fixEmphasis(s)
-    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/\s+([,.;:!?])/g, keepDecimal)
     .replace(/\s{2,}/g, " ")
     .trim();
 }
