@@ -51,6 +51,36 @@ const CASES = [
     "the **first factor — and the second** — were measured separately.",
     "the **first factor, and the second**: were measured separately.",
   ],
+
+  /*
+   * THE CLOSING DASH WAS ALSO SEPARATING LIST ITEMS. Brackets alone leave the item after it welded to
+   * the aside: this shipped to a live course as "(het product, niet de som) DFE = ...". What follows
+   * decides, and here it is a formula label, so the comma the dash was providing has to be put back.
+   */
+  [
+    "- **Vrijheidsgraden**: DFA = $I - 1,$ DFAB = $(I-1)(J-1)$ — het **product**, niet de som — DFE = $N - IJ,$ DFT = $N - 1$",
+    "- **Vrijheidsgraden**: DFA = $I - 1,$ DFAB = $(I-1)(J-1)$ (het **product**, niet de som), DFE = $N - IJ,$ DFT = $N - 1$",
+  ],
+
+  /*
+   * THE OTHER SIDE OF THAT RULE, which is why it keys on what follows rather than on being in a list.
+   * Both of these resume the same clause in lower case and must NOT gain a comma: one English, one
+   * Dutch, both from live courses.
+   */
+  [
+    "$s_{\\text{grootste}}/s_{\\text{kleinste}} < 2$ — over de standaarddeviaties, niet de varianties — en dat is een vuistregel.",
+    "$s_{\\text{grootste}}/s_{\\text{kleinste}} < 2$ (over de standaarddeviaties, niet de varianties) en dat is een vuistregel.",
+  ],
+  [
+    "Every test in this course — z-test, t-test, ANOVA, chi-square — follows exactly the same pattern of six steps.",
+    "Every test in this course (z-test, t-test, ANOVA, chi-square) follows exactly the same pattern of six steps.",
+  ],
+
+  // A capitalised proper noun resuming the sentence takes the comma too, and reads correctly with it.
+  [
+    "The bridge — the Capilano — Vancouver's landmark, was the site of the study.",
+    "The bridge (the Capilano), Vancouver's landmark, was the site of the study.",
+  ],
 ];
 
 for (const [input, expected] of CASES) {

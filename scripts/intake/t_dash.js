@@ -58,6 +58,60 @@ const CASES = [
     "people help sick family more readily, but in life-threatening situations rather healthy relatives, because those have a greater chance of passing on the genes.",
   ],
 
+  /*
+   * DUTCH CONNECTIVES REACH THE SAME BRANCH AS ENGLISH ONES. The list was English-only, so each of
+   * these took a colon, which is wrong every time: "omdat" is "because", "of" here is "whether",
+   * "die" and "wat" are relative pronouns. Live Dutch courses only ever read correct by accident,
+   * when the sentence happened to carry an earlier colon and reached a comma down the other branch.
+   */
+  [
+    "gaat het maken van de berekeningen meestal ook een stuk beter — omdat je de onderliggende redenering snapt.",
+    "gaat het maken van de berekeningen meestal ook een stuk beter, omdat je de onderliggende redenering snapt.",
+  ],
+  ["De vraag is simpel — of de varianties gelijk zijn.", "De vraag is simpel, of de varianties gelijk zijn."],
+  [
+    "Dit is de formele toets — want Levene toetst de gelijkheid van varianties.",
+    "Dit is de formele toets, want Levene toetst de gelijkheid van varianties.",
+  ],
+  [
+    "de mogelijkheid om interacties te toetsen — wat met losse one-way ANOVA's principieel onmogelijk is.",
+    "de mogelijkheid om interacties te toetsen, wat met losse one-way ANOVA's principieel onmogelijk is.",
+  ],
+  [
+    "De amygdala — die betrokken is bij angst — consolideert het geheugen.",
+    "De amygdala (die betrokken is bij angst) consolideert het geheugen.",
+  ],
+
+  /*
+   * AND A DUTCH SENTENCE WHOSE DASH IS NOT A CONNECTIVE still takes a colon, so the rule above widened
+   * the comma branch rather than replacing the colon one.
+   */
+  [
+    "Er zijn twee soorten geheugen — het werkgeheugen en het langetermijngeheugen.",
+    "Er zijn twee soorten geheugen: het werkgeheugen en het langetermijngeheugen.",
+  ],
+
+  /*
+   * A COLON OUTSIDE A BRACKET DOES NOT COLLIDE WITH A DASH INSIDE ONE. The comma branch exists so the
+   * reader never meets two colons in one breath, but "Example:" here is outside the aside entirely.
+   * Taking a comma from it made the gloss read as a fourth Dutch school track alongside vmbo, havo and
+   * vwo, which is what shipped to the live course and had to be corrected by hand.
+   */
+  [
+    "Example: education level (vmbo, havo, vwo — the Dutch secondary-school tracks, from pre-vocational to pre-university), place in a ranking.",
+    "Example: education level (vmbo, havo, vwo: the Dutch secondary-school tracks, from pre-vocational to pre-university), place in a ranking.",
+  ],
+
+  /*
+   * THE SAME SENTENCE SHAPE WITH THE BRACKET ALREADY CLOSED before the dash, which must still take the
+   * comma. This is the line between the two: the scan walks back over closed pairs rather than taking
+   * the nearest bracket it finds.
+   */
+  [
+    "Example: the tracks (vmbo, havo, vwo) — the Dutch secondary-school system.",
+    "Example: the tracks (vmbo, havo, vwo), the Dutch secondary-school system.",
+  ],
+
   // Nothing to do: these must come back byte for byte.
   ["Emotions are short-lived, moods are long-lasting.", "Emotions are short-lived, moods are long-lasting."],
   [
@@ -98,5 +152,48 @@ for (const [input] of CASES) {
  */
 const wouldPass = CASES.filter(([input, expected]) => input === expected).length;
 assert.ok(wouldPass < CASES.length, "every case is a no-op, so this suite cannot detect a broken rule");
+
+/*
+ * THE RULE MUST NOT BE QUADRATIC IN A LINE'S DASHES.
+ *
+ * A line is somebody else's document and nothing bounds its length. Two versions of this rule have
+ * already been quadratic: an unbounded backward scan for the enclosing bracket (4,000 dashes took 10.9
+ * seconds), and computing the sentence's colon test inside the per-dash replacer, which copies the whole
+ * line every time (400k chars with 2,000 dashes went from 3ms to 226ms). Both were caught by measuring
+ * rather than by reading, and neither changed a single character of output, so no equality above would
+ * have noticed.
+ *
+ * The ceiling is deliberately loose. It exists to catch an intake that HANGS on a hostile file, not to
+ * police milliseconds, because wall-clock on a shared machine is not a stable number.
+ */
+{
+  /*
+   * The size is chosen so the WEAKER of the two regressions is still obvious: at 800k characters the
+   * healthy rule takes about 30ms, the colon regression 1,986ms and the unbounded scan far worse. A
+   * ceiling of 600ms is twenty times the healthy figure and a third of the weaker fault, which is the
+   * gap that makes this neither flaky nor decorative. Sized at 400k/2,000 it missed the colon
+   * regression entirely, so this number was measured against the fault rather than guessed.
+   *
+   * Keep the filler well over the 160-character limit on a bracketed aside. Under it the PAIRED rule
+   * consumes these dashes instead, the lone-dash path never runs, and the check silently measures
+   * nothing.
+   */
+  const SIZE = 800000;
+  const DASHES = 4000;
+  const filler = "()".repeat(Math.floor((SIZE / DASHES - 4) / 2));
+  assert.ok(filler.length > 160, "filler is short enough that the paired rule eats the test");
+
+  const line = Array.from({ length: DASHES }, () => `${filler} — y`).join(" ");
+  const started = process.hrtime.bigint();
+  const out = stripEmDashes(line);
+  const ms = Number(process.hrtime.bigint() - started) / 1e6;
+
+  assert.ok(!out.includes("—"), "the pathological line kept an em dash");
+  assert.ok(
+    ms < 600,
+    `stripEmDashes took ${ms.toFixed(0)}ms on ${DASHES} dashes in ${SIZE} characters. ` +
+      "It runs in about 30ms when linear, so this is a quadratic path, not a slow machine.",
+  );
+}
 
 console.log(`t_dash: ${CASES.length} cases, ${CASES.length - wouldPass} of them load-bearing. OK`);

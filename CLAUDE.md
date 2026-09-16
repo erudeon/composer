@@ -33,8 +33,13 @@ findings list, and the platform behaviours no schema describes.
   welded-together words had already shipped.
 - Never run a naive whitespace or punctuation cleanup over markdown with inline emphasis. That produced
   three separate corruption bugs in one upload and was its largest single time sink. `lib.js` is the
-  version that survived them, and `t_dash.js`, `t_emph.js` and `t_pair.js` are why. Run them after
-  touching it.
+  version that survived them, and `t_dash.js`, `t_emph.js`, `t_pair.js` and `t_marker.js` are why. Run
+  them after touching it. They assert; for most of their life they only printed, so the sweep below
+  reported success for them whatever they produced.
+- **A dash is not always punctuation.** One alone in a table cell is a value meaning "not applicable",
+  and both punctuation rules corrupt it: the lone-dash rule makes it a colon, and two adjacent marker
+  cells look like a matched pair, so `| — | — |` brackets the pipe between them. `markerDashes` settles
+  those first, into an en dash. `t_marker.js` asserts the row keeps its column count.
 - The `t_*.js` and `t_*.mjs` files are the unit checks, one per thing that has broken. **BOTH
   EXTENSIONS**, or the five `.mjs` checks are written, committed, and never run again: a glob of `t_*.js`
   matches none of them, and nothing else does either. **Both folders**, because
