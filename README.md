@@ -16,9 +16,11 @@ You do not need the platform's code, a package manager, or anything from a devel
 ## Install
 
 ```
-/plugin marketplace add erudeon/composer
-/plugin install composer
+/plugin marketplace add erudeon/marketplace-authors
+/plugin install composer@erudeon-authors
 ```
+
+`erudeon-authors` is Erudeon's marketplace for authors and teachers; Composer is listed there and updates from this repository. (A founder has it through the founder marketplace instead, as `composer@erudeon`; the two are the same plugin.)
 
 You also need Node.js, which the scripts run on. `node --version` should print something. If it does
 not, install it from nodejs.org and reopen your terminal.
@@ -26,7 +28,7 @@ not, install it from nodejs.org and reopen your terminal.
 **If your course has equations in it, install the one package that checks them:**
 
 ```
-cd ~/.claude/plugins/cache/erudeon/composer/*/ && npm install
+cd ~/.claude/plugins/cache/erudeon*/composer/*/ && npm install
 ```
 
 Everything else works without it. That step is what catches an equation the reader will not accept,
@@ -69,7 +71,7 @@ that could change underneath, a clean result would not mean anything.
 To see everything you have on the go:
 
 ```
-node ~/.claude/plugins/cache/erudeon/composer/*/scripts/workspace.mjs list
+node ~/.claude/plugins/cache/erudeon*/composer/*/scripts/workspace.mjs list
 ```
 
 ## What it is actually like
