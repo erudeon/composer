@@ -71,7 +71,7 @@ that could change underneath, a clean result would not mean anything.
 To see everything you have on the go:
 
 ```
-node ~/.claude/plugins/cache/erudeon/composer/*/scripts/workspace.mjs list
+node ~/.claude/plugins/cache/erudeon*/composer/*/scripts/workspace.mjs list
 ```
 
 ## What it is actually like
