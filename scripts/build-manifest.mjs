@@ -693,7 +693,7 @@ function liftQuestions(unitLines, number) {
       !Q_ANSWER.test(l.trim()) &&
       unitLines.slice(i + 1, i + 8).some((n) => Q_OPTION.test(n.trim())),
   );
-  if (at < 0) return { lines: unitLines, questions: [] };
+  if (at < 0) return { lines: unitLines, removed: [], questions: [] };
 
   /* The section starts at the heading that introduces the questions, so the heading goes too. */
   let start = at;
@@ -750,9 +750,14 @@ function liftQuestions(unitLines, number) {
       `   ! a question section was found and NOT lifted: ${stems.size} stem(s), ${built.length} with a ` +
         `usable answer. Left in the body, answers and all, rather than lifting half a bank.`,
     );
-    return { lines: unitLines, questions: [] };
+    return { lines: unitLines, removed: [], questions: [] };
   }
-  return { lines: [...unitLines.slice(0, start), ...unitLines.slice(end + 1)], questions: built };
+  return {
+    lines: [...unitLines.slice(0, start), ...unitLines.slice(end + 1)],
+    /* The lines themselves, so the unit's `source` can stay a superset of everything it published. */
+    removed: unitLines.slice(start, end + 1),
+    questions: built,
+  };
 }
 
 /**
@@ -814,7 +819,7 @@ function figuresOutOfProse(body) {
 
 function buildUnit(rawLines, number, title, series) {
   /* The questions and their answer key leave the body before anything is built from it. */
-  const { lines: unitLines, questions: lifted } = liftQuestions(rawLines, number);
+  const { lines: unitLines, removed: liftedLines, questions: lifted } = liftQuestions(rawLines, number);
   const supplied = forUnit("QUESTIONS", number, []);
   const bank = supplied.length ? supplied : lifted;
   const bankSize = bank.length;
@@ -827,7 +832,16 @@ function buildUnit(rawLines, number, title, series) {
    * that is a superset is correct; a prose block repeating a passage already drawn as a callout would
    * be the actual defect.
    */
-  const source = tidy(kept);
+  /*
+   * THE SOURCE IS A SUPERSET OF EVERYTHING THIS UNIT PUBLISHED, questions included.
+   *
+   * The lift takes the question section out of the body, which is the whole point of it, and taking it
+   * out of `source` as well would leave 80 questions per course that NOTHING can be compared against:
+   * `fidelity-check.mjs` reads this field, and a stem or an explanation quietly rewritten would be
+   * invisible to it. The lint that reads this field asks only whether what was built appears IN it, so
+   * a superset is correct there and was already documented as such.
+   */
+  const source = [tidy(kept), ...liftedLines].join("\n");
 
   const REPAIRS = forUnit("REPAIRS", number);
   const dropped = new Set(
