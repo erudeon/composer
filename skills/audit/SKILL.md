@@ -41,6 +41,22 @@ understood. The repair is the asterisk OPERATOR, decided one at a time. And `nor
 for this plugin's whole life; a course that reaches here still carrying dashes means that step was
 skipped, not that they need removing by hand.
 
+**And the direction the source lint does not read, `software`.**
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/fidelity-check.mjs" <course folder>
+```
+
+The lint above asks whether what was BUILT appears in the source. This asks the reverse: whether every
+sentence the AUTHOR wrote still reaches a student. Nothing else does, because `verify`, the plan's lint
+and `handcraft-check` all compare the course to itself, and a clause rewritten inside a question option
+passed all three on a live course.
+
+It fails on a sentence that RUNS AND THEN STOPS, which is a corruption, and only reports a line that
+never appears, which is the ordinary shape of moving a question section into a bank. **Every failure is
+either a defect or a substantive edit**, and a substantive edit is not wrong: it needs its line on the
+findings list with a `why`, which is the rule this phase already polices.
+
 **4. Transcription fidelity, `ai`.** The equations the converter flagged, read back against the original
 rendering: fractions, limits under a sum, cases, absolute-value bars, and every one that was a picture.
 A formula that came out wrong looks exactly like one that came out right, which is why this family is not
