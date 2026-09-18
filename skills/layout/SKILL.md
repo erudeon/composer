@@ -96,6 +96,14 @@ The map is keyed on the file's BASENAME (`image1.png`) and the marker names it f
 holding a marker, naming every one: left in, it is drawn on the page as literal text, and the verbatim
 check agrees with it because the marker is in the source of record too.
 
+**What it derives without being told anything**, as of 0.53.0: a question section written out in the
+document becomes the unit's BANK and its answer key leaves the body (built as prose, the last block of
+every lecture was the key, and a student read the right answer beside every question); a paragraph that
+is nothing but a picture becomes a `figure` block with the caption under it, rather than `![alt](key)`
+inside a prose body where alt stops being a field; the closing recap becomes the in-short box in either
+language; and a unit with a bank gets one inline check before that box. A table of contents is REFUSED
+rather than published as the first lecture, and names the one line that settles it.
+
 **2. Build the course file with `build-manifest.mjs`.** Not by emitting it into a tool call: that costs
 its whole length in tokens twice, and every re-emission can corrupt text this upload exists to
 reproduce exactly.

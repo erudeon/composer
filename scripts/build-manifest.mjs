@@ -180,9 +180,15 @@ const VARIANT = {
    recap must not look like.
    THE NOUN AFTER "Key" IS A CLOSED SET, and deliberately: the same documents carry "Key Theories",
    "Key Economic Metrics" and "Key Characters in Strategic Context", which are sections that TEACH. A
-   rule taking "Key <anything>" folds five of those into boxes and hides them. */
+   rule taking "Key <anything>" folds five of those into boxes and hides them.
+   THE SET IS NOT ENGLISH-ONLY. One house writes the same closing box as "Brief overview" in its English
+   edition and "Kort overzicht" in its Dutch one; neither matched, so both editions of a live Statistics
+   course ended on an ordinary prose section, which is the one thing the guide says a lecture must not
+   do. Every addition is a WHOLE PHRASE and never a bare noun: "overview" and "overzicht" open as many
+   sections as they close, and the anchor is what keeps "Overzicht van de voorwaarden per procedure" a
+   teaching table rather than a box. */
 const IS_A_RECAP =
-  /^(?:(?:week|unit|lecture|chapter)\s*\d+\s*[:\u2013-]?\s*)?(?:wrap[\s-]?up|in\s+short|in\s+summary|summary|recap|conclusion|key\s+(?:takeaways?|insights?|points?)|to\s+summari[sz]e)\s*$/i;
+  /^(?:(?:week|unit|lecture|chapter|hoorcollege|college|thema)\s*\d+\s*[:\u2013-]?\s*)?(?:wrap[\s-]?up|in\s+short|in\s+summary|summary|recap|conclusion|key\s+(?:takeaways?|insights?|points?)|to\s+summari[sz]e|brief\s+overview|kort\s+overzicht|samenvatting|kernpunten)\s*$/i;
 
 /** The same names, written as a BOLD LEAD-IN with the summary running on after it. */
 const RECAP_LEAD =
@@ -657,9 +663,161 @@ function workedBlock(paras, title) {
   };
 }
 
+/**
+ * A WRITTEN-OUT QUESTION SECTION BELONGS IN THE BANK, AND ITS ANSWER KEY MUST LEAVE THE BODY.
+ *
+ * Plenty of summaries end each unit with ten multiple-choice questions and then the answers. Built as
+ * prose, the last block of the lecture is the key: a student opening the lecture reads the correct
+ * answer beside every question, and the bank the reader draws from is empty. That is what this builder
+ * did to a real two-language course until somebody looked at a block.
+ *
+ * DETECTED BY SHAPE, NEVER BY THE HEADING'S WORDS. The heading is "10 Multiple-choice questions" in one
+ * edition and "10 Meerkeuzevragen" in the other, and a word list would have to grow once per language
+ * for ever. What does not vary is the shape: numbered stems each carrying lettered options, then a run
+ * of answers naming a letter and explaining it.
+ *
+ * IT REFUSES RATHER THAN GUESSES. Under three stems, or answers that do not line up with the stems, and
+ * it lifts nothing and says so: half a bank is worse than none, because the half left in the body still
+ * carries its answers.
+ */
+const Q_STEM = /^\*\*(\d+)\.\*\*\s*(.+)$/;
+const Q_OPTION = /^\*\*([A-Z])\.\*\*\s*(.+)$/;
+/* An answer names the letter and then explains it. It looks like a stem until the letter and dash. */
+const Q_ANSWER = /^\*\*(\d+)\.\*\*\s*([A-Z])\s*[—–-]\s*(.+)$/;
+const HEADING_LINE = /^#{1,6}\s+\S/;
+
+function liftQuestions(unitLines, number) {
+  const at = unitLines.findIndex(
+    (l, i) =>
+      Q_STEM.test(l.trim()) &&
+      !Q_ANSWER.test(l.trim()) &&
+      unitLines.slice(i + 1, i + 8).some((n) => Q_OPTION.test(n.trim())),
+  );
+  if (at < 0) return { lines: unitLines, questions: [] };
+
+  /* The section starts at the heading that introduces the questions, so the heading goes too. */
+  let start = at;
+  while (start > 0 && !HEADING_LINE.test(unitLines[start - 1])) start -= 1;
+  if (start > 0) start -= 1;
+
+  const stems = new Map();
+  const answers = new Map();
+  let current = null;
+  let end = at;
+  for (let i = at; i < unitLines.length; i += 1) {
+    const line = unitLines[i].trim();
+    const answer = Q_ANSWER.exec(line);
+    if (answer) {
+      answers.set(Number(answer[1]), { letter: answer[2], why: answer[3].trim() });
+      current = null;
+      end = i;
+      continue;
+    }
+    const stem = Q_STEM.exec(line);
+    if (stem) {
+      current = { n: Number(stem[1]), stem: stem[2].trim(), options: [] };
+      stems.set(current.n, current);
+      end = i;
+      continue;
+    }
+    const option = Q_OPTION.exec(line);
+    if (option && current) {
+      current.options.push({ letter: option[1], text: option[2].trim() });
+      end = i;
+    }
+  }
+
+  const built = [];
+  for (const n of [...stems.keys()].sort((a, b) => a - b)) {
+    const q = stems.get(n);
+    const answer = answers.get(n);
+    if (!answer || q.options.length < 2) continue;
+    /* The key must name an option this question actually has, or the answer belongs to another one. */
+    if (!q.options.some((o) => o.letter === answer.letter)) continue;
+    built.push({
+      key: `u${number}-q${String(n).padStart(2, "0")}`,
+      type: "SINGLE",
+      stem: q.stem,
+      options: q.options.map((o) => ({
+        text: o.text,
+        ...(o.letter === answer.letter ? { correct: true } : {}),
+      })),
+      explanation: answer.why,
+    });
+  }
+  if (built.length < 3 || built.length !== stems.size) {
+    console.log(
+      `   ! a question section was found and NOT lifted: ${stems.size} stem(s), ${built.length} with a ` +
+        `usable answer. Left in the body, answers and all, rather than lifting half a bank.`,
+    );
+    return { lines: unitLines, questions: [] };
+  }
+  return { lines: [...unitLines.slice(0, start), ...unitLines.slice(end + 1)], questions: built };
+}
+
+/**
+ * A PICTURE ON ITS OWN IS A FIGURE, NOT A LINE OF PROSE.
+ *
+ * `images.mjs` answers markdown, and substituting it leaves `![alt](key)` sitting inside a prose body.
+ * It draws, so nothing looks wrong, and three things are quietly lost: `alt` stops being a field and
+ * becomes a string a reader can neither read nor a screen reader announce as the picture's own; the
+ * caption under it stays an italic paragraph rather than the figure's caption; and `frame` cannot be
+ * set at all. A course of 348 slides went up that way before anybody looked at a block.
+ *
+ * ONLY A PARAGRAPH THAT IS NOTHING BUT THE PICTURE. An image inside a sentence is an inline picture the
+ * author put there, and lifting that one out would cut the sentence in half.
+ *
+ * THE CAPTION IS THE ITALIC PARAGRAPH DIRECTLY UNDER IT, which is what Word's own caption style
+ * produces and what every summary this pipeline has met does. Nothing else is taken: a following
+ * paragraph of prose stays prose.
+ */
+/* The alt text is a sentence the author wrote and may itself hold a bracket: one real figure's alt
+   read "p = P[Z >= 2.61] = 0.0045", and a `[^\]]*` alt stopped at that first bracket and left the
+   whole picture inline as prose. The line is anchored at both ends and is nothing but the image, so a
+   greedy alt taking the LAST `](` is the correct reading. */
+const LONE_IMAGE = /^!\[([\s\S]*)\]\(([^)\s]+)\)$/;
+const ITALIC_ONLY = /^\*([^*].*[^*])\*$/;
+
+function figuresOutOfProse(body) {
+  const paras = body.split("\n\n");
+  const out = [];
+  let prose = [];
+  const flushProse = () => {
+    const text = prose.join("\n\n").trim();
+    prose = [];
+    if (text) out.push({ type: "prose", body: text });
+  };
+  for (let i = 0; i < paras.length; i += 1) {
+    const m = LONE_IMAGE.exec(paras[i].trim());
+    if (!m) {
+      prose.push(paras[i]);
+      continue;
+    }
+    const caption = ITALIC_ONLY.exec((paras[i + 1] ?? "").trim());
+    flushProse();
+    out.push({
+      type: "figure",
+      imageKey: m[2],
+      /* Required, and the only thing a reader who cannot see it is given. The markdown's own alt text
+         is the author's, written when the figure was declared for upload. */
+      alt: (m[1] || caption?.[1] || "Figure").slice(0, 300),
+      ...(caption ? { caption: caption[1].slice(0, 400) } : {}),
+      frame: "original",
+    });
+    if (caption) i += 1;
+  }
+  flushProse();
+  return out.length ? out : [{ type: "prose", body }];
+}
+
 /* ── one unit becomes blocks ─────────────────────────────────────────────────────────────────────── */
 
-function buildUnit(unitLines, number, title, series) {
+function buildUnit(rawLines, number, title, series) {
+  /* The questions and their answer key leave the body before anything is built from it. */
+  const { lines: unitLines, questions: lifted } = liftQuestions(rawLines, number);
+  const supplied = forUnit("QUESTIONS", number, []);
+  const bank = supplied.length ? supplied : lifted;
+  const bankSize = bank.length;
   const equationHeadings = [];
   const { kept, flags, folded } = walk(unitLines, forUnit("HEADINGS", number), equationHeadings);
 
@@ -1102,7 +1260,8 @@ function buildUnit(unitLines, number, title, series) {
         continue;
       }
       for (const part of split(b.body))
-        blocks.push({ id: idFor(s.anchor ?? s.heading), type: "prose", body: part });
+        for (const piece of figuresOutOfProse(part))
+          blocks.push({ id: idFor(s.anchor ?? s.heading), ...piece });
     }
 
     /* Then everything anchored to this section: the author's flags first, in their own words. */
@@ -1186,6 +1345,28 @@ function buildUnit(unitLines, number, title, series) {
     break;
   }
 
+  /*
+   * THE LECTURE'S OWN PRACTICE, INSIDE THE LECTURE.
+   *
+   * A bank a student has to go and find is a bank most of them never open. The reader has a block that
+   * draws from the unit's own bank, and a course whose every unit had ten questions shipped without one
+   * on any of them. It names no question, so the draw stays adaptive and the calibration still counts.
+   *
+   * BEFORE THE CLOSING BOX, which is the last thing a reader should meet.
+   */
+  if (bankSize > 0) {
+    const check = {
+      id: `u${number}-check`,
+      type: "question",
+      count: Math.min(5, bankSize),
+      title: "Check yourself",
+      variant: "inline",
+    };
+    const closing = blocks.findIndex((b) => b.type === "callout" && b.variant === "in-short");
+    if (closing < 0) blocks.push(check);
+    else blocks.splice(closing, 0, check);
+  }
+
   const unusedTitles = Object.keys(TITLES).filter((k) => !titlesUsed.has(k));
   if (unusedTitles.length)
     console.log(
@@ -1216,7 +1397,12 @@ function buildUnit(unitLines, number, title, series) {
     series: series ?? course.structure?.containerWord ?? "Lecture",
     source,
     blocks,
-    questions: forUnit("QUESTIONS", number, []),
+    /*
+     * SUPPLIED QUESTIONS WIN. A course that writes its bank in `course-data.mjs` has said what it
+     * wants; the lift is for a document that carries them in its own text and would otherwise publish
+     * them as prose.
+     */
+    questions: bank,
   };
 }
 
@@ -1236,6 +1422,36 @@ const units = h1.filter((u) =>
 if (!units.length)
   fail(
     "No units found. Does composer.json list them, or does the source carry heading 1s?",
+  );
+
+/*
+ * A CONTENTS LIST IS NOT A LECTURE, AND GUESSING IS STILL NOT ALLOWED.
+ *
+ * Front matter is named on the record above, deliberately: a rename must never silently publish a page.
+ * But a course that names none gets every heading 1 as a unit, and a document opening with its own
+ * table of contents published one called "Table of contents", holding a list of page numbers, sitting
+ * first in the syllabus. Nobody looked, because nothing said anything.
+ *
+ * So this does not skip it and does not guess. It REFUSES, and says the one line that fixes it. The
+ * shape is unmistakable: a unit with no section of its own whose body is mostly lines ending in a page
+ * number.
+ */
+const looksLikeContents = (u) => {
+  const next = h1.find((x) => x.at > u.at);
+  const body = allLines
+    .slice(u.at + 1, next ? next.at : allLines.length)
+    .filter((l) => l.trim());
+  if (body.length < 5 || body.some((l) => /^#{2,6}\s/.test(l))) return false;
+  const numbered = body.filter((l) => /\s\d{1,4}$/.test(l.trim())).length;
+  return numbered / body.length > 0.7;
+};
+const contents = units.filter(looksLikeContents);
+if (contents.length)
+  fail(
+    `"${contents[0].title}" is a table of contents, not a lecture: ${"" }its lines are headings followed by page ` +
+      `numbers, and it would be published first in the syllabus.\n\n` +
+      `Name it in composer.json so the record says so rather than this guessing:\n` +
+      `  "structure": { "frontMatterTitles": [${contents.map((c) => JSON.stringify(c.title)).join(", ")}] }`,
   );
 
 const topics = units
