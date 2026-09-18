@@ -72,6 +72,24 @@ const run = (script, args) => {
     return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
   }
 };
+/*
+ * A STEP LATER STEPS READ FROM MUST STOP THE RUN WHEN IT FAILS.
+ *
+ * `say` records a FAIL and carries on, which is right for an assertion and wrong for a step that writes
+ * a file. `open-docx.js` correctly refused a `.docx` whose bytes were a JPEG, `say` printed FAIL, and
+ * the next line read the inventory that refusal had not written: the harness died on an ENOENT stack
+ * trace with the real reason, printed by the step itself, nowhere on the screen.
+ */
+const must = (result, what) => {
+  say(result.code === 0, what);
+  if (result.code !== 0) {
+    console.log(`\n${result.out.trim()}`);
+    console.log(`\nStopped: nothing after this step can run without what it writes.`);
+    process.exit(1);
+  }
+  return result;
+};
+
 const state = () => run("state.mjs", [SLUG]).out;
 const phaseOf = (s) => /^Phase:\s+(\d)/m.exec(s)?.[1] ?? "?";
 const stateFile = join(HOME, SLUG, "composer.json");
@@ -153,11 +171,8 @@ say(
 // ── PHASE 0 · convert ───────────────────────────────────────────────────────────────────────────────
 const work = join(paths, "02-source", "work");
 mkdirSync(dirname(work), { recursive: true });
-say(
-  run("intake/open-docx.js", [
-    join(paths, "01-inputs", "summary-e2e.docx"),
-    work,
-  ]).code === 0,
+must(
+  run("intake/open-docx.js", [join(paths, "01-inputs", "summary-e2e.docx"), work]),
   "open-docx unpacks it and inventories every drawing",
 );
 

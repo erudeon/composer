@@ -56,6 +56,18 @@ function report(file) {
   lines.push(`\n${path.basename(file)}  (${(buf.length / 1024).toFixed(0)} KB)`);
 
   if (actual !== claimed) {
+    /*
+     * REFUSE ONLY WHEN THE NAME CLAIMS A CONTAINER AND THE BYTES ARE NOT IT.
+     *
+     * `sniff` answers "unknown" for anything it has no signature for, and plain text is the commonest
+     * of those: a `.md` claims "text", sniffs as "unknown", and differs. A first version of this rule
+     * refused every markdown file handed to it, which its own test caught before it left the branch.
+     *
+     * A `.docx`, `.pdf` or `.doc` names a binary container with a signature the sniffer knows, so a
+     * mismatch there is certain and nothing downstream can read the file. A text claim is unprovable
+     * either way, and an unprovable claim is reported, never refused.
+     */
+    if (claimed !== "text") wrongType.push(path.basename(file));
     lines.push(
       `  ! WRONG TYPE: named ${ext || "(no extension)"} but the bytes say ${actual.toUpperCase()}.` +
         (actual === "pdf" ? " PDF is REFUSED as a source. Go and find the real .docx: a wrong file has cost hours before." : ""),
@@ -89,7 +101,7 @@ function report(file) {
     }
 
     lines.push(
-      `  dashes: ${countOf(text, /—/g)} em (U+2014, ALL must go) / ` +
+      `  dashes: ${countOf(text, /—/g)} em (U+2014, removed by normalise.js) / ` +
         `${countOf(text, /–/g)} en (U+2013, these are ranges — KEEP them)`,
     );
     const soft = countOf(text, /‐\s/g);
@@ -127,6 +139,20 @@ function report(file) {
   return lines.join("\n");
 }
 
+/*
+ * A FILE THAT IS NOT WHAT IT CLAIMS IS A REFUSAL, NOT A REMARK.
+ *
+ * This exited 0 on every finding it printed, including the one that says the bytes are a photograph.
+ * The end-to-end check read that as "preflight passes the document", handed it to `open-docx.js`, which
+ * correctly refused it, and then died reading an inventory nothing had written. On a real course folder
+ * a JPEG and a PDF have both sat under a `.docx` name, which is the whole reason this line exists.
+ *
+ * Only the WRONG TYPE finding stops the run. The others -- literal asterisks, no <w:numPr>, a soft
+ * hyphen -- are things to know about a document that can still be parsed, and failing on those would
+ * refuse almost every real summary and teach everyone to ignore the exit code.
+ */
+const wrongType = [];
+
 const files = process.argv.slice(2);
 if (files.length === 0) {
   console.error('usage: node scripts/intake/preflight.js "<file>" ["<file>" ...]');
@@ -140,3 +166,10 @@ for (const file of files) {
   }
 }
 console.log("\nA line beginning ! is something to settle before you parse a word of it.\n");
+if (wrongType.length > 0) {
+  console.error(
+    `${wrongType.join(", ")}: the bytes are not the kind of file the name claims, so nothing downstream ` +
+      `can read it. Go and find the real file.`,
+  );
+  process.exitCode = 1;
+}
