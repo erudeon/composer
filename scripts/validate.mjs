@@ -160,14 +160,24 @@ for (const dir of skillNames) {
  * `plugin.json` and `marketplace.json` are what somebody reads BEFORE installing, and nothing checked
  * them. The marketplace entry described this as internal tooling long after it went public and became
  * the thing a student installs, which is both wrong and the kind of wrong nobody notices from inside.
+ *
+ * A MARKETPLACE MANIFEST HERE IS OPTIONAL, AND ITS ABSENCE IS THE INTENDED STATE. One Claude Code
+ * marketplace per role was settled on 17 September, and a plugin repository declaring one of its own
+ * is what broke the tower's installer: two repositories claimed the name `erudeon` and a machine holds
+ * one marketplace per name. Composer is listed by `erudeon/marketplace-authors` and `erudeon/marketplace`
+ * instead, so this file was deleted on purpose.
+ *
+ * Requiring it anyway made `validate.mjs` report an error on every run of a correct repository, which is
+ * how a check stops being read. It is validated when present and not demanded.
  */
 for (const file of [
   ".claude-plugin/plugin.json",
   ".claude-plugin/marketplace.json",
 ]) {
   const full = join(ROOT, file);
+  const required = file.endsWith("plugin.json");
   if (!existsSync(full)) {
-    errors.push(`${file}: missing`);
+    if (required) errors.push(`${file}: missing`);
     continue;
   }
   let json;

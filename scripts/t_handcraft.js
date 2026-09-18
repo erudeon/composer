@@ -71,4 +71,57 @@ const clean = run([{ number: 1, title: "T", blocks: [
 assert.ok(clean.ok, `a clean lecture must pass:\n${clean.out}`);
 assert.match(clean.out, /nothing drawn by hand/);
 
+/*
+ * A MARKER THAT NEVER CLOSES, in every field a student reads.
+ *
+ * Fourteen of these shipped on one statistics course before this rule existed, and SIX of them were in
+ * the questions, which this gate did not look at at all. Each case below is one of the places they were
+ * found, so a future gate that quietly stops reading one of them fails here.
+ */
+const STAR = "the guess p* is the worst case";
+const places = {
+  "a prose body": one({ id: "m1", type: "prose", body: STAR }),
+  "a callout body": one({ id: "m2", type: "callout", variant: "note", title: "Note", body: STAR }),
+  "a table cell": one({ id: "m3", type: "table", variant: "data", caption: "Critical values",
+                        head: ["Level", "Value"], rows: [["80%", "for \u2212z*"]] }),
+  "a figure caption": one({ id: "m4", type: "figure", imageKey: null, alt: "a curve", caption: STAR }),
+  "a worked example step": one({ id: "m5", type: "worked-example", problem: "Find n",
+                                 steps: [{ label: "Guess the proportion", result: "p* = 0.5" }] }),
+};
+for (const [where, topics] of Object.entries(places)) {
+  const hit = run(topics);
+  assert.ok(!hit.ok, `an unpaired asterisk in ${where} must be a finding`);
+  assert.match(hit.out, /marker that never closes/, `in ${where}:\n${hit.out}`);
+}
+
+/* THE QUESTIONS. A gate over blocks alone passed a bank holding six of them. */
+const inQuestions = run([{ number: 1, title: "T", blocks: [], questions: [
+  { key: "q1", stem: "Which guess for p* do you use?", explanation: "p* = 0.5 is the safest.",
+    options: [{ text: "p* = 0.5", correct: true }, { text: "p = 0.1" }] },
+] }]);
+assert.ok(!inQuestions.ok, "an unpaired asterisk in a question stem, option or explanation is a finding");
+assert.match(inQuestions.out, /marker that never closes/);
+
+/* Closed spans, an escaped asterisk and the operator itself are all silent. */
+const marksOk = run([{ number: 1, title: "T", blocks: [
+  { id: "n1", type: "prose", body: "The **bold** and the *italic* both close, and 5 \\* 3 is escaped." },
+  { id: "n2", type: "prose", body: "The guess p\u2217 = 0.5 uses the asterisk operator." },
+], questions: [
+  { key: "q2", stem: "What is p\u2217?", explanation: "The guessed proportion.",
+    options: [{ text: "A guess", correct: true }, { text: "A parameter" }] },
+] }]);
+assert.ok(marksOk.ok, `closed spans and the operator must pass:\n${marksOk.out}`);
+
+/*
+ * SPSS PRINTS A FOOTNOTE AND A SCREEN STILL HAS NO PAGE. The rule fired on five of these in one course,
+ * every one of them correct teaching about software output rather than a page reference.
+ */
+const spss = run(one({ id: "f1", type: "prose",
+  body: "Read the Pearson Chi-Square row and check the footnote under the SPSS table about expected counts." }));
+assert.ok(spss.ok, `a footnote belonging to software output is not a page reference:\n${spss.out}`);
+
+/* A page reference still is one, whatever is near it. */
+const realPage = run(one({ id: "f2", type: "prose", body: "The full table is on page 8 of the SPSS output." }));
+assert.ok(!realPage.ok, "a page reference is a finding even beside the word SPSS");
+
 console.log("handcraft ok");

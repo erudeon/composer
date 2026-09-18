@@ -108,10 +108,27 @@ const RULES = [
     name: "points at something a page does not have",
     becomes: null,
     test: (b) => {
-      const m = /\b(?:footnote|bottom of the page|top of the page|see page \d+|on page \d+|\(page \d+\)|next page|previous page|overleaf)\b/i.exec(
-        `${b.body ?? ""} ${b.title ?? ""} ${b.caption ?? ""}`,
+      const text = `${b.body ?? ""} ${b.title ?? ""} ${b.caption ?? ""}`;
+      const m = /\b(?:footnote|voetnoot|bottom of the page|top of the page|see page \d+|on page \d+|\(page \d+\)|next page|previous page|overleaf)\b/i.exec(
+        text,
       );
-      return m && `"${m[0]}" does not exist on a screen`;
+      if (!m) return null;
+      /*
+       * A SOFTWARE TABLE HAS A FOOTNOTE AND A SCREEN STILL DOES NOT.
+       *
+       * SPSS prints notes under its own output, and a statistics summary tells students to read them:
+       * "check the footnote about cells with an expected count below 5" is correct teaching, not a
+       * page reference. The rule fired on five of those in one course and cost a build cycle each
+       * time. So the word alone is not the finding; the word with nothing nearby to own it is.
+       *
+       * Only the word for a note is forgiven this way. "see page 8" has no reading that survives.
+       */
+      const owned = /\b(?:footnote|voetnoot)\b/i.test(m[0]) &&
+        /\b(?:SPSS|output|uitvoer|table|tabel|printout)\b/i.test(
+          text.slice(Math.max(0, m.index - 90), m.index + 90),
+        );
+      if (owned) return null;
+      return `"${m[0]}" does not exist on a screen`;
     },
   },
   {
@@ -191,6 +208,53 @@ const RULES = [
       return hits.length ? `${[...new Set(hits)].join(", ")} carries markdown that is drawn as characters` : null;
     },
   },
+  {
+    /*
+     * A MARKER THAT NEVER CLOSES IS A CHARACTER ON THE PAGE.
+     *
+     * This dialect stores one mark per span, so an asterisk with no partner is not emphasis: the
+     * student reads the asterisk. The audit skill has named this for as long as it has existed, and
+     * nothing enforced it, so it stayed true. Fourteen more reached production on a statistics course
+     * in prose, a summary, a table cell, a question stem, four options and an explanation.
+     *
+     * The cause is almost never a typo. It is `p*`, `z*`, `t*` and `x*`: the star belongs to the
+     * SYMBOL, Word stores it as a literal asterisk, and it lands beside the markers the extractor
+     * writes. The repair is the asterisk OPERATOR, which no parser can read as a mark and which is how
+     * most authors already spell it.
+     *
+     * NOT AUTO-CORRECTED, deliberately. The obvious rule, convert an asterisk that follows a letter,
+     * eats the CLOSING marker of any italic line ending in one, and a caption reading "...the two ways
+     * of guessing p*" is exactly that shape. Six captions were destroyed that way before the pattern
+     * was understood. So this refuses, says where, and a person decides.
+     */
+    name: "a marker that never closes",
+    becomes: null,
+    test: (b) => {
+      const hits = [];
+      const look = (label, v) => {
+        if (typeof v !== "string") return;
+        for (const line of v.split("\n")) {
+          const bare = line
+            .replace(/\\\*/g, "")                      // escaped on purpose: a character, not a mark
+            .replace(/\*\*[^*]+\*\*/g, "")             // a bold span that closes
+            .replace(/(?<!\*)\*[^*]+\*(?!\*)/g, "");   // an italic span that closes
+          if (bare.includes("*")) hits.push(`${label}: ${line.trim().slice(0, 70)}`);
+        }
+      };
+      for (const key of ["body", "caption", "title", "problem", "answer"]) look(key, b[key]);
+      if (b.type === "table") {
+        for (const cell of b.head ?? []) look("a head cell", cell);
+        for (const row of b.rows ?? []) for (const cell of row ?? []) look("a cell", cell);
+      }
+      for (const [i, st] of (b.steps ?? []).entries())
+        for (const key of ["label", "note", "result", "substitution"])
+          look(`step ${i + 1} ${key}`, st?.[key]);
+      return hits.length
+        ? `${hits[0]}  (the star of p*, z*, t* or x* is the asterisk OPERATOR, not a mark. Never ` +
+            `convert one by rule: the last asterisk of an italic line is its closer, not a symbol.)`
+        : null;
+    },
+  },
 ];
 
 /** A sheet of body text fits roughly this many characters of drawn maths on one line. */
@@ -220,10 +284,34 @@ function latexWidth(latex) {
   return Math.max(...out.split(/\\\\/).map((line) => asText(line).length));
 }
 
+/**
+ * A QUESTION IS NOT A BLOCK, and every rule above reads one. A stem, an option and an explanation are
+ * text a student reads exactly as a body is, and six of the fourteen unpaired asterisks that shipped
+ * were in them: a gate over blocks alone passed that bank without a word.
+ *
+ * It is flattened rather than given rules of its own, so a rule written once covers both and neither
+ * can be the one somebody forgot to extend.
+ */
+const asBlock = (question, index) => ({
+  id: question.key ?? `question ${index + 1}`,
+  type: "question",
+  body: [
+    question.stem,
+    question.explanation,
+    ...(question.options ?? []).flatMap((o) => [o?.text, o?.rationale]),
+  ]
+    .filter((x) => typeof x === "string")
+    .join("\n"),
+});
+
 let found = 0;
 for (const topic of manifest.topics) {
   const hits = [];
-  for (const block of topic.blocks ?? [])
+  const readable = [
+    ...(topic.blocks ?? []),
+    ...(topic.questions ?? []).map(asBlock),
+  ];
+  for (const block of readable)
     for (const rule of RULES) {
       const why = rule.test(block);
       if (why) hits.push({ block, rule, why });

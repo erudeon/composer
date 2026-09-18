@@ -33,6 +33,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { mathsSpans } = require("./maths-spans.js");
+const { stripEmDashes } = require("./lib.js");
 
 /** The footer itself, without the whitespace around it — which differs by where the footer sits. */
 const FURNITURE_BODY = String.raw`(?:GradeGuru|PassTheYear)\s*\|[^\n]{0,120}?(?:Page|Pagina)\s+\d{1,4}\s+(?:of|van)\s+\d{1,4}`;
@@ -143,8 +144,35 @@ function decode(buf) {
 function normalise(rawInput) {
   const notes = [];
 
+  /*
+   * THE EM DASH RULE, WHICH NOTHING WAS RUNNING.
+   *
+   * `stripEmDashes` has existed in `lib.js` for this plugin's whole life, survived three corruption
+   * bugs, and is pinned by `t_dash.js`, `t_pair.js` and `t_marker.js`. It was called by the end-to-end
+   * check and by its own tests and by NOTHING IN THE CHAIN, so `preflight.js` counted the dashes, said
+   * ALL must go, and then no step removed one. Every course went up carrying them unless a model took
+   * them out by hand, which on a real upload it did with a blanket comma that this function would have
+   * read as a colon, a parenthesis or a table marker.
+   *
+   * ON THE MASKED PROSE, like every other rule here, and never on the raw text. It knows not to bracket
+   * ACROSS a maths span, but a dash INSIDE one is punctuation to it: `$SS_A — df_A$` came back as
+   * `$SS_A: df_A$`, a corrupted equation drawn with a colon in it. Masking first means the maths is not
+   * there for it to touch.
+   *
+   * LINE BY LINE, which is not a detail either. It splits a string into SENTENCES on `/(?<=[.!?])\s+/`
+   * and rejoins with a space, and a newline is `\s`: handed the whole document it welded 8,218 lines
+   * into 213 and destroyed every heading and paragraph in the file. `e2e-check.mjs`, the only caller it
+   * has ever had, passes it one line at a time, and that is the contract.
+   */
+
   // Every rule below runs on PROSE only. The maths goes back in untouched at the end.
-  const { masked: raw, restore } = protectMaths(rawInput);
+  const { masked, restore } = protectMaths(rawInput);
+  const dashes = (masked.match(/—/g) ?? []).length;
+  const raw = masked.split("\n").map(stripEmDashes).join("\n");
+  notes.push(`em dashes removed: ${dashes}`);
+  const left = (raw.match(/—/g) ?? []).length;
+  if (left > 0)
+    notes.push(`! ${left} em dash(es) left, which the rule would not settle on its own: read each one`);
 
   const ownLine = (raw.match(FURNITURE_OWN_LINE) ?? []).length;
   let text = raw.replace(FURNITURE_OWN_LINE, "\n");

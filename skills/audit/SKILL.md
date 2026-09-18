@@ -31,6 +31,16 @@ emoji, a heading with no text, an equation in a heading, and **a literal asteris
 reads**. This dialect stores one mark per span, so a nested marker is not emphasis: it is punctuation
 the reader sees. Hundreds shipped before anybody looked.
 
+**Two halves of that are now machinery rather than a grep, so do neither by hand.**
+`handcraft-check.mjs` refuses a manifest holding a marker that never closes, in a block or in a
+question, and `push.mjs --apply` runs it before it sends anything. It does NOT correct one: the obvious
+rule eats the closing marker of an italic line ending in an asterisk, and a caption reading "the two
+ways of guessing p*" is that exact shape, so six captions were destroyed before the pattern was
+understood. The repair is the asterisk OPERATOR, decided one at a time. And `normalise.js` now runs
+`stripEmDashes`, which existed, was pinned by three test files, and was called by nothing in the chain
+for this plugin's whole life; a course that reaches here still carrying dashes means that step was
+skipped, not that they need removing by hand.
+
 **4. Transcription fidelity, `ai`.** The equations the converter flagged, read back against the original
 rendering: fractions, limits under a sum, cases, absolute-value bars, and every one that was a picture.
 A formula that came out wrong looks exactly like one that came out right, which is why this family is not
