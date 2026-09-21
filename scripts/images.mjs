@@ -13,6 +13,12 @@
  * same gates and the same writer. A file read from disk by this script costs the length of one command
  * line, and it arrives at full resolution.
  *
+ * SINCE 21 SEPTEMBER 2026 `content_upload_image` REFUSES EVERY CALL. Three days earlier it had left 65
+ * pictures on production crushed to thumbnails, cut off part-way or unreadable, exactly as the paragraph
+ * above predicts. This script is the only way a picture reaches a course, one picture or fifty; and the
+ * door now decodes every file and refuses one that is not whole (its per-file answer says "not a whole
+ * file"), which this script pre-checks by the file's own end marker before sending anything.
+ *
  * IT WRITES THE MARKDOWN MAP, which is the half a bare curl would leave to be done by hand. Keys are
  * minted by the storage driver and cannot be predicted, so a manifest can only reference a figure AFTER
  * it is uploaded: `<input>.uploaded.json` maps each file name to the exact markdown to paste, and a
@@ -38,6 +44,7 @@ import {
  * ONE HUB. Staging is not in the Composer's pipeline, in any mode, so this script cannot reach it.
  */
 import { bearerFor, noCredentialMessage, PRODUCTION_HUB } from "./credential.mjs";
+import { imageWholeByMarkers } from "./image-whole.mjs";
 
 const USAGE = `
 Usage: node scripts/images.mjs <figures.json> --course <courseId> [--hub <url>] [--show-request]
@@ -110,6 +117,18 @@ const entries = figures.map((figure, index) => {
   const full = path.resolve(base, name);
   if (!fs.existsSync(full)) fail(`Item ${index}: no such file: ${full}`);
   const bytes = fs.statSync(full).size;
+  /*
+   * WHOLE, BY ITS OWN END MARKER, before it leaves the machine. The door decodes every upload and refuses
+   * a file that is not whole, but that answer comes back per file after a round trip; this one names the
+   * file now, while the person who can re-export it is at the keyboard. See image-whole.mjs for what a
+   * cut-off picture is and where 65 of them came from.
+   */
+  if (imageWholeByMarkers(fs.readFileSync(full)) === false)
+    fail(
+      `Item ${index} (${name}) is cut off part-way: the file stops before its own end marker.\n` +
+        `Take the bytes again from the source (the document's word/media, the deck, the export). ` +
+        `Never let a model repair or re-emit a picture; that is how this file came to be cut off.`,
+    );
   return { name: path.basename(name), alt, topicId, full, bytes };
 });
 

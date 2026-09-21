@@ -79,13 +79,21 @@ It asks nobody anything and answers at once. If it says a click is needed, get i
 is still at the keyboard, rather than forty figures into an upload.
 
 **1. Figures first.** A manifest carries no bytes and a storage key cannot be predicted, so the pictures
-go up before the file that references them. `images.mjs` sends a whole folder in one go, and
-`content_upload_image` is the door for a single picture added later. Write `figures.json` beside the
-images, then:
+go up before the file that references them. `images.mjs` sends a whole folder in one go, and a single
+picture added later goes the same way with a one-line `figures.json`. **`content_upload_image` refuses
+every call** (since 21 September 2026): its bytes were model output, and on 16-18 September that left 65
+pictures on production as thumbnails, cut-off files and noise. A picture is never typed, pasted or
+re-emitted by a model; it goes from the file on disk to the door, and nowhere else. Write `figures.json`
+beside the images, then:
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/images.mjs" figures.json --course <courseId>
 ```
+
+A `FAILED <file> ... not a whole file` line, or a refusal before sending that says a file is cut off
+part-way, means the file on disk is damaged: take its bytes again from the source, never from a model.
+And a file that decodes can still be noise, which nothing but eyes catches: look at the pictures at their
+drawn size before the manifest goes up.
 
 It answers a file-name-to-markdown map. **Substitute it for the `[FIGURE:word/media/imageN.png]` markers
 the source of record carries**, verbatim, and never rebuild that markdown from the key: a key is minted

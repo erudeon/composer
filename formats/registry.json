@@ -39,7 +39,8 @@
     "textLayer": "for a pdf: true when it carries extractable text",
     "pdfProducer": "the /Producer string, which says what made the PDF",
     "wordsPerEquation": "words divided by equations, which is how dense a document's maths is; null when it has none",
-    "pdfPages": "for a pdf: how many pages it draws"
+    "pdfPages": "for a pdf: how many pages it draws",
+    "imageWhole": "for a jpeg, png or gif: true when the file ends in its own end marker (JPEG EOI, PNG IEND, GIF trailer); false is a file cut off part-way"
   },
   "entries": [
     {
@@ -404,6 +405,18 @@
       "handling": "Harmless for a figure, because the bytes are read and not the name. It matters when a tool picks an encoder by extension.",
       "seen": "17 files, all named IMG_NNNN.jpg and all PNG.",
       "gotcha": "Listed because the same mistake at document scale is the expensive one, and because it proves the rename happens by accident and not by intent."
+    },
+    {
+      "id": "image-cut-off",
+      "name": "A picture cut off part-way",
+      "status": "caught",
+      "when": {
+        "imageWhole": false
+      },
+      "purpose": "A figure whose bytes stop before the file's own end marker. It keeps its header, so it sniffs as its format, reports a size and opens in most viewers, with a grey bottom half where the missing rows were.",
+      "handling": "Never upload it and never let a model 'repair' it: go back to the source (the Word document's word/media, the deck, the export) and take the bytes again. images.mjs refuses one before it leaves the machine, naming the file; the platform's door decodes every upload and refuses one that is not whole with 'not a whole file'. A file garbled in the middle that still ends correctly passes this check and not the door's, so look at the contact sheet before pushing.",
+      "seen": "Production storage, 16-18 September 2026: pictures emitted as base64 by a model whose output was cut off, then retried smaller until one fit. Personality Psychology keys 065633aae1d5 (5,307 B), cd9dcb3582aa (1,104 B), 3d6b0ffbdb38 and b9fd3464a883 (467 B each) stop before EOI; 65 pictures across two courses had to be restored.",
+      "gotcha": "Every cheap check is fooled: the header is intact, the size decodes, a ContentImage row is written, and the page draws something. Only reading to the end of the file, or decoding all of it, tells a cut-off picture from a whole one."
     },
     {
       "id": "heic-photo",
