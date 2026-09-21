@@ -30,6 +30,7 @@ import { inflateSync } from "node:zlib";
 import { join, extname, resolve, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { imageWholeByMarkers } from "./image-whole.mjs";
 
 const require = createRequire(import.meta.url);
 const { stripTags } = require("./intake/lib.js");
@@ -103,6 +104,10 @@ function factsOf(file) {
     kb: Math.round(buf.length / 1024),
     extMatchesBytes: expected === undefined ? true : kind === expected,
   };
+
+  /* A picture's own end marker: absent on a file cut off part-way, which every other check passes. */
+  const whole = imageWholeByMarkers(buf);
+  if (whole !== null) f.imageWhole = whole;
 
   /*
    * A file whose bytes say nothing is either text or something we have no magic for. Deciding by
@@ -255,9 +260,10 @@ export function guide() {
     "node scripts/identify.mjs --write-guide",
     "```",
     "",
-    `Drawn from a census of ${census.files.toLocaleString()} files on ${census.when}: ` +
+    /* A fixed locale: the guide is committed, and a Dutch machine writes 2.325 where the census says 2,325. */
+    `Drawn from a census of ${census.files.toLocaleString("en-GB")} files on ${census.when}: ` +
       `${census.wordDocuments} Word documents, ${census.summaries} course summaries, ` +
-      `${census.equations.toLocaleString()} equations.`,
+      `${census.equations.toLocaleString("en-GB")} equations.`,
     "",
     "To ask what a file in front of you is:",
     "",

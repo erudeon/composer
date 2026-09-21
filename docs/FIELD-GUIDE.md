@@ -37,6 +37,7 @@ node scripts/identify.mjs <file-or-folder> --all
 | [A photograph wearing a .docx extension](#docx-that-is-a-photograph) | handled |
 | [A note somebody left instead of the file](#placeholder-note) | handled |
 | [An image that is not the format it claims](#image-mislabelled) | handled |
+| [A picture cut off part-way](#image-cut-off) | handled |
 | [Word with no styles at all](#word-no-styles) | partly handled |
 | [Word, exported from Google Docs](#google-docs-export) | partly handled |
 | [PDF with a real text layer](#pdf-text) | partly handled |
@@ -303,6 +304,20 @@ node scripts/identify.mjs <file-or-folder> --all
 **Seen.** 17 files, all named IMG_NNNN.jpg and all PNG.
 
 **Recognised by.** `ext = .jpg`, `kind = png`
+
+### A picture cut off part-way
+
+<a id="image-cut-off"></a>
+
+**What it is for.** A figure whose bytes stop before the file's own end marker. It keeps its header, so it sniffs as its format, reports a size and opens in most viewers, with a grey bottom half where the missing rows were.
+
+**How to handle it.** Never upload it and never let a model 'repair' it: go back to the source (the Word document's word/media, the deck, the export) and take the bytes again. images.mjs refuses one before it leaves the machine, naming the file; the platform's door decodes every upload and refuses one that is not whole with 'not a whole file'. A file garbled in the middle that still ends correctly passes this check and not the door's, so look at the contact sheet before pushing.
+
+**What goes wrong.** Every cheap check is fooled: the header is intact, the size decodes, a ContentImage row is written, and the page draws something. Only reading to the end of the file, or decoding all of it, tells a cut-off picture from a whole one.
+
+**Seen.** Production storage, 16-18 September 2026: pictures emitted as base64 by a model whose output was cut off, then retried smaller until one fit. Personality Psychology keys 065633aae1d5 (5,307 B), cd9dcb3582aa (1,104 B), 3d6b0ffbdb38 and b9fd3464a883 (467 B each) stop before EOI; 65 pictures across two courses had to be restored.
+
+**Recognised by.** `imageWhole = false`
 
 ## Partly handled
 
