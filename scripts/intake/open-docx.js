@@ -41,7 +41,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
-const { headingLevels, mediaPathFor } = require("./docx-core.js");
+const {
+  headingLevels,
+  mediaPathFor,
+  withHyphensAsText,
+} = require("./docx-core.js");
 const { unsafeToUnpack } = require("./docx-zip.js");
 
 /** Unzip a `.docx` into `dir`, which is created if it is not there. Returns `dir`. */
@@ -123,7 +127,11 @@ const ENTITY = {
 };
 
 function textOf(fragment) {
-  return [...fragment.matchAll(/<(?:w|m):t\b[^>]*>([\s\S]*?)<\/(?:w|m):t>/g)]
+  return [
+    ...withHyphensAsText(fragment).matchAll(
+      /<(?:w|m):t\b[^>]*>([\s\S]*?)<\/(?:w|m):t>/g,
+    ),
+  ]
     .map((m) => m[1])
     .join("")
     /*

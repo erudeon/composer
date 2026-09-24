@@ -123,12 +123,28 @@ function withoutTextBoxes(body) {
   return out + body.slice(from);
 }
 
+/**
+ * A NON-BREAKING HYPHEN IS A HYPHEN. Word writes one as the element `<w:noBreakHyphen/>` rather than a
+ * character, so a reader of `<w:t>` alone welds "well" and "known" into "wellknown". It is rewritten as
+ * the text it draws, a plain `-`, for the reason `normalise.js` makes a non-breaking space a space:
+ * every later step matches a line by its text, and a U+2011 silently misses the hyphen somebody types
+ * into a repair or an op. `<w:softHyphen/>` only marks where a word MAY break and draws nothing, so it
+ * is left to read as nothing.
+ *
+ * Both readers of run text call this, `runsOf` below and `open-docx.js`'s `textOf`, so the paragraph
+ * and the heading label a picture is filed under never spell one word two ways.
+ */
+function withHyphensAsText(xml) {
+  return xml.replace(/<w:noBreakHyphen\b[^>]*\/>/g, "<w:t>-</w:t>");
+}
+
 /** The runs of one paragraph, with the formatting each one carries. */
 function runsOf(p) {
   const res = [];
   const runRe = /<w:r\b[\s\S]*?<\/w:r>/g;
+  const runs = withHyphensAsText(p);
   let r;
-  while ((r = runRe.exec(p))) {
+  while ((r = runRe.exec(runs))) {
     const rs = r[0];
     const rPr = (rs.match(/<w:rPr>[\s\S]*?<\/w:rPr>/) || [""])[0];
     let txt = "";
@@ -494,4 +510,5 @@ module.exports = {
   paraProps,
   BLOCK_RE,
   withoutTextBoxes,
+  withHyphensAsText,
 };
