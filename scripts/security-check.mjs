@@ -69,6 +69,29 @@ const work = mkdtempSync(join(tmpdir(), "seccheck-"));
 }
 
 /*
+ * The text-box blanking runs over every byte of the same body, before any other step. A lazy match
+ * from each opening tag to its closing one scans to the end for every box that never closes, which is
+ * quadratic in a file of nothing else.
+ */
+{
+  const { withoutTextBoxes } = require(join(ROOT, "scripts/intake/docx-core.js"));
+  const timed = (text) => {
+    const t = Date.now();
+    withoutTextBoxes(text);
+    return Date.now() - t;
+  };
+  const unclosed = timed("<w:txbxContent>".repeat(200000));
+  const unterminated = timed("<w:txbxContent a=".repeat(200000));
+  const closed = timed("<w:txbxContent><w:p/></w:txbxContent>".repeat(100000));
+  const worst = Math.max(unclosed, unterminated, closed);
+  probe(
+    worst < 5000,
+    "the text-box blanking does not go quadratic",
+    `200,000 unclosed boxes ${unclosed}ms, 200,000 unterminated tags ${unterminated}ms, 100,000 boxes ${closed}ms`,
+  );
+}
+
+/*
  * ── 2. A DECOMPRESSION BOMB ─────────────────────────────────────────────────────────────────────────
  *
  * A megabyte of zeros expands to a gigabyte, and `unzip` will write every byte of it. The only symptom

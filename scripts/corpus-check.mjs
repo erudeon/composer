@@ -165,10 +165,29 @@ for (const file of files) {
     );
   }
 
+  /*
+   * EVERY WORD OF THE BODY REACHED THE MARKDOWN, counted by `words-check.js`, which reads the XML with a
+   * real parser and shares no code with `docx.js`. A list item anchoring a text box once lost its own
+   * sentence here while every other number in this row read clean.
+   */
+  const words = existsSync(join(work, "s.md"))
+    ? run("intake/words-check.js", [
+        join(work, "word", "document.xml"),
+        join(work, "s.md"),
+      ])
+    : { code: 0 };
+  if (words.code !== 0)
+    notes.push(words.out.split("\n")[0].replace(/^!\s*/, "").replace(/:$/, ""));
+
   totals.eqs += eqs;
   totals.bad += bad;
   totals.headings += headings;
-  if (bad > 0 || extract.code === 3 || marked < counts.pictures)
+  if (
+    bad > 0 ||
+    extract.code === 3 ||
+    marked < counts.pictures ||
+    words.code !== 0
+  )
     problems.push([name, notes.join("; ")]);
 
   console.log(

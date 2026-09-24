@@ -5,5 +5,8 @@
   "description": "Scripts the Composer plugin's skills run. CommonJS deliberately: every intake script uses require().",
   "dependencies": {
     "katex": "^0.16.22"
+  },
+  "devDependencies": {
+    "saxes": "^6.0.0"
   }
 }
