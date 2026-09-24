@@ -159,9 +159,10 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/slice.mjs"            <course folder> 1 2 3
   calculation lines that is really a worked example. Its ops find their anchor by EXACT STRING and fail
   loudly rather than guess, which is what saves you when the builder's behaviour moves underneath a
   half-finished course.
-- **`slice.mjs`** writes `04-manifest/slice.json` holding only the units named. **Send that, not the
-  manifest**: the manifest carries every unit the document has, a body write is a whole-array REPLACE,
-  and sending a unit that was never built publishes the converter's raw tables over nothing.
+- **`slice.mjs`** writes `04-manifest/slice.json` holding only the units named, by the same number
+  `build-manifest.mjs --unit` takes. **Send that, not the manifest**: the manifest carries every unit
+  the document has, a body write is a whole-array REPLACE, and sending a unit that was never built
+  publishes the converter's raw tables over nothing.
 
 **Put each unit's slice on the lecture as `source`.** It is the text Intake extracted, and it is what
 every fidelity rule diffs the headings, prose and numbers against.
