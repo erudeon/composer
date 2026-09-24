@@ -62,14 +62,13 @@ const BLIP_RE = /<a:blip\b[^>]*r:embed="([^"]+)"/g;
 /**
  * EVERY PICTURE IN A BODY, BY BYTE OFFSET, scanned over the WHOLE string rather than per block.
  *
- * `BLOCK_RE` is non-greedy, so a paragraph carrying a floating text box ends at the INNER `</w:p>` and
- * everything after it — a picture included — is matched by no block at all. Measured on one real
- * summary, a paragraph-based scan found 32 of its 53 pictures, and 30 of 248 corpus documents carry a
- * text box. A table's cells are the same problem from the other side: the table branch returns before
+ * A paragraph-based scan found 32 of one real summary's 53 pictures: a picture inside a floating text
+ * box is in no block once `withoutTextBoxes` has blanked the box, and 30 of 248 corpus documents carry
+ * a text box. A table's cells are the same problem from the other side: the table branch returns before
  * any paragraph inside it is looked at.
  *
  * Offsets are the fix for both. The caller walks blocks and flushes every picture that sits before the
- * point it has reached, so a picture in a gap no block covers is emitted rather than lost.
+ * point it has reached, so a picture no block holds is emitted where it sat rather than lost.
  */
 function pictureOffsets(body, rels) {
   const out = [];
@@ -80,9 +79,34 @@ function pictureOffsets(body, rels) {
   return out;
 }
 
-/** Block-level elements of a body, in document order: paragraphs and tables. */
+/** Block-level elements of a body, in document order: paragraphs and tables. Run it over `withoutTextBoxes`. */
 const BLOCK_RE =
   /<w:p\b[\s\S]*?<\/w:p>|<w:p\b[^>]*\/>|<w:tbl>[\s\S]*?<\/w:tbl>/g;
+
+/**
+ * A BODY WITH EVERY FLOATING TEXT BOX BLANKED OUT, for `BLOCK_RE` to walk.
+ *
+ * A text box is a `<w:txbxContent>` holding paragraphs of its own, anchored in a run of the paragraph
+ * it floats beside, and Word writes it twice: in `<mc:Choice>` for DrawingML and again, inside
+ * `<v:textbox>`, in `<mc:Fallback>` for VML. `BLOCK_RE` is non-greedy, so the host paragraph ended at
+ * the box's INNER `</w:p>`. A list item anchoring a box reading "Missing markets" came out as the box's
+ * words, the fallback copy came out as a paragraph of its own, and the item's own sentence after the
+ * box sat in a gap no block covers and was lost.
+ *
+ * Blanked with spaces rather than cut, so every offset still points where `pictureOffsets` measured it
+ * on the real body. The box's words stay out of the text: `open-docx.js` lists every text box in
+ * `media-inventory.json` for a disposition of its own. A self-closing box holds nothing and is skipped,
+ * or the match would run on to the next box's closing tag and blank the body in between.
+ *
+ * ponytail: non-greedy, so a text box inside a text box would end at the inner one's closing tag. Word
+ * does not let an author put one there; count it by depth if a real document ever does.
+ */
+function withoutTextBoxes(body) {
+  return body.replace(
+    /<w:txbxContent\b(?:[^>]*[^/>])?>[\s\S]*?<\/w:txbxContent>/g,
+    (m) => " ".repeat(m.length),
+  );
+}
 
 /** The runs of one paragraph, with the formatting each one carries. */
 function runsOf(p) {
@@ -454,4 +478,5 @@ module.exports = {
   listFormats,
   paraProps,
   BLOCK_RE,
+  withoutTextBoxes,
 };

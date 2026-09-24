@@ -36,6 +36,7 @@ const {
   listFormats,
   paraProps,
   BLOCK_RE,
+  withoutTextBoxes,
   pictureOffsets,
 } = require("./docx-core.js");
 
@@ -53,6 +54,7 @@ const listFormat = listFormats(
 );
 
 const body = xml.slice(xml.indexOf("<w:body>"));
+const blocks = withoutTextBoxes(body);
 const text = (p) => flatten(paraText(p, ommlToLatex));
 
 /** The size a paragraph is set in: the largest of its runs, since a heading may hold a small footnote. */
@@ -63,7 +65,7 @@ function sizeOf(blk) {
 /** Paragraph blocks only, in order, with their size and text. Tables are not evidence about headings. */
 const paragraphs = [];
 let m;
-while ((m = BLOCK_RE.exec(body))) {
+while ((m = BLOCK_RE.exec(blocks))) {
   if (m[0].startsWith("<w:tbl")) continue;
   const t = text(m[0]).trim();
   if (t) paragraphs.push({ size: sizeOf(m[0]), chars: t.length });
@@ -113,7 +115,7 @@ function picturesBefore(limit, indent = "") {
 }
 
 BLOCK_RE.lastIndex = 0;
-while ((m = BLOCK_RE.exec(body))) {
+while ((m = BLOCK_RE.exec(blocks))) {
   const blk = m[0];
   const blockEnd = m.index + blk.length;
   picturesBefore(m.index);

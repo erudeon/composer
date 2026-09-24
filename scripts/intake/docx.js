@@ -41,6 +41,7 @@ const {
   paraProps,
   pictureOffsets,
   BLOCK_RE,
+  withoutTextBoxes,
 } = require("./docx-core.js");
 
 const [xmlPath, outPath, stylesArg] = process.argv.slice(2);
@@ -66,6 +67,7 @@ const listFormat = listFormats(read(path.join(wordDir, "numbering.xml")));
 const rels = relationships(path.dirname(wordDir));
 
 const body = xml.slice(xml.indexOf("<w:body>"));
+const blocks = withoutTextBoxes(body);
 const out = emitter();
 const text = (p) => flatten(paraText(p, ommlToLatex));
 const counts = {
@@ -82,9 +84,9 @@ const authoredSeen = new Map();
  * EVERY PICTURE'S POSITION, taken from the whole body ONCE and drained as the blocks go past.
  *
  * Scanning per block loses two kinds of picture and neither is rare: one inside a table cell, because
- * the table branch returns before any paragraph in it is read, and one after a floating text box,
- * because `BLOCK_RE` is non-greedy and ends that paragraph at the box's own inner `</w:p>`. Both come
- * out of `media-inventory.json` correctly, so the two halves disagree and nothing says so.
+ * the table branch returns before any paragraph in it is read, and one inside a floating text box,
+ * because the blocks are walked with every text box blanked out. Both come out of
+ * `media-inventory.json` correctly, so the two halves would disagree and nothing would say so.
  */
 const pictures = pictureOffsets(body, rels);
 let nextPicture = 0;
@@ -101,14 +103,11 @@ function picturesBefore(limit, indent = "") {
 }
 
 let m;
-while ((m = BLOCK_RE.exec(body))) {
+while ((m = BLOCK_RE.exec(blocks))) {
   const blk = m[0];
   const blockEnd = m.index + blk.length;
 
-  /*
-   * ANY PICTURE IN A GAP NO BLOCK COVERS, which is the truncated tail of a paragraph holding a text
-   * box. It sat before this block, so it is written before this block.
-   */
+  /* ANY PICTURE IN A GAP NO BLOCK COVERS. It sat before this block, so it is written before this block. */
   picturesBefore(m.index);
 
   if (blk.startsWith("<w:tbl")) {
