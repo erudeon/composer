@@ -98,14 +98,29 @@ const BLOCK_RE =
  * `media-inventory.json` for a disposition of its own. A self-closing box holds nothing and is skipped,
  * or the match would run on to the next box's closing tag and blank the body in between.
  *
- * ponytail: non-greedy, so a text box inside a text box would end at the inner one's closing tag. Word
- * does not let an author put one there; count it by depth if a real document ever does.
+ * ONE PASS, NOT A LAZY MATCH. `<w:txbxContent>[\s\S]*?<\/w:txbxContent>` scans to the end of the body
+ * for every opening tag with no closing one, so a crafted file of them takes quadratic time. Here the
+ * closing tag is looked for once per box, and the first box with none ends the search: no later box
+ * can have one either. An opening tag stops at the next `<` as well as `>`, for the same reason.
+ *
+ * ponytail: a text box inside a text box would end at the inner one's closing tag. Word does not let
+ * an author put one there; count it by depth if a real document ever does.
  */
+const TEXT_BOX_OPEN = /<w:txbxContent\b(?:[^<>]*[^/<>])?>/g;
+const TEXT_BOX_CLOSE = "</w:txbxContent>";
+
 function withoutTextBoxes(body) {
-  return body.replace(
-    /<w:txbxContent\b(?:[^>]*[^/>])?>[\s\S]*?<\/w:txbxContent>/g,
-    (m) => " ".repeat(m.length),
-  );
+  let out = "";
+  let from = 0;
+  TEXT_BOX_OPEN.lastIndex = 0;
+  for (let m; (m = TEXT_BOX_OPEN.exec(body));) {
+    const close = body.indexOf(TEXT_BOX_CLOSE, TEXT_BOX_OPEN.lastIndex);
+    if (close === -1) break;
+    const end = close + TEXT_BOX_CLOSE.length;
+    out += body.slice(from, m.index) + " ".repeat(end - m.index);
+    from = TEXT_BOX_OPEN.lastIndex = end;
+  }
+  return out + body.slice(from);
 }
 
 /** The runs of one paragraph, with the formatting each one carries. */

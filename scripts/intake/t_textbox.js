@@ -140,5 +140,23 @@ check(
   ["Kept.", "Also kept.", "1. Item."],
 );
 
+check(
+  "A BOX THAT NEVER CLOSES BLANKS NOTHING. There is nothing to blank up to, and no later box can close either",
+  convert(
+    "docx.js",
+    `<w:p>${run("Before.")}</w:p><w:p><w:r><w:txbxContent>${run("Open.")}</w:r></w:p>`,
+  ).lines,
+  ["Before.", "Open."],
+);
+
+check(
+  "THE INDEPENDENT CHECK SEES A WELD. A non-breaking hyphen is an element, and a reader that drops it turns two words into one",
+  lostWords(
+    `<w:document><w:body><w:p><w:r><w:t>well</w:t><w:noBreakHyphen/><w:t>known</w:t></w:r></w:p></w:body></w:document>`,
+    "wellknown\n",
+  ).lost.map((l) => l.word),
+  ["well", "known"],
+);
+
 console.log(`\n${ran - failed}/${ran} passed`);
 process.exit(failed === 0 ? 0 : 1);

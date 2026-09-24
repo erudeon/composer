@@ -19,17 +19,31 @@
  * letters and digits, so escapes and punctuation cannot make one differ. An asterisk in the markdown
  * is emphasis or multiplication and nothing says which: Word bolds half a word as often as a whole
  * one, so `**S**tatement` is one word on the page, while `z*σ` is two. A word is there if either
- * reading has it. Equations are not `<w:t>` and are not counted, since
- * `omml.js` rewrites them as LaTeX and `katex-check.js` is their check, but each one ends a word:
- * "f", an equation, and "is" are two words, not "fis".
+ * reading has it.
+ *
+ * Equations are not `<w:t>` and are not counted, since `omml.js` rewrites them as LaTeX and
+ * `katex-check.js` is their check, but each one ends a word: "f", an equation, and "is" are two words,
+ * not "fis". So does a non-breaking hyphen, which Word writes as an element rather than a character:
+ * "well", `<w:noBreakHyphen/>`, "known" is two words, and a reader that drops the element welds them.
  *
  * It can only see a LOSS. A word printed twice is not caught here.
  */
 const fs = require("node:fs");
-const { SaxesParser } = require("saxes");
+const path = require("node:path");
+
+let SaxesParser;
+try {
+  ({ SaxesParser } = require("saxes"));
+} catch {
+  // The first line is what corpus-check prints beside the document, so it has to be the fix.
+  console.error(
+    `! words-check needs saxes, which is not installed: cd "${path.resolve(__dirname, "..", "..")}" && npm install`,
+  );
+  process.exit(2);
+}
 
 const LEFT_OUT = new Set(["w:txbxContent", "mc:Fallback"]);
-const SPACE = new Set(["w:tab", "w:br", "w:cr", "m:oMath"]);
+const SPACE = new Set(["w:tab", "w:br", "w:cr", "w:noBreakHyphen", "m:oMath"]);
 const words = (s) => s.normalize("NFC").match(/[\p{L}\p{N}]+/gu) ?? [];
 
 /** Every body paragraph's own text, in document order. */
