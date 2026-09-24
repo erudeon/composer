@@ -29,6 +29,12 @@ if (missing.length) {
   console.error(`! no unit ${missing.join(", ")}`);
   process.exit(1);
 }
+/* A number on two units is not a unit, and sending both is a lecture nobody asked for. */
+const twice = [...want].filter((n) => m.topics.filter((t) => t.number === n).length > 1);
+if (twice.length) {
+  console.error(`! unit ${twice.join(", ")} is the number of more than one unit, so it names none of them`);
+  process.exit(1);
+}
 const out = join(folder, "04-manifest", "slice.json");
 writeFileSync(out, `${JSON.stringify(m, null, 2)}\n`);
 console.log(

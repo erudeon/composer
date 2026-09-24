@@ -62,4 +62,11 @@ assert.deepStrictEqual(
 const r = spawnSync("node", [join(HERE, "slice.mjs"), dir, "13"], { encoding: "utf8" });
 assert.notStrictEqual(r.status, 0, "slice accepted a unit the document does not have");
 
+/* Nor is a number two units share: sending both would publish a lecture nobody asked for. */
+const shared = read("manifest.json");
+shared[12].number = 1;
+writeFileSync(join(dir, "04-manifest", "manifest.json"), JSON.stringify({ course: {}, topics: shared }));
+const twice = spawnSync("node", [join(HERE, "slice.mjs"), dir, "1"], { encoding: "utf8" });
+assert.notStrictEqual(twice.status, 0, "slice sent two units for one number");
+
 console.log("t_series: a course goes through apply-blocks and slice with its own titles, series and numbers");
