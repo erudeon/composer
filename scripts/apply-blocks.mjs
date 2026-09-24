@@ -207,34 +207,6 @@ if (state.courseShell?.term) manifest.course.term = { name: state.courseShell.te
  */
 if (state.courseShell?.slug) manifest.course.slug = state.courseShell.slug;
 
-/*
- * THE TWO SERIES THE AUTHOR DREW AS PART I AND PART II, with the numbers their own document uses.
- *
- * The builder numbers units in reading order, 1 to 16. The document restarts at 1 for Management
- * Accounting, and so does every cross-reference in the text ("we covered this in Lecture 1 MA"), so
- * the numbers a reader sees have to restart too. Units 11 to 16 become Management Accounting 1 to 6.
- */
-for (const topic of manifest.topics) {
-  const fa = topic.number <= 10;
-  topic.series = fa ? "Financial Accounting" : "Management Accounting";
-  if (!fa) topic.number -= 10;
-
-  /*
-   * AND THE TITLE SAYS IT ONCE. The document's own headings carry the number and the series -- "Lecture
-   * 1: Introduction to Financial Accounting & Bookkeeping (FA)" -- and the screen carries both as well,
-   * so a student read "Financial Accounting 1: Lecture 1: ... (FA)". The platform's own check reports
-   * it. The author's WORDS are what a title is, and the number is what the reader draws. The
-   * series tag moves to the FRONT in brackets -- (FA) / (MA). Author decided 2026-09-14.
-   *
-   * The slug does not move with it: every lecture's address is pinned in `SLUGS` in `course-data.mjs`,
-   * which is what keeps a live lecture where it is while its wording changes.
-   */
-  topic.title = `(${fa ? "FA" : "MA"}) ${topic.title
-    .replace(/^\s*Lecture\s+\d+\s*:\s*/i, "")
-    .replace(/\s*\((?:FA|MA)\)\s*$/i, "")
-    .trim()}`;
-}
-
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 for (const t of manifest.topics) {
   const by = {};
