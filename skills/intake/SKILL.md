@@ -152,15 +152,28 @@ later is expensive: renaming a unit re-derives its address, a title renders **as
 changing the reading order later means renaming, renumbering and reordering live rows.
 
 1. **The container word.** What is a teaching unit called here: Lecture, Week, Chapter, Theme, Problem
-   Set, Seminar? **And does each series have its own?** Crossing the two is what puts
-   "Unit 1: Theme 1: ..." on a screen. It is stored on the COURSE, so it is one word for all of it, and
-   it appears in every count a student sees ("5 weeks", "5 problem sets").
-2. **Structure.** One series of units, or two? **And do the lectures follow the themes, or interleave
-   with them?** The second half decides the reading order of the whole course.
-3. **Numbering.** One run, or a number per series? Two lectures may show the same number only across
-   NAMED series, which is what a series is for. It is enforced, so an answer here is not cosmetic: two
-   courses went in front of students with colliding lecture numbers.
-4. **The title.** Does it repeat its number, or omit it?
+   Set, Seminar? It is stored on the COURSE, so it is one word for all of it: it names a unit that sits
+   in no category, and it appears in every count a student sees ("5 weeks", "5 problem sets").
+2. **Categories.** One run of units, or several kinds that each count on their own (a run of lectures
+   beside a run of literature modules)? For each kind: the heading printed over its units
+   ("Literature"), what ONE unit in it is called ("Module") and what several are ("Modules"). A course
+   with one run declares none. **And do the kinds follow each other, or interleave?** That decides the
+   reading order of the whole course, and the course page keeps it.
+3. **Numbering.** The number each unit shows, as the author writes it: 7, 6b, 1.5, or a pair like 1&2
+   (read in the plural, "Weeks 1 & 2"). Two units may share a number only across categories. It is
+   enforced, so an answer here is not cosmetic: two courses went in front of students with colliding
+   lecture numbers.
+4. **The title.** A title never carries its unit's designation: the platform prints "Module 6b" above
+   it from the category and the number, so "Module 6b: Firms" would say it twice. Settle the words a
+   student reads for every unit whose heading carries more.
+
+Record them in `composer.json`, because the builder reads nothing else. Each kind goes under
+`structure.series` as `{ "name", "unit", "plural" }`. Each unit's row under `units` keeps `title` (its
+heading in the document, which is how the builder finds it), `number` (its build number, what
+`course-data.mjs` and every `--unit` are filed under, one per unit), and adds `series` (the category's
+`name`), `shownNumber` (the number as read), `shownTitle` (the words a student reads) and, where the author
+gives one, `subtitle` (the line under the title). A value left
+out falls back to the heading and the build number, which is right only when they already are.
 5. **House style beyond the mechanical edits.** Em dashes and heading numbers are removed without
    asking. Subtitles, capitalisation and title format are not, and nobody else decides them. **This is
    the most expensive question to ask late**: answered after the questions are written, every one of

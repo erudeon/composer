@@ -14,9 +14,12 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { unitKeys } from "./unit-keys.mjs";
 
 const folder = resolve(process.argv[2] ?? ".");
 const manifestPath = join(folder, "04-manifest", "manifest.json");
+/* `unit-blocks.mjs` is filed by build number, which is not always the number a student reads. */
+const keyOf = unitKeys(folder);
 const opsPath = join(folder, "unit-blocks.mjs");
 if (!existsSync(opsPath)) {
   console.log("no unit-blocks.mjs, nothing to place");
@@ -44,7 +47,7 @@ for (const topic of manifest.topics)
 
 let placed = 0;
 for (const topic of manifest.topics) {
-  for (const op of OPS[topic.number] ?? []) {
+  for (const op of OPS[keyOf(topic)] ?? []) {
     const at = topic.blocks.findIndex((b) => b.id === op.id);
     if (at === -1) fail(`unit ${topic.number}: no block ${op.id}`);
 

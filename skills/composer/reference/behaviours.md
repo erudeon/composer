@@ -188,6 +188,6 @@ they have. Where a lecture is long enough to need several calls, ask whether it 
 
 `content_catalog` `renumber_topics` resets every lecture's number to its POSITION in the course. On a
 course with one run of lectures that is a repair. On a course with two named runs it is destruction:
-Problem 1 and Lecture 1 both exist on purpose, numbers are per series, and the reading order is the
+Problem 1 and Lecture 1 both exist on purpose, numbers are per category, and the reading order is the
 array rather than the numbers. Running it collapses both runs into one sequence and there is no undo.
 
