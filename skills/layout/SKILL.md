@@ -130,7 +130,8 @@ split, examples and whether one is stepped, worked-example steps and their label
 kind, lists of named rules, folded headings and what they lead, the author's emoji flags and which
 callout each becomes, and where a defining equation wants a formula block.
 
-**What `<course folder>/course-data.mjs` supplies**, keyed by unit number, because the document cannot
+**What `<course folder>/course-data.mjs` supplies**, keyed by build number (each unit's `number` in
+`composer.json`, which is not always the number a student reads), because the document cannot
 give it up: `CHARTS` (somebody has to LOOK at the drawing, and a plausible wrong curve renders
 perfectly and teaches something false), `QUESTIONS`, `GLOSSARY`, `FORMULA_TERMS` (the gloss per symbol),
 `TERMS`, `CHECKS`, `EXTRA`, `REPAIRS` (a passage whose layout did not survive Word), and

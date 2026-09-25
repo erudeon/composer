@@ -39,6 +39,7 @@
  */
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { unitKeys } from "./unit-keys.mjs";
 
 const args = process.argv.slice(2);
 const folder = resolve(args.find((a) => !a.startsWith("--")) ?? ".");
@@ -50,6 +51,8 @@ if (!existsSync(file)) {
   process.exit(2);
 }
 const manifest = JSON.parse(readFileSync(file, "utf8"));
+/* `--unit` names a build number, which is not always the number a student reads. */
+const keyOf = unitKeys(folder);
 
 /**
  * A WORD, for the purpose of "did this survive". Letters only, three or more, lower-cased: punctuation
@@ -119,9 +122,9 @@ let failures = 0;
 let notes = 0;
 
 for (const topic of manifest.topics ?? []) {
-  if (wanted.length && !wanted.includes(topic.number)) continue;
+  if (wanted.length && !wanted.includes(keyOf(topic))) continue;
   if (!topic.source) {
-    console.log(`\n${topic.number}. ${topic.title}\n   ! no source on this unit, so nothing can be compared`);
+    console.log(`\n${keyOf(topic)}. ${topic.title}\n   ! no source on this unit, so nothing can be compared`);
     notes += 1;
     continue;
   }
@@ -154,7 +157,7 @@ for (const topic of manifest.topics ?? []) {
   }
 
   if (!gone.length && !cut.length) continue;
-  console.log(`\n${topic.number}. ${topic.title}`);
+  console.log(`\n${keyOf(topic)}. ${topic.title}`);
   for (const { line, want, best } of cut) {
     console.log(`   ! a sentence stops partway through, so something rewrote the rest of it`);
     console.log(`     runs out after: ...${want.slice(Math.max(0, best - 5), best).join(" ")}`);
@@ -170,7 +173,7 @@ for (const topic of manifest.topics ?? []) {
   }
 }
 
-const units = (manifest.topics ?? []).filter((t) => !wanted.length || wanted.includes(t.number)).length;
+const units = (manifest.topics ?? []).filter((t) => !wanted.length || wanted.includes(keyOf(t))).length;
 console.log(
   failures === 0
     ? `\nevery sentence the author wrote still reaches a student, across ${units} lecture(s)` +

@@ -29,6 +29,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { UNIT_KEYS_FILE } from "./unit-keys.mjs";
 
 /* ── the course folder ───────────────────────────────────────────────────────────────────────────── */
 
@@ -817,7 +818,7 @@ function figuresOutOfProse(body) {
 
 /* ── one unit becomes blocks ─────────────────────────────────────────────────────────────────────── */
 
-function buildUnit(rawLines, number, title, series) {
+function buildUnit(rawLines, number, title, shown) {
   /* The questions and their answer key leave the body before anything is built from it. */
   const { lines: unitLines, removed: liftedLines, questions: lifted } = liftQuestions(rawLines, number);
   const supplied = forUnit("QUESTIONS", number, []);
@@ -1400,15 +1401,17 @@ function buildUnit(rawLines, number, title, series) {
      * `course-data.mjs` keeps the address while the words change.
      */
     slug: forUnit("SLUGS", number, null) ?? slug(title),
-    title,
-    number,
     /*
-     * A COURSE MAY RUN TWO NAMED SERIES AT ONCE, a run of lectures beside a run of reading, and the
-     * word each run's own titles lead with is not the course's one unit word. The series is read from
-     * the unit's row in `composer.json`, which is where its NUMBER already comes from: the two have to
-     * agree, because a display number is unique within its series and nowhere else.
+     * WHAT A STUDENT READS, from the unit's row in `composer.json`: its title without the designation the
+     * document's heading carries ("Lecture · Week 1: ..."), the line under it, its number as read ("6b",
+     * "1&2"), and the category it sits in. The platform prints the designation above the title from the other two, so a
+     * title that kept it would say it twice. The address above stays the heading's, so settling these
+     * words never moves a published lecture.
      */
-    series: series ?? course.structure?.containerWord ?? "Lecture",
+    title: shown.title,
+    ...(shown.subtitle !== null ? { subtitle: shown.subtitle } : {}),
+    number: shown.number,
+    ...(shown.series ? { series: shown.series } : {}),
     source,
     blocks,
     /*
@@ -1468,7 +1471,22 @@ if (contents.length)
       `  "structure": { "frontMatterTitles": [${contents.map((c) => JSON.stringify(c.title)).join(", ")}] }`,
   );
 
-const topics = units
+/*
+ * A NUMBER AS READ is a whole number or text: "6b", "1&2", and "1.5" too, which JSON would otherwise carry
+ * as the number 1.5 that the platform refuses.
+ */
+const shownNumberOf = (n) => (typeof n === "number" && !Number.isInteger(n) ? String(n) : n);
+
+/* A build number is what everything supplied for a unit is filed under, so two units may never share one. */
+const buildNumbers = (course.units ?? []).map((u) => u.number).filter((n) => n !== undefined);
+const shared = [...new Set(buildNumbers.filter((n, i) => buildNumbers.indexOf(n) !== i))];
+if (shared.length)
+  fail(
+    `composer.json gives build number ${shared.join(", ")} to more than one unit. Each unit's "number" is its ` +
+      `own key, unique across the course; the number a student reads goes in "shownNumber".`,
+  );
+
+const built = units
   .map((u, idx) => {
     const next = h1.find((x) => x.at > u.at);
     const declaredUnit = course.units?.find((c) => c.title === u.title);
@@ -1476,19 +1494,43 @@ const topics = units
     return {
       u,
       number,
-      series: declaredUnit?.series ?? null,
+      shown: {
+        title: declaredUnit?.shownTitle ?? u.title,
+        number: shownNumberOf(declaredUnit?.shownNumber ?? number),
+        series: declaredUnit?.series ?? null,
+        // A row that names a subtitle, even an empty one, sends it: an absent one leaves the page's as it is.
+        subtitle: declaredUnit && "subtitle" in declaredUnit ? String(declaredUnit.subtitle ?? "") : null,
+      },
       lines: allLines.slice(u.at, next ? next.at : allLines.length),
     };
   })
   .filter((t) => !wanted.length || wanted.includes(t.number))
-  .map((t) => buildUnit(t.lines, t.number, t.u.title, t.series));
+  .map((t) => ({ key: t.number, topic: buildUnit(t.lines, t.number, t.u.title, t.shown) }));
 
-if (!topics.length) fail(`No unit matched --unit ${wanted.join(", ")}.`);
+if (!built.length) fail(`No unit matched --unit ${wanted.join(", ")}.`);
+const topics = built.map((b) => b.topic);
 
-const glossary = topics.flatMap((t) =>
-  forUnit("GLOSSARY", t.number, []).map((g) => ({
+/*
+ * A COURSE'S CATEGORIES ARE DECLARED ONCE, in `structure.series`, with what one unit in each is called and
+ * what several are: the platform refuses a unit naming a category the course does not declare, and prints
+ * each one's name as the heading over its units. Only the ones a unit uses are sent.
+ */
+// An intake that answered "one" run of units records the word, not a list: that declares none.
+const categories = Array.isArray(course.structure?.series) ? course.structure.series : [];
+const usedCategories = [...new Set(topics.map((t) => t.series).filter(Boolean))];
+const undeclared = usedCategories.filter((name) => !categories.find((s) => s.name === name)?.plural);
+if (undeclared.length)
+  fail(
+    `A unit sits in ${undeclared.map((n) => `"${n}"`).join(", ")}, which composer.json does not declare with ` +
+      `what several units in it are called (and, where it differs from the heading, what one is). Add it under ` +
+      `structure.series:\n` +
+      undeclared.map((n) => `  { "name": ${JSON.stringify(n)}, "unit": "...", "plural": "..." }`).join("\n"),
+  );
+
+const glossary = built.flatMap(({ key, topic }) =>
+  forUnit("GLOSSARY", key, []).map((g) => ({
     ...g,
-    topicSlug: t.slug,
+    topicSlug: topic.slug,
   })),
 );
 
@@ -1515,6 +1557,13 @@ const manifest = {
       DATA.PROGRAM_CODE,
     title: course.courseShell?.title ?? course.course,
     topicTerm: course.structure?.containerWord ?? "Lecture",
+    ...(usedCategories.length
+      ? {
+          series: categories
+            .filter((c) => usedCategories.includes(c.name))
+            .map((c) => ({ name: c.name, unit: c.unit ?? c.name, plural: c.plural })),
+        }
+      : {}),
     style: { requireSource: true },
   },
   topics,
@@ -1555,14 +1604,20 @@ if (withMarkers.length > 0) {
 
 const out = join(folder, "04-manifest", "manifest.json");
 writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`);
+/* Each unit's address against its build number, for every later step (`unit-keys.mjs`). */
+writeFileSync(
+  join(folder, "04-manifest", UNIT_KEYS_FILE),
+  `${JSON.stringify(Object.fromEntries(built.map(({ key, topic }) => [topic.slug, key])), null, 2)}\n`,
+);
 
 /* ── what the build says about itself ────────────────────────────────────────────────────────────── */
 
-for (const t of topics) {
+for (const { key, topic: t } of built) {
   const by = {};
   for (const b of t.blocks) by[b.type] = (by[b.type] ?? 0) + 1;
   const prose = t.blocks.filter((b) => b.type === "prose");
-  console.log(`${t.number}. ${t.title}`);
+  // The build number first, because it is what every command takes; then the unit as a student reads it.
+  console.log(`${key}. ${[t.series, t.number].filter((x) => x !== undefined).join(" ")}: ${t.title}`);
   console.log(
     `   ${t.blocks.length} blocks: ${Object.entries(by)
       .sort((a, b) => b[1] - a[1])
@@ -1570,7 +1625,7 @@ for (const t of topics) {
       .join(", ")}`,
   );
   console.log(
-    `   ${t.questions.length} questions, ${forUnit("GLOSSARY", t.number, []).length} glossary terms, longest prose ${Math.max(0, ...prose.map((b) => words(b.body)))} words`,
+    `   ${t.questions.length} questions, ${glossary.filter((g) => g.topicSlug === t.slug).length} glossary terms, longest prose ${Math.max(0, ...prose.map((b) => words(b.body)))} words`,
   );
 
   const ids = t.blocks.map((b) => b.id);
