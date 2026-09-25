@@ -167,13 +167,6 @@ changing the reading order later means renaming, renumbering and reordering live
    it from the category and the number, so "Module 6b: Firms" would say it twice. Settle the words a
    student reads for every unit whose heading carries more.
 
-Record them in `composer.json`, because the builder reads nothing else. Each kind goes under
-`structure.series` as `{ "name", "unit", "plural" }`. Each unit's row under `units` keeps `title` (its
-heading in the document, which is how the builder finds it), `number` (its build number, what
-`course-data.mjs` and every `--unit` are filed under, one per unit), and adds `series` (the category's
-`name`), `shownNumber` (the number as read), `shownTitle` (the words a student reads) and, where the author
-gives one, `subtitle` (the line under the title). A value left
-out falls back to the heading and the build number, which is right only when they already are.
 5. **House style beyond the mechanical edits.** Em dashes and heading numbers are removed without
    asking. Subtitles, capitalisation and title format are not, and nobody else decides them. **This is
    the most expensive question to ask late**: answered after the questions are written, every one of
@@ -182,6 +175,14 @@ out falls back to the heading and the build number, which is right only when the
    A mock exam is a standalone PAPER; the questions embedded in each unit are PRACTICE QUESTIONS and
    always get built. "Upload everything except the mock exams" means the papers. Reading it the other
    way skips every bank in the course.
+
+Record them in `composer.json`, because the builder reads nothing else. Each kind goes under
+`structure.series` as `{ "name", "unit", "plural" }`, with `unit` left out when it is the heading. Each unit's row under `units` keeps `title` (its
+heading in the document, which is how the builder finds it), `number` (its build number, what
+`course-data.mjs` and every `--unit` are filed under, one per unit), and adds `series` (the category's
+`name`), `shownNumber` (the number as read, quoted when it is not a whole number: "1.5", "6b"), `shownTitle` (the words a student reads) and, where the author
+gives one, `subtitle` (the line under the title). A value left
+out falls back to the heading and the build number, which is right only when they already are.
 
 Record the answers in `composer.json` under `gates.structureAnswered`. **The phase does not close without
 them**, because the state script checks for them by name.

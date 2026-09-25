@@ -13,9 +13,21 @@ import { join } from "node:path";
 
 export const UNIT_KEYS_FILE = "unit-keys.json";
 
-/** The build number of a manifest topic. A manifest built before the file existed numbers by build key. */
+/**
+ * The build number of a manifest topic. A manifest built before the file existed numbers by build number,
+ * so without the file its own number is the key. With the file, a unit it does not know is refused rather
+ * than looked up by the number a student reads: a hand-edited address or a manifest restored without its
+ * keys would otherwise pick the wrong unit without a word.
+ */
 export function unitKeys(folder) {
   const path = join(folder, "04-manifest", UNIT_KEYS_FILE);
-  const bySlug = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {};
-  return (topic) => bySlug[topic.slug] ?? topic.number;
+  if (!existsSync(path)) return (topic) => topic.number;
+  const bySlug = JSON.parse(readFileSync(path, "utf8"));
+  return (topic) => {
+    if (topic.slug in bySlug) return bySlug[topic.slug];
+    throw new Error(
+      `${UNIT_KEYS_FILE} does not know the unit at "${topic.slug}", so its build number is unknown. ` +
+        `Rebuild with build-manifest.mjs, which writes the manifest and its keys together.`,
+    );
+  };
 }

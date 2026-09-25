@@ -1409,7 +1409,7 @@ function buildUnit(rawLines, number, title, shown) {
      * words never moves a published lecture.
      */
     title: shown.title,
-    ...(shown.subtitle ? { subtitle: shown.subtitle } : {}),
+    ...(shown.subtitle !== null ? { subtitle: shown.subtitle } : {}),
     number: shown.number,
     ...(shown.series ? { series: shown.series } : {}),
     source,
@@ -1471,6 +1471,21 @@ if (contents.length)
       `  "structure": { "frontMatterTitles": [${contents.map((c) => JSON.stringify(c.title)).join(", ")}] }`,
   );
 
+/*
+ * A NUMBER AS READ is a whole number or text: "6b", "1&2", and "1.5" too, which JSON would otherwise carry
+ * as the number 1.5 that the platform refuses.
+ */
+const shownNumberOf = (n) => (typeof n === "number" && !Number.isInteger(n) ? String(n) : n);
+
+/* A build number is what everything supplied for a unit is filed under, so two units may never share one. */
+const buildNumbers = (course.units ?? []).map((u) => u.number).filter((n) => n !== undefined);
+const shared = [...new Set(buildNumbers.filter((n, i) => buildNumbers.indexOf(n) !== i))];
+if (shared.length)
+  fail(
+    `composer.json gives build number ${shared.join(", ")} to more than one unit. Each unit's "number" is its ` +
+      `own key, unique across the course; the number a student reads goes in "shownNumber".`,
+  );
+
 const built = units
   .map((u, idx) => {
     const next = h1.find((x) => x.at > u.at);
@@ -1481,9 +1496,10 @@ const built = units
       number,
       shown: {
         title: declaredUnit?.shownTitle ?? u.title,
-        number: declaredUnit?.shownNumber ?? number,
+        number: shownNumberOf(declaredUnit?.shownNumber ?? number),
         series: declaredUnit?.series ?? null,
-        subtitle: declaredUnit?.subtitle ?? null,
+        // A row that names a subtitle, even an empty one, sends it: an absent one leaves the page's as it is.
+        subtitle: declaredUnit && "subtitle" in declaredUnit ? String(declaredUnit.subtitle ?? "") : null,
       },
       lines: allLines.slice(u.at, next ? next.at : allLines.length),
     };
@@ -1502,14 +1518,12 @@ const topics = built.map((b) => b.topic);
 // An intake that answered "one" run of units records the word, not a list: that declares none.
 const categories = Array.isArray(course.structure?.series) ? course.structure.series : [];
 const usedCategories = [...new Set(topics.map((t) => t.series).filter(Boolean))];
-const undeclared = usedCategories.filter((name) => {
-  const c = categories.find((s) => s.name === name);
-  return !c?.unit || !c?.plural;
-});
+const undeclared = usedCategories.filter((name) => !categories.find((s) => s.name === name)?.plural);
 if (undeclared.length)
   fail(
     `A unit sits in ${undeclared.map((n) => `"${n}"`).join(", ")}, which composer.json does not declare with ` +
-      `what one unit in it is called and what several are. Add it under structure.series:\n` +
+      `what several units in it are called (and, where it differs from the heading, what one is). Add it under ` +
+      `structure.series:\n` +
       undeclared.map((n) => `  { "name": ${JSON.stringify(n)}, "unit": "...", "plural": "..." }`).join("\n"),
   );
 
@@ -1547,7 +1561,7 @@ const manifest = {
       ? {
           series: categories
             .filter((c) => usedCategories.includes(c.name))
-            .map((c) => ({ name: c.name, unit: c.unit, plural: c.plural })),
+            .map((c) => ({ name: c.name, unit: c.unit ?? c.name, plural: c.plural })),
         }
       : {}),
     style: { requireSource: true },
@@ -1598,11 +1612,12 @@ writeFileSync(
 
 /* ── what the build says about itself ────────────────────────────────────────────────────────────── */
 
-for (const t of topics) {
+for (const { key, topic: t } of built) {
   const by = {};
   for (const b of t.blocks) by[b.type] = (by[b.type] ?? 0) + 1;
   const prose = t.blocks.filter((b) => b.type === "prose");
-  console.log(`${t.number}. ${t.title}`);
+  // The build number first, because it is what every command takes; then the unit as a student reads it.
+  console.log(`${key}. ${[t.series, t.number].filter((x) => x !== undefined).join(" ")}: ${t.title}`);
   console.log(
     `   ${t.blocks.length} blocks: ${Object.entries(by)
       .sort((a, b) => b[1] - a[1])

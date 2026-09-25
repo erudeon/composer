@@ -43,13 +43,13 @@ let lifted = 0;
 for (const topic of manifest.topics)
   for (const block of topic.blocks)
     if (typeof block.body === "string" && block.body.includes("<!-- style:"))
-      fail(`unit ${topic.number}: ${block.id} still holds a style marker`);
+      fail(`unit ${keyOf(topic)}: ${block.id} still holds a style marker`);
 
 let placed = 0;
 for (const topic of manifest.topics) {
   for (const op of OPS[keyOf(topic)] ?? []) {
     const at = topic.blocks.findIndex((b) => b.id === op.id);
-    if (at === -1) fail(`unit ${topic.number}: no block ${op.id}`);
+    if (at === -1) fail(`unit ${keyOf(topic)}: no block ${op.id}`);
 
     if (op.op === "replace") {
       topic.blocks.splice(at, 1, { id: op.id, ...op.block });
@@ -63,7 +63,7 @@ for (const topic of manifest.topics) {
        * already live does not move because the builder would derive a different one today.
        */
       if (topic.blocks.some((b) => b.id === op.to))
-        fail(`unit ${topic.number}: ${op.to} already exists, so ${op.id} cannot take it`);
+        fail(`unit ${keyOf(topic)}: ${op.to} already exists, so ${op.id} cannot take it`);
       topic.blocks[at].id = op.to;
       placed += 1;
     } else if (op.op === "remove") {
@@ -72,7 +72,7 @@ for (const topic of manifest.topics) {
     } else if (op.op === "move") {
       const [block] = topic.blocks.splice(at, 1);
       const to = topic.blocks.findIndex((b) => b.id === op.before);
-      if (to === -1) fail(`unit ${topic.number}: no block ${op.before} to move ${op.id} in front of`);
+      if (to === -1) fail(`unit ${keyOf(topic)}: no block ${op.before} to move ${op.id} in front of`);
       topic.blocks.splice(to, 0, block);
       placed += 1;
     } else if (op.op === "cut") {
@@ -82,24 +82,24 @@ for (const topic of manifest.topics) {
        * as a journal entry, are the same content twice and the reader has to work out which to trust.
        */
       const block = topic.blocks[at];
-      if (block.type !== "prose") fail(`unit ${topic.number}: ${op.id} is a ${block.type}, not prose`);
+      if (block.type !== "prose") fail(`unit ${keyOf(topic)}: ${op.id} is a ${block.type}, not prose`);
       const lines = block.body.split("\n");
       const cutAt = lines.findIndex((l) => l.trim() === op.from);
-      if (cutAt === -1) fail(`unit ${topic.number}: ${op.id} has no line ${op.from}`);
+      if (cutAt === -1) fail(`unit ${keyOf(topic)}: ${op.id} has no line ${op.from}`);
       const kept = lines.slice(0, cutAt).join("\n").trimEnd();
-      if (!kept) fail(`unit ${topic.number}: cutting ${op.id} at ${op.from} would empty it`);
+      if (!kept) fail(`unit ${keyOf(topic)}: cutting ${op.id} at ${op.from} would empty it`);
       block.body = kept;
       placed += 1;
     } else if (op.op === "splitAt" || op.op === "formula") {
       const block = topic.blocks[at];
       if (block.type !== "prose")
-        fail(`unit ${topic.number}: ${op.id} is a ${block.type}, not prose`);
+        fail(`unit ${keyOf(topic)}: ${op.id} is a ${block.type}, not prose`);
       const lines = block.body.split("\n");
       const from = lines.indexOf(op.find[0]);
-      if (from === -1) fail(`unit ${topic.number}: ${op.id} has no line ${op.find[0]}`);
+      if (from === -1) fail(`unit ${keyOf(topic)}: ${op.id} has no line ${op.find[0]}`);
       for (let k = 1; k < op.find.length; k += 1)
         if (lines[from + 2 * k] !== op.find[k])
-          fail(`unit ${topic.number}: ${op.id} line ${k + 1} of the formula does not follow`);
+          fail(`unit ${keyOf(topic)}: ${op.id} line ${k + 1} of the formula does not follow`);
       const last = from + 2 * (op.find.length - 1);
 
       const before = lines.slice(0, from).join("\n").trim();
@@ -118,14 +118,14 @@ for (const topic of manifest.topics) {
        * step in the order it was written. Retyping a page of figures by hand is how a digit changes.
        */
       const block = topic.blocks[at];
-      if (block.type !== "prose") fail(`unit ${topic.number}: ${op.id} is a ${block.type}, not prose`);
+      if (block.type !== "prose") fail(`unit ${keyOf(topic)}: ${op.id} is a ${block.type}, not prose`);
       const paras = block.body.split(/\n\n+/).map((x) => x.trim()).filter(Boolean);
       let title = op.title;
       if (/^#{2,6}\s/.test(paras[0])) {
         const heading = paras.shift().replace(/^#+\s*/, "").trim();
         title ??= heading;
       }
-      if (!title) fail(`unit ${topic.number}: ${op.id} has no heading, so give the op a title`);
+      if (!title) fail(`unit ${keyOf(topic)}: ${op.id} has no heading, so give the op a title`);
       /*
        * A STEP LABEL AND ITS NOTE ARE PLAIN TEXT. The write path takes them, the reader draws them as
        * they are, and `**Finished Goods**` therefore reaches a student with its asterisks on. The
@@ -134,7 +134,7 @@ for (const topic of manifest.topics) {
       const plain = (x) => x.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
       const isStep = (x) => x.includes("=");
       const firstStep = paras.findIndex(isStep);
-      if (firstStep === -1) fail(`unit ${topic.number}: ${op.id} holds no calculation line`);
+      if (firstStep === -1) fail(`unit ${keyOf(topic)}: ${op.id} holds no calculation line`);
       const problem = paras.slice(0, firstStep).join("\n\n");
 
       /*
@@ -196,7 +196,7 @@ for (const topic of manifest.topics) {
 for (const topic of manifest.topics) {
   const ids = topic.blocks.map((b) => b.id);
   const dupes = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
-  if (dupes.length) fail(`unit ${topic.number}: duplicate block ids: ${dupes.join(", ")}`);
+  if (dupes.length) fail(`unit ${keyOf(topic)}: duplicate block ids: ${dupes.join(", ")}`);
 }
 
 /* The teaching period, which the course shell settled and build-manifest does not carry through. */
@@ -215,7 +215,7 @@ for (const t of manifest.topics) {
   const by = {};
   for (const b of t.blocks) by[b.type] = (by[b.type] ?? 0) + 1;
   console.log(
-    `${t.number}. ${t.title}\n   ${t.blocks.length} blocks: ${Object.entries(by)
+    `${keyOf(t)}. ${t.title}\n   ${t.blocks.length} blocks: ${Object.entries(by)
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => `${v} ${k}`)
       .join(", ")}`,

@@ -100,4 +100,41 @@ const UNITS = [
   assert.match(run.stderr, /structure\.series/);
 }
 
+/* A decimal is sent as text, an empty subtitle is sent to clear the page's, and a unit word may be the heading. */
+{
+  const dir = course({
+    structure: { containerWord: "Unit", series: [{ name: "Public", plural: "Public" }] },
+    units: [
+      { title: headings[0], number: 1, shownTitle: "Markets", shownNumber: 1.5, series: "Public", subtitle: "" },
+      { title: headings[1], number: 2, shownTitle: "Firms" },
+      { title: headings[2], number: 3, shownTitle: "Prices" },
+    ],
+  });
+  execFileSync("node", [join(HERE, "build-manifest.mjs"), dir], { encoding: "utf8" });
+  const m = JSON.parse(readFileSync(join(dir, "04-manifest", "manifest.json"), "utf8"));
+  assert.deepStrictEqual(m.course.series, [{ name: "Public", unit: "Public", plural: "Public" }]);
+  assert.strictEqual(m.topics[0].number, "1.5");
+  assert.strictEqual(m.topics[0].subtitle, "");
+  assert.ok(!("subtitle" in m.topics[1]), "a row that names no subtitle sends none");
+
+  // A manifest whose address the key file does not know is refused, never read by the number a student sees.
+  const manifest = join(dir, "04-manifest", "manifest.json");
+  m.topics[2].slug = "renamed-by-hand";
+  writeFileSync(manifest, JSON.stringify(m));
+  const run = spawnSync("node", [join(HERE, "slice.mjs"), dir, "3"], { encoding: "utf8" });
+  assert.notStrictEqual(run.status, 0);
+  assert.match(run.stderr, /does not know the unit at "renamed-by-hand"/);
+}
+
+/* Two units may never share a build number: everything supplied for a unit is filed under it. */
+{
+  const dir = course({
+    structure: { containerWord: "Unit", series: SERIES },
+    units: UNITS.map((u) => ({ ...u, number: u.number === 3 ? 1 : u.number })),
+  });
+  const run = spawnSync("node", [join(HERE, "build-manifest.mjs"), dir], { encoding: "utf8" });
+  assert.notStrictEqual(run.status, 0, "a shared build number must stop the build");
+  assert.match(run.stderr, /build number 1 to more than one unit/);
+}
+
 console.log("t_naming: ok");
