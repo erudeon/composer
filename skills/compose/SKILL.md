@@ -89,6 +89,10 @@ which is the author's. A topic the professor has since changed, which is Observe
 **When you are not certain, the line stays open and the passage stays as written.** Prose is the
 author's, verbatim, typos included.
 
+**Record each confirmed one as a topic `edits` entry** (old, new, reason, approved by), as
+`composer/reference/behaviours.md` says, so the source stays the author's and the difference is on the
+record rather than hidden.
+
 Ask about every substantive candidate **once**, in one message, with a recommendation each. Make the
 ones the author confirms. Leave the rest as open lines.
 

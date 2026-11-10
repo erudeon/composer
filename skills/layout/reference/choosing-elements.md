@@ -52,6 +52,14 @@ indistinguishable from a correct one on the page, no check downstream can see it
 in whichever direction seemed plausible. Two honest answers: a `figure` with alt text naming what it
 shows, or a schematic `chart` with `ticks: false` and a title that says it is schematic.
 
+**The source plots two quantities on one picture, each with its own scale** (price and quantity, a
+rate and a level): ONE `chart` with `axis: "right"` on the series that reads from the second scale, and
+`yLabelRight` naming it. Never two pictures side by side, and never rescale one series so it fits.
+
+**The source repeats one plot for several cases** (a panel per market, per firm, per year): ONE `chart`
+with `facet`, which draws a small chart per series and can share the vertical scale. Ask `content_guide`
+for the modes and their limits.
+
 **A surface in two variables.** A `figure`. The reader has no 3D chart.
 
 **A crop from a book, a slide, a homework site or the web.** Never uploaded. Redrawn from the function
