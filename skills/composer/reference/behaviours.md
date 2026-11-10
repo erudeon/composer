@@ -191,3 +191,30 @@ course with one run of lectures that is a repair. On a course with two named run
 Problem 1 and Lecture 1 both exist on purpose, numbers are per category, and the reading order is the
 array rather than the numbers. Running it collapses both runs into one sequence and there is no undo.
 
+
+## A cap is a default for a course to move, not a wall to work around
+
+The platform's limits (how long a heading, a table cell or a chart label may be, how many series a chart
+takes) are defaults. A course whose source needs more states it once, in the manifest `policy.limits`,
+with `limitsReason` saying why, and the check then holds the course to ITS limit. The import plan lists
+each limit that moved as `limit-moved`, so the author sees it. A rule the platform lets a course waive
+goes in `policy.waivers`, with a reason.
+
+Never shorten the author's words, split a table or swap a chart for a picture to fit under a default.
+That is the workaround this exists to end. Ask `content_guide` which limits and waivers exist and what
+they are called; none is written down here. Ask the author before raising one, once per course, because
+the reason is theirs.
+
+## A correction the author approved is an edit on the record
+
+When the author confirms a change to their own source (a wrong sign, a wrong number), record it as a
+topic `edits` entry: the old text, the new text, the reason, and who approved it. The check applies it to
+the source BEFORE it compares the course with the source, and it reports each one as `approved-edit`, so a
+reviewer can see exactly what differs from the original. A correction not recorded this way is a
+mismatch, and an edit whose old text is missing or appears twice is an error, not a silent skip.
+
+## Look at the page before you call it right
+
+`content_preview_link` gives a link to the draft lecture, and `content_render` returns the rendered page
+as an image you can see. A table, a chart and a figure group are judged by looking at them, on a phone
+width as well as a wide one. Use both after every layout write, and before you accept a chart.

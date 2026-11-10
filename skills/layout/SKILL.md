@@ -295,6 +295,7 @@ callout          the closer, last
 ```
 
 Which callout kind, what a chart takes, and what the closer is called all come from `content_guide`.
+A cap that the source runs into is raised for the course through `policy.limits`, never worked around.
 
 ### Anything the reader has a block FOR leaves the prose
 
